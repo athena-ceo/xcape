@@ -59,7 +59,11 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: https://${DOMAIN:-xcape.athenadecisions.com}
+        # Path-based on apps.athenadecisions.com for now. To switch to a dedicated
+        # subdomain later, set PUBLIC_URL=https://xcape.athenadecisions.com and
+        # XCAPE_BASE_PATH=/ in the prod .env.
+        VITE_API_URL: ${PUBLIC_URL:-https://apps.athenadecisions.com/xcape}
+        VITE_BASE_PATH: ${XCAPE_BASE_PATH:-/xcape/}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3030}:80"

@@ -11,6 +11,7 @@ from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
 from app.schemas.search import AddCandidateRequest, AddCriterionRequest, CandidateOut
+from app.services import ai_client, comparison, place_research
 
 router = APIRouter()
 
@@ -27,12 +28,19 @@ def list_candidates(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     _owned(db, user, search_id)
-    return (
+    candidates = (
         db.query(Candidate)
         .filter(Candidate.search_id == search_id, Candidate.status == "active")
         .order_by(Candidate.match_score.desc().nullslast())
         .all()
     )
+    # Annotate each candidate with how it compares to the user's current country
+    # (fast path: baseline must already be in the DB; France is seeded).
+    baseline = comparison.get_current_country_place(db, user, research=False)
+    base_attrs = baseline.attributes if baseline else None
+    for cand in candidates:
+        cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
+    return candidates
 
 
 @router.post("/{search_id}/candidates", response_model=CandidateOut, status_code=201)
@@ -48,9 +56,16 @@ def add_candidate(
         place = db.get(Place, body.place_id)
     elif body.place_name:
         place = db.query(Place).filter(Place.name.ilike(body.place_name)).first()
-        # TODO(ai): on miss, call services.place_research.research_place(name) and cache it.
+        if place is None:
+            # Not in the built-in DB — research it on demand and cache it.
+            try:
+                place = place_research.research_place(db, body.place_name, user_id=user.id)
+            except ai_client.AIUnavailable:
+                raise HTTPException(
+                    status_code=503, detail="AI research unavailable (no API key configured)"
+                )
     if place is None:
-        raise HTTPException(status_code=404, detail="Place not found (AI research not yet wired)")
+        raise HTTPException(status_code=404, detail="Place not found")
 
     existing = (
         db.query(Candidate)
@@ -108,8 +123,15 @@ def add_criterion(
     )
     for cand in candidates:
         attrs = cand.place.attributes or {}
+        value = attrs.get(body.key)
+        if value is None:
+            # Not in seed data — research this single attribute via AI (best-effort).
+            try:
+                value = place_research.fill_criterion(db, cand.place, body.key, user_id=user.id)
+            except ai_client.AIUnavailable:
+                value = None
         per = dict(cand.per_criterion or {})
-        per.setdefault(body.key, attrs.get(body.key))
+        per[body.key] = value
         cand.per_criterion = per
     db.commit()
     for cand in candidates:

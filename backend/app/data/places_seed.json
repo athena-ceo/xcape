@@ -17,6 +17,13 @@
   },
   "countries": [
     {
+      "name": "France", "iso_code": "FR",
+      "attributes": {"cost_of_living": "medium", "climate": "mild", "language_ease": "french", "healthcare": "strong", "safety": "medium", "political_stability": "medium", "tax": "high", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Point de référence : votre situation actuelle pour comparer les destinations.",
+      "summary_en": "Reference point: your current situation, to compare destinations against.",
+      "regions": []
+    },
+    {
       "name": "Portugal", "iso_code": "PT",
       "attributes": {"cost_of_living": "low", "climate": "mild", "language_ease": "medium", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "fast"},
       "summary_fr": "Climat doux, coût de la vie modéré, sûr et accueillant pour les expatriés.",

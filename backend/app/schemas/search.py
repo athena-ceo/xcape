@@ -39,6 +39,7 @@ class CandidateOut(BaseModel):
     match_score: float | None = None
     match_reasons: list[str] = []
     per_criterion: dict
+    vs_current: dict[str, str] = {}  # criterion -> better/worse/same vs current country
     rank: int | None = None
 
 

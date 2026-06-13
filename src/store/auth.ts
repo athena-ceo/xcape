@@ -10,7 +10,10 @@ interface AuthState {
   email: string | null
   isAdmin: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, locale: string) => Promise<void>
+  register: (body: {
+    email: string; password: string; locale: string
+    first_name?: string; last_name?: string
+  }) => Promise<void>
   logout: () => void
   refresh: () => Promise<void>
 }
@@ -28,8 +31,8 @@ export const useAuth = create<AuthState>((set) => ({
     set({ email: me.email, isAdmin: me.is_admin })
   },
 
-  register: async (email, password, locale) => {
-    const { access_token } = await api.register(email, password, locale)
+  register: async (body) => {
+    const { access_token } = await api.register(body)
     localStorage.setItem('xcape_token', access_token)
     set({ token: access_token })
     const me = await api.me()

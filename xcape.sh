@@ -47,12 +47,44 @@ case "$CMD" in
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
   test)     $COMPOSE exec "$BACKEND_SVC" python -m pytest /app/tests -q ;;
+  smoke)    SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py ;;
   shell)    $COMPOSE exec "$BACKEND_SVC" bash ;;
   backup-db)
     mkdir -p backups
     TS="backup-$(date +%Y%m%d-%H%M%S).sql"
     $COMPOSE exec -T db pg_dump -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-xcape_dev}" > "backups/${TS}"
     echo "Wrote backups/${TS}" ;;
+  deploy)
+    if [[ "$ENV" != "prod" ]]; then echo "deploy is production-only. Use: ./xcape.sh deploy prod"; exit 1; fi
+    echo "==> Deploying xCape to production"
+    echo "--> Pre-deploy DB backup"
+    mkdir -p backups
+    $COMPOSE exec -T db pg_dump -U "${POSTGRES_USER:-xcape}" "${POSTGRES_DB:-xcape_prod}" \
+      > "backups/predeploy-$(date +%Y%m%d-%H%M%S).sql" 2>/dev/null \
+      || echo "    (no running DB to back up — first deploy?)"
+    if ! git diff --quiet HEAD 2>/dev/null; then
+      echo "--> Stashing local changes"; git stash push -m "auto-stash before deploy $(date +%F-%T)" || true
+    fi
+    echo "--> Pulling latest code"
+    git pull origin main || { echo "git pull failed"; exit 1; }
+    echo "--> Building images"
+    $COMPOSE build backend frontend
+    echo "--> Starting services"
+    $COMPOSE up -d
+    echo "--> Waiting for backend to come up"
+    for i in $(seq 1 60); do
+      curl -fsS "http://localhost:${BACKEND_PORT:-8030}/health" >/dev/null 2>&1 && break; sleep 2
+    done
+    echo "--> Applying migrations"
+    $COMPOSE exec -T "$BACKEND_SVC" alembic upgrade head
+    echo "--> Seeding place database (idempotent)"
+    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.seed
+    echo "--> Health check"
+    curl -fsS "http://localhost:${BACKEND_PORT:-8030}/health" && echo "" || { echo "BACKEND UNHEALTHY"; exit 1; }
+    echo "--> Smoke tests"
+    SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py \
+      || { echo "SMOKE TESTS FAILED — investigate before sending traffic"; exit 1; }
+    echo "==> Deploy complete. Reminder: external nginx must include nginx/xcape-apps-location.conf" ;;
   reset-db)
     if [[ "$ENV" == "prod" ]]; then echo "Refusing to reset-db on prod."; exit 1; fi
     $COMPOSE down -v && $COMPOSE up -d db
@@ -68,8 +100,10 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   makemigration "msg"     autogenerate a migration
   seed                    load the bundled place database
   test                    run backend pytest
+  smoke                   run end-to-end smoke tests against the running stack
   shell                   open a backend shell
   backup-db               pg_dump to ./backups
+  deploy prod             pull, build, restart, migrate, seed, health-check
   reset-db                (dev only) wipe DB volume
 
 Dev URLs: frontend http://localhost:${FRONTEND_PORT:-3030}  backend http://localhost:${BACKEND_PORT:-8030}/docs

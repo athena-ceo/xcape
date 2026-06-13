@@ -10,6 +10,7 @@ from app.models.media import MediaAsset
 from app.models.place import Place
 from app.models.user import User
 from app.schemas.place import MediaOut, PlaceOut
+from app.services import ai_client, place_research
 
 router = APIRouter()
 
@@ -39,5 +40,11 @@ def get_media(place_id: int, user: User = Depends(get_current_user), db: Session
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
-    # TODO(ai): on empty, call services.place_research.fetch_media(place) (web search) and cache.
-    return db.query(MediaAsset).filter(MediaAsset.place_id == place_id).all()
+    existing = db.query(MediaAsset).filter(MediaAsset.place_id == place_id).all()
+    if existing:
+        return existing
+    # Cache miss — discover media via web search (best-effort).
+    try:
+        return place_research.fetch_media(db, place, user_id=user.id)
+    except ai_client.AIUnavailable:
+        return []

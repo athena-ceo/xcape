@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     default_locale: str = "fr"
     auto_verify_registrations: bool = True
     access_token_expire_minutes: int = 60 * 24 * 7
+    # Comma-separated allowed CORS origins in production (path-based serving is
+    # same-origin so this mainly matters if the frontend ever moves to a subdomain).
+    cors_origins: str = "https://apps.athenadecisions.com"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     # Database
     postgres_server: str = "db"
@@ -26,6 +33,7 @@ class Settings(BaseSettings):
     # AI
     openai_api_key: str = ""
     openai_model: str = "gpt-5"
+    openai_transcribe_model: str = "gpt-4o-mini-transcribe"
 
     @property
     def database_url(self) -> str:

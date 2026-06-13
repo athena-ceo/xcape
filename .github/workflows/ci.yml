@@ -1,0 +1,82 @@
+# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Proprietary and confidential — unauthorized copying or distribution is prohibited.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: Backend tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Run pytest
+        working-directory: backend
+        run: python -m pytest tests -q
+
+  frontend-build:
+    name: Frontend build (tsc + vite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check and build
+        run: npm run build
+
+  e2e-smoke:
+    name: End-to-end smoke (Docker stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start db + backend
+        run: docker compose -f docker-compose.dev.yml up -d --build db backend
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8030/health && break || sleep 2
+          done
+          curl -fsS http://localhost:8030/health
+
+      - name: Apply migrations
+        run: docker compose -f docker-compose.dev.yml exec -T backend alembic upgrade head
+
+      - name: Seed place database
+        run: docker compose -f docker-compose.dev.yml exec -T backend python -m app.db.seed
+
+      - name: Run smoke tests
+        run: python3 scripts/smoke_test.py
+
+      - name: Backend logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.dev.yml logs backend
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.dev.yml down -v

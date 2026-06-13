@@ -44,6 +44,8 @@ export function Shortlist() {
             >
               <div className="flex items-center gap-3">
                 <span className="font-medium">{place?.name ?? c.place_id}</span>
+                <Link to={`/drilldown/${c.place_id}`}
+                  className="text-xs text-turquoise-600 hover:underline">{t.comparison.drilldown}</Link>
                 <span className="ml-auto text-turquoise-600 font-medium">
                   {t.shortlist.matchScore} {Math.round(c.match_score)}%
                 </span>

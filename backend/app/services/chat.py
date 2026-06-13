@@ -31,7 +31,14 @@ def reply(db: Session, user: User, search: Search, message: str) -> ChatMessage:
     db.commit()
 
     try:
-        answer = ai_client.respond(message, web_search=True, system=SYSTEM_PROMPT)
+        answer = ai_client.respond(
+            message,
+            web_search=True,
+            system=SYSTEM_PROMPT,
+            kind="chat",
+            db=db,
+            user_id=user.id,
+        )
     except ai_client.AIUnavailable:
         answer = (
             "Le service IA n'est pas encore configuré (clé OpenAI manquante)."

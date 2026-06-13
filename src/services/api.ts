@@ -25,17 +25,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  register: (email: string, password: string, locale: string) =>
+  register: (body: {
+    email: string; password: string; locale: string
+    first_name?: string; last_name?: string
+  }) =>
     request<{ access_token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, locale }),
+      body: JSON.stringify(body),
     }),
   login: (email: string, password: string) =>
     request<{ access_token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  me: () => request<{ id: number; email: string; is_admin: boolean; locale: string }>('/auth/me'),
+  me: () =>
+    request<{
+      id: number; email: string; is_admin: boolean; locale: string
+      first_name?: string; last_name?: string; current_country?: string
+    }>('/auth/me'),
+  updateMe: (body: { first_name?: string; last_name?: string; current_country?: string }) =>
+    request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
   getProfile: () => request('/profile'),
   updateProfile: (data: unknown) =>
@@ -47,10 +56,22 @@ export const api = {
   buildShortlist: (id: number) =>
     request<any[]>(`/searches/${id}/shortlist`, { method: 'POST' }),
   listCandidates: (id: number) => request<any[]>(`/searches/${id}/candidates`),
+  addCandidate: (id: number, body: { place_id?: number; place_name?: string }) =>
+    request<any>(`/searches/${id}/candidates`, { method: 'POST', body: JSON.stringify(body) }),
+  removeCandidate: (id: number, candidateId: number) =>
+    request<void>(`/searches/${id}/candidates/${candidateId}`, { method: 'DELETE' }),
+  addCriterion: (id: number, key: string) =>
+    request<any[]>(`/searches/${id}/criteria`, { method: 'POST', body: JSON.stringify({ key }) }),
+  discriminate: (id: number) =>
+    request<{ questions: any[] }>(`/searches/${id}/discriminate`, { method: 'POST' }),
+  getBaseline: (id: number) => request<any | null>(`/searches/${id}/baseline`),
 
   listPlaces: (kind?: string) =>
     request<any[]>(`/places${kind ? `?kind=${kind}` : ''}`),
+  getPlace: (id: number) => request<any>(`/places/${id}`),
+  getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
+  getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
   sendChat: (id: number, message: string) =>
     request<any>(`/searches/${id}/chat`, {
       method: 'POST',

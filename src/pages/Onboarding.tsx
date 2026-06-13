@@ -1,14 +1,15 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { VoiceInput } from '../components/VoiceInput'
+import { VoiceField } from '../components/VoiceField'
 import { useT } from '../i18n'
 import { api } from '../services/api'
 
 type StepId =
+  | 'currentCountry'
   | 'household'
   | 'reasons'
   | 'budget'
@@ -18,7 +19,7 @@ type StepId =
   | 'priorities'
 
 const STEPS: StepId[] = [
-  'household', 'reasons', 'budget', 'tenure', 'climate', 'language', 'priorities',
+  'currentCountry', 'household', 'reasons', 'budget', 'tenure', 'climate', 'language', 'priorities',
 ]
 
 const REASON_KEYS = [
@@ -31,6 +32,7 @@ const PRIORITY_KEYS = [
 ] as const
 
 interface Answers {
+  current_country: string
   household_type: string | null
   reasons_leaving: string[]
   budget_monthly: number | null
@@ -41,6 +43,7 @@ interface Answers {
 }
 
 const EMPTY: Answers = {
+  current_country: '',
   household_type: null,
   reasons_leaving: [],
   budget_monthly: null,
@@ -74,6 +77,13 @@ export function Onboarding() {
   const [a, setA] = useState<Answers>(EMPTY)
   const [busy, setBusy] = useState(false)
 
+  // Pre-fill the current country with the value detected at registration.
+  useEffect(() => {
+    api.me().then((me) => {
+      if (me.current_country) setA((cur) => ({ ...cur, current_country: me.current_country! }))
+    })
+  }, [])
+
   const step = STEPS[index]
   const isLast = index === STEPS.length - 1
 
@@ -83,12 +93,16 @@ export function Onboarding() {
     return [...list, value]
   }
 
-  // Each step is "answered enough" to advance; all are optional except household.
-  const canAdvance = step === 'household' ? !!a.household_type : true
+  // Each step is "answered enough" to advance; most are optional.
+  const canAdvance =
+    step === 'household' ? !!a.household_type
+    : step === 'currentCountry' ? !!a.current_country.trim()
+    : true
 
   async function finish() {
     setBusy(true)
     try {
+      await api.updateMe({ current_country: a.current_country.trim() })
       await api.updateProfile({
         household_type: a.household_type,
         reasons_leaving: a.reasons_leaving,
@@ -126,6 +140,18 @@ export function Onboarding() {
         </div>
 
         <div className="bg-white rounded-xl p-6 border border-turquoise-100">
+          {step === 'currentCountry' && (
+            <>
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.currentCountry.q}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.currentCountry.hint}</p>
+              <VoiceField
+                value={a.current_country}
+                onChange={(v) => setA({ ...a, current_country: v })}
+                placeholder="France"
+              />
+            </>
+          )}
+
           {step === 'household' && (
             <>
               <h1 className="text-xl font-medium text-turquoise-900 mb-4">{t.onboarding.household.q}</h1>
@@ -246,10 +272,6 @@ export function Onboarding() {
             >
               {busy ? t.common.loading : isLast ? t.onboarding.finish : t.onboarding.continue}
             </button>
-          </div>
-
-          <div className="mt-4 flex justify-center">
-            <VoiceInput onTranscript={() => {}} label={t.onboarding.voiceHint} />
           </div>
         </div>
       </div>

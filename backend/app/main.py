@@ -11,9 +11,7 @@ app = FastAPI(title="xCape API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.environment == "development" else [
-        "https://xcape.athenadecisions.com"
-    ],
+    allow_origins=["*"] if settings.environment == "development" else settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

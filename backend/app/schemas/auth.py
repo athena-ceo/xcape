@@ -10,6 +10,9 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     locale: str = "fr"
+    first_name: str | None = None
+    last_name: str | None = None
+    current_country: str | None = None  # if known; otherwise auto-detected
 
 
 class LoginRequest(BaseModel):
@@ -22,11 +25,20 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class UserUpdate(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    current_country: str | None = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     email: EmailStr
+    first_name: str | None = None
+    last_name: str | None = None
+    current_country: str | None = None
     is_admin: bool
     is_verified: bool
     locale: str

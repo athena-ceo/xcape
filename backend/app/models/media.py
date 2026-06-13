@@ -19,7 +19,7 @@ class MediaAsset(Base):
     type: Mapped[str] = mapped_column(String(10))  # map/photo/link
     url: Mapped[str] = mapped_column(Text)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
-    source: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)  # may hold long citations
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     place = relationship("Place", back_populates="media")

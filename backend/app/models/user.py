@@ -15,6 +15,12 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    first_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Where the user currently lives (the place they're moving FROM). Used as the
+    # systematic comparison baseline. Defaulted at registration (geo-IP -> locale ->
+    # France) and editable later.
+    current_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     locale: Mapped[str] = mapped_column(String(5), default="fr", nullable=False)
