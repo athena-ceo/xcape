@@ -1,0 +1,73 @@
+# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Proprietary and confidential — unauthorized copying or distribution is prohibited.
+#
+# Production stack for apps.athenadecisions.com.
+# Ports: backend 8030, frontend 3030 (distinct from golden-path 8020/3020).
+# Postgres is NOT host-published — reachable only on the internal network.
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-xcape_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-xcape}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - xcape-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xcape} -d ${POSTGRES_DB:-xcape_prod}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8030}:8000"
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-xcape_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-xcape}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ENVIRONMENT: production
+      SECRET_KEY: ${SECRET_KEY}
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-fr}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - xcape-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: https://${DOMAIN:-xcape.athenadecisions.com}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3030}:80"
+    depends_on:
+      - backend
+    networks:
+      - xcape-network
+
+networks:
+  xcape-network:
+    driver: bridge

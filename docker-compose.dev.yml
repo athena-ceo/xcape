@@ -1,0 +1,75 @@
+# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Proprietary and confidential — unauthorized copying or distribution is prohibited.
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-xcape_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    command: >
+      postgres
+      -c log_statement=none
+      -c log_min_duration_statement=1000
+      -c log_connections=off
+      -c log_disconnections=off
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5442:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-xcape_dev}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build: ./backend
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-xcape_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      ENVIRONMENT: development
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-fr}
+      AUTO_VERIFY_REGISTRATIONS: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5}
+    ports:
+      - "${BACKEND_PORT:-8030}:8000"
+    volumes:
+      - ./backend:/app
+      - /app/xcvenv
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend-dev:
+    image: node:24-bookworm-slim
+    working_dir: /app
+    environment:
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8030}
+    ports:
+      - "${FRONTEND_PORT:-3030}:5173"
+    volumes:
+      - ./src:/app/src:cached
+      - ./public:/app/public:cached
+      - ./index.html:/app/index.html:cached
+      - ./package.json:/app/package.json:cached
+      - ./tsconfig.json:/app/tsconfig.json:cached
+      - ./vite.config.ts:/app/vite.config.ts:cached
+      - ./tailwind.config.js:/app/tailwind.config.js:cached
+      - ./postcss.config.js:/app/postcss.config.js:cached
+      - frontend_dev_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_dev_data: {}
+  frontend_dev_node_modules: {}

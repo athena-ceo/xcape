@@ -1,0 +1,37 @@
+// Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+// Proprietary and confidential — unauthorized copying or distribution is prohibited.
+
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { Header } from './components/Header'
+import { AdminDashboard } from './pages/AdminDashboard'
+import { ComparisonPlayground } from './pages/ComparisonPlayground'
+import { HomePage } from './pages/HomePage'
+import { LoginPage } from './pages/LoginPage'
+import { Onboarding } from './pages/Onboarding'
+import { RegisterPage } from './pages/RegisterPage'
+import { Shortlist } from './pages/Shortlist'
+import { useAuth } from './store/auth'
+
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const token = useAuth((s) => s.token)
+  return token ? children : <Navigate to="/login" replace />
+}
+
+export default function App() {
+  return (
+    <div className="min-h-screen">
+      <Header />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        <Route path="/shortlist/:searchId" element={<RequireAuth><Shortlist /></RequireAuth>} />
+        <Route path="/compare/:searchId" element={<RequireAuth><ComparisonPlayground /></RequireAuth>} />
+        <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  )
+}

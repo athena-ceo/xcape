@@ -1,0 +1,45 @@
+# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Proprietary and confidential — unauthorized copying or distribution is prohibited.
+#
+# External nginx server block for apps.athenadecisions.com.
+# Drop into /etc/nginx/sites-available/xcape and symlink into sites-enabled.
+# TLS via certbot. Proxies to the xCape Docker containers (frontend 3030, backend 8030).
+# Coexists with golden-path (3020/8020) — no port collision.
+
+server {
+    listen 80;
+    server_name xcape.athenadecisions.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name xcape.athenadecisions.com;
+
+    # ssl_certificate     /etc/letsencrypt/live/xcape.athenadecisions.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/xcape.athenadecisions.com/privkey.pem;
+
+    client_max_body_size 25m;
+
+    # API → backend container
+    location /api/ {
+        proxy_pass http://127.0.0.1:8030;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:8030/health;
+    }
+
+    # Everything else → frontend container
+    location / {
+        proxy_pass http://127.0.0.1:3030;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
