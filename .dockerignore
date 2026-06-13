@@ -16,3 +16,10 @@ logs
 .env
 .env.*
 .DS_Store
+# Runtime data created by the prod stack (postgres volume, backups). These live under
+# the repo on the server and are owned by the container — must never enter a build
+# context (unreadable + would bloat/leak the image).
+data/
+backups/
+backend/xcvenv
+backend/gpvenv
