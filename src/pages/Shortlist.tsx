@@ -40,12 +40,24 @@ export function Shortlist() {
           return (
             <li
               key={c.id}
-              className="flex items-center gap-3 bg-white border border-turquoise-100 rounded-lg px-4 py-3"
+              className="bg-white border border-turquoise-100 rounded-lg px-4 py-3"
             >
-              <span className="font-medium">{place?.name ?? c.place_id}</span>
-              <span className="ml-auto text-turquoise-600 font-medium">
-                {t.shortlist.matchScore} {Math.round(c.match_score)}%
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="font-medium">{place?.name ?? c.place_id}</span>
+                <span className="ml-auto text-turquoise-600 font-medium">
+                  {t.shortlist.matchScore} {Math.round(c.match_score)}%
+                </span>
+              </div>
+              {Array.isArray(c.match_reasons) && c.match_reasons.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {c.match_reasons.map((r: string) => (
+                    <span key={r}
+                      className="text-xs bg-turquoise-50 text-turquoise-600 rounded-full px-2.5 py-0.5">
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              )}
             </li>
           )
         })}

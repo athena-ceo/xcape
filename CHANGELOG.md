@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### 2026-06-13 — Phase 1: onboarding flow & richer shortlist
+
+- Full progressive onboarding wizard (7 steps): household, reasons for leaving,
+  budget, rent/buy, climate, language willingness, top priorities — with progress
+  bar, back/continue, and voice affordance. Bilingual FR/EN.
+- Richer place seed data: 27 countries with a consistent 11-attribute schema
+  (cost, climate, language ease, healthcare, safety, political stability, tax, visa,
+  expat community, nature, internet) + regions and bilingual summaries.
+- Shortlist scoring v2: blends per-criterion quality with the user's priorities —
+  reason-for-leaving weight boosts (avoid same problems), household adjustments,
+  climate matching, language-learning willingness. Returns human-readable
+  match reasons (new `candidates.match_reasons` column, migration 0002).
+- Shortlist UI shows match-reason chips; comparison board uses localized criteria.
+- Tests: profile partial-update accumulation, profile-driven shortlist ranking
+  (9 backend tests passing).
+
 ### 2026-06-13 — Project scaffold
 
 - Architecture & plan document (`docs/xcape-architecture-and-plan.md`).

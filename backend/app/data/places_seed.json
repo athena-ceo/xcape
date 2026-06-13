@@ -1,10 +1,26 @@
 {
+  "_schema": {
+    "note": "Coarse comparative buckets for the instant shortlist; AI/web search refines on demand.",
+    "attributes": {
+      "cost_of_living": "low | medium | high",
+      "climate": "cold | temperate | mild | warm | tropical",
+      "language_ease": "french | english | easy | medium | hard (ease for a French speaker)",
+      "healthcare": "strong | good | basic",
+      "safety": "high | medium | low",
+      "political_stability": "high | medium | low",
+      "tax": "low | medium | high (burden on residents)",
+      "visa": "easy | medium | hard (for an EU/French citizen)",
+      "expat_community": "large | medium | small",
+      "nature": "high | medium | low",
+      "internet": "fast | ok | slow"
+    }
+  },
   "countries": [
     {
       "name": "Portugal", "iso_code": "PT",
-      "attributes": {"cost_of_living": "low", "climate": "mild", "language_ease": "medium", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "easy"},
-      "summary_fr": "Climat doux, coût de la vie modéré, accueil chaleureux des expatriés.",
-      "summary_en": "Mild climate, moderate cost of living, welcoming to newcomers.",
+      "attributes": {"cost_of_living": "low", "climate": "mild", "language_ease": "medium", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Climat doux, coût de la vie modéré, sûr et accueillant pour les expatriés.",
+      "summary_en": "Mild climate, moderate cost of living, safe and welcoming to newcomers.",
       "regions": [
         {"name": "Lisbon", "attributes": {"cost_of_living": "medium", "climate": "mild"}},
         {"name": "Algarve", "attributes": {"cost_of_living": "low", "climate": "warm"}},
@@ -13,87 +29,198 @@
     },
     {
       "name": "Spain", "iso_code": "ES",
-      "attributes": {"cost_of_living": "medium", "climate": "warm", "language_ease": "medium", "healthcare": "strong", "safety": "medium", "political_stability": "medium", "tax": "medium", "visa": "medium"},
-      "summary_fr": "Climat chaud, forte culture, grande communauté francophone.",
+      "attributes": {"cost_of_living": "medium", "climate": "warm", "language_ease": "medium", "healthcare": "strong", "safety": "medium", "political_stability": "medium", "tax": "medium", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Climat chaud, forte culture, vaste communauté internationale.",
       "summary_en": "Warm climate, rich culture, large international community.",
       "regions": [
         {"name": "Valencia", "attributes": {"cost_of_living": "medium", "climate": "warm"}},
-        {"name": "Andalusia", "attributes": {"cost_of_living": "low", "climate": "warm"}}
+        {"name": "Andalusia", "attributes": {"cost_of_living": "low", "climate": "warm"}},
+        {"name": "Catalonia", "attributes": {"cost_of_living": "high", "climate": "warm"}}
+      ]
+    },
+    {
+      "name": "Italy", "iso_code": "IT",
+      "attributes": {"cost_of_living": "medium", "climate": "warm", "language_ease": "easy", "healthcare": "strong", "safety": "high", "political_stability": "medium", "tax": "high", "visa": "medium", "expat_community": "medium", "nature": "high", "internet": "ok"},
+      "summary_fr": "Culture, gastronomie, climat varié, mais bureaucratie lourde.",
+      "summary_en": "Culture, food, varied climate, but heavy bureaucracy.",
+      "regions": [
+        {"name": "Tuscany", "attributes": {"cost_of_living": "medium", "climate": "mild"}},
+        {"name": "Puglia", "attributes": {"cost_of_living": "low", "climate": "warm"}}
+      ]
+    },
+    {
+      "name": "Greece", "iso_code": "GR",
+      "attributes": {"cost_of_living": "low", "climate": "warm", "language_ease": "hard", "healthcare": "good", "safety": "high", "political_stability": "medium", "tax": "medium", "visa": "easy", "expat_community": "medium", "nature": "high", "internet": "ok"},
+      "summary_fr": "Coût de la vie bas, climat méditerranéen, îles superbes.",
+      "summary_en": "Low cost of living, Mediterranean climate, beautiful islands.",
+      "regions": [
+        {"name": "Crete", "attributes": {"cost_of_living": "low", "climate": "warm"}},
+        {"name": "Athens", "attributes": {"cost_of_living": "medium", "climate": "warm"}}
+      ]
+    },
+    {
+      "name": "Ireland", "iso_code": "IE",
+      "attributes": {"cost_of_living": "high", "climate": "mild", "language_ease": "english", "healthcare": "good", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Anglophone, dans l'UE, économie dynamique, souvent pluvieux.",
+      "summary_en": "English-speaking, in the EU, dynamic economy, often rainy.",
+      "regions": []
+    },
+    {
+      "name": "Netherlands", "iso_code": "NL",
+      "attributes": {"cost_of_living": "high", "climate": "temperate", "language_ease": "medium", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "high", "visa": "easy", "expat_community": "large", "nature": "low", "internet": "fast"},
+      "summary_fr": "Très anglophone au quotidien, sûr, excellent vélo et services.",
+      "summary_en": "English widely spoken, safe, excellent cycling and services.",
+      "regions": []
+    },
+    {
+      "name": "Germany", "iso_code": "DE",
+      "attributes": {"cost_of_living": "medium", "climate": "temperate", "language_ease": "medium", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "high", "visa": "easy", "expat_community": "large", "nature": "medium", "internet": "ok"},
+      "summary_fr": "Économie solide, services publics fiables, hivers gris.",
+      "summary_en": "Strong economy, reliable public services, grey winters.",
+      "regions": []
+    },
+    {
+      "name": "Belgium", "iso_code": "BE",
+      "attributes": {"cost_of_living": "medium", "climate": "temperate", "language_ease": "french", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "high", "visa": "easy", "expat_community": "large", "nature": "low", "internet": "fast"},
+      "summary_fr": "Francophone (Wallonie/Bruxelles), proche, dans l'UE.",
+      "summary_en": "French-speaking (Wallonia/Brussels), close by, in the EU.",
+      "regions": []
+    },
+    {
+      "name": "Switzerland", "iso_code": "CH",
+      "attributes": {"cost_of_living": "high", "climate": "temperate", "language_ease": "french", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "low", "visa": "medium", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Régions francophones, très sûr et stable, coût très élevé.",
+      "summary_en": "French-speaking regions, very safe and stable, very expensive.",
+      "regions": [
+        {"name": "Geneva", "attributes": {"cost_of_living": "high", "language_ease": "french"}},
+        {"name": "Vaud", "attributes": {"cost_of_living": "high", "language_ease": "french"}}
+      ]
+    },
+    {
+      "name": "Canada", "iso_code": "CA",
+      "attributes": {"cost_of_living": "high", "climate": "cold", "language_ease": "english", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "high", "visa": "medium", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Anglophone et francophone (Québec), très stable, hivers froids.",
+      "summary_en": "English and French (Quebec), very stable, cold winters.",
+      "regions": [
+        {"name": "Quebec", "attributes": {"cost_of_living": "medium", "climate": "cold", "language_ease": "french"}},
+        {"name": "British Columbia", "attributes": {"cost_of_living": "high", "climate": "mild"}}
       ]
     },
     {
       "name": "Uruguay", "iso_code": "UY",
-      "attributes": {"cost_of_living": "low", "climate": "temperate", "language_ease": "hard", "healthcare": "good", "safety": "high", "political_stability": "high", "tax": "low", "visa": "easy"},
-      "summary_fr": "Stabilité politique remarquable en Amérique du Sud, espagnol requis.",
-      "summary_en": "Notably stable democracy in South America; Spanish required.",
+      "attributes": {"cost_of_living": "low", "climate": "temperate", "language_ease": "hard", "healthcare": "good", "safety": "high", "political_stability": "high", "tax": "low", "visa": "easy", "expat_community": "medium", "nature": "medium", "internet": "ok"},
+      "summary_fr": "Démocratie très stable d'Amérique du Sud, espagnol requis.",
+      "summary_en": "Notably stable South American democracy; Spanish required.",
       "regions": [
         {"name": "Montevideo", "attributes": {"cost_of_living": "medium", "climate": "temperate"}}
       ]
     },
     {
-      "name": "Canada", "iso_code": "CA",
-      "attributes": {"cost_of_living": "high", "climate": "cold", "language_ease": "english", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "high", "visa": "medium"},
-      "summary_fr": "Anglophone et francophone (Québec), très stable, hivers froids.",
-      "summary_en": "English and French (Quebec), very stable, cold winters.",
-      "regions": [
-        {"name": "Quebec", "attributes": {"cost_of_living": "medium", "climate": "cold", "language_ease": "easy"}},
-        {"name": "British Columbia", "attributes": {"cost_of_living": "high", "climate": "mild"}}
-      ]
-    },
-    {
       "name": "Costa Rica", "iso_code": "CR",
-      "attributes": {"cost_of_living": "medium", "climate": "warm", "language_ease": "hard", "healthcare": "good", "safety": "medium", "political_stability": "high", "tax": "low", "visa": "easy"},
+      "attributes": {"cost_of_living": "medium", "climate": "tropical", "language_ease": "hard", "healthcare": "good", "safety": "medium", "political_stability": "high", "tax": "low", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "ok"},
       "summary_fr": "Démocratie stable sans armée, nature exceptionnelle.",
       "summary_en": "Stable democracy with no army, exceptional nature.",
       "regions": []
     },
     {
-      "name": "Greece", "iso_code": "GR",
-      "attributes": {"cost_of_living": "low", "climate": "warm", "language_ease": "hard", "healthcare": "good", "safety": "high", "political_stability": "medium", "tax": "medium", "visa": "easy"},
-      "summary_fr": "Coût de la vie bas, climat méditerranéen, îles.",
-      "summary_en": "Low cost of living, Mediterranean climate, islands.",
+      "name": "Mexico", "iso_code": "MX",
+      "attributes": {"cost_of_living": "low", "climate": "warm", "language_ease": "hard", "healthcare": "good", "safety": "low", "political_stability": "medium", "tax": "low", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "ok"},
+      "summary_fr": "Coût de la vie très bas, grande communauté d'expatriés.",
+      "summary_en": "Very low cost of living, large expat community.",
+      "regions": [
+        {"name": "Mexico City", "attributes": {"cost_of_living": "medium", "safety": "medium"}},
+        {"name": "Yucatan", "attributes": {"cost_of_living": "low", "safety": "high", "climate": "tropical"}}
+      ]
+    },
+    {
+      "name": "Panama", "iso_code": "PA",
+      "attributes": {"cost_of_living": "medium", "climate": "tropical", "language_ease": "hard", "healthcare": "good", "safety": "medium", "political_stability": "medium", "tax": "low", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "ok"},
+      "summary_fr": "Dollar US, fiscalité douce, programmes de résidence accessibles.",
+      "summary_en": "US dollar, light taxation, accessible residency programs.",
       "regions": []
     },
     {
-      "name": "Ireland", "iso_code": "IE",
-      "attributes": {"cost_of_living": "high", "climate": "mild", "language_ease": "english", "healthcare": "good", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "easy"},
-      "summary_fr": "Anglophone, dans l'UE, économie dynamique, pluvieux.",
-      "summary_en": "English-speaking, in the EU, dynamic economy, rainy.",
+      "name": "Chile", "iso_code": "CL",
+      "attributes": {"cost_of_living": "medium", "climate": "temperate", "language_ease": "hard", "healthcare": "good", "safety": "medium", "political_stability": "medium", "tax": "medium", "visa": "medium", "expat_community": "medium", "nature": "high", "internet": "ok"},
+      "summary_fr": "Paysages spectaculaires, économie stable pour la région.",
+      "summary_en": "Spectacular landscapes, stable economy for the region.",
+      "regions": []
+    },
+    {
+      "name": "United States", "iso_code": "US",
+      "attributes": {"cost_of_living": "high", "climate": "temperate", "language_ease": "english", "healthcare": "basic", "safety": "medium", "political_stability": "medium", "tax": "medium", "visa": "hard", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Opportunités vastes, mais santé coûteuse et visas difficiles.",
+      "summary_en": "Vast opportunity, but costly healthcare and hard visas.",
+      "regions": []
+    },
+    {
+      "name": "United Kingdom", "iso_code": "GB",
+      "attributes": {"cost_of_living": "high", "climate": "mild", "language_ease": "english", "healthcare": "good", "safety": "high", "political_stability": "medium", "tax": "high", "visa": "hard", "expat_community": "large", "nature": "medium", "internet": "fast"},
+      "summary_fr": "Anglophone, hors UE depuis le Brexit, visas plus stricts.",
+      "summary_en": "English-speaking, outside the EU since Brexit, stricter visas.",
       "regions": []
     },
     {
       "name": "New Zealand", "iso_code": "NZ",
-      "attributes": {"cost_of_living": "high", "climate": "temperate", "language_ease": "english", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "hard"},
-      "summary_fr": "Très sûr et stable, nature spectaculaire, éloigné.",
-      "summary_en": "Very safe and stable, spectacular nature, remote.",
+      "attributes": {"cost_of_living": "high", "climate": "temperate", "language_ease": "english", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "hard", "expat_community": "medium", "nature": "high", "internet": "ok"},
+      "summary_fr": "Très sûr et stable, nature spectaculaire, mais éloigné.",
+      "summary_en": "Very safe and stable, spectacular nature, but remote.",
       "regions": []
     },
     {
-      "name": "Mexico", "iso_code": "MX",
-      "attributes": {"cost_of_living": "low", "climate": "warm", "language_ease": "hard", "healthcare": "good", "safety": "low", "political_stability": "medium", "tax": "low", "visa": "easy"},
-      "summary_fr": "Coût de la vie très bas, grande communauté d'expatriés.",
-      "summary_en": "Very low cost of living, large expat community.",
-      "regions": []
-    },
-    {
-      "name": "Italy", "iso_code": "IT",
-      "attributes": {"cost_of_living": "medium", "climate": "warm", "language_ease": "medium", "healthcare": "strong", "safety": "high", "political_stability": "medium", "tax": "high", "visa": "medium"},
-      "summary_fr": "Culture, gastronomie, climat varié, bureaucratie lourde.",
-      "summary_en": "Culture, food, varied climate, heavy bureaucracy.",
+      "name": "Australia", "iso_code": "AU",
+      "attributes": {"cost_of_living": "high", "climate": "warm", "language_ease": "english", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "hard", "expat_community": "large", "nature": "high", "internet": "ok"},
+      "summary_fr": "Niveau de vie élevé, climat agréable, immigration sélective.",
+      "summary_en": "High living standards, pleasant climate, selective immigration.",
       "regions": []
     },
     {
       "name": "Japan", "iso_code": "JP",
-      "attributes": {"cost_of_living": "medium", "climate": "temperate", "language_ease": "hard", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "hard"},
+      "attributes": {"cost_of_living": "medium", "climate": "temperate", "language_ease": "hard", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "medium", "visa": "hard", "expat_community": "medium", "nature": "high", "internet": "fast"},
       "summary_fr": "Extrêmement sûr, langue difficile, culture unique.",
       "summary_en": "Extremely safe, difficult language, unique culture.",
       "regions": []
     },
     {
       "name": "Thailand", "iso_code": "TH",
-      "attributes": {"cost_of_living": "low", "climate": "warm", "language_ease": "hard", "healthcare": "good", "safety": "medium", "political_stability": "low", "tax": "low", "visa": "medium"},
+      "attributes": {"cost_of_living": "low", "climate": "tropical", "language_ease": "hard", "healthcare": "good", "safety": "medium", "political_stability": "low", "tax": "low", "visa": "medium", "expat_community": "large", "nature": "high", "internet": "ok"},
       "summary_fr": "Coût de la vie très bas, climat tropical, visas variables.",
       "summary_en": "Very low cost of living, tropical climate, variable visas.",
+      "regions": []
+    },
+    {
+      "name": "Malaysia", "iso_code": "MY",
+      "attributes": {"cost_of_living": "low", "climate": "tropical", "language_ease": "medium", "healthcare": "good", "safety": "medium", "political_stability": "medium", "tax": "low", "visa": "medium", "expat_community": "large", "nature": "high", "internet": "fast"},
+      "summary_fr": "Anglais répandu, coût bas, programme de résidence MM2H.",
+      "summary_en": "English common, low cost, MM2H residency program.",
+      "regions": []
+    },
+    {
+      "name": "United Arab Emirates", "iso_code": "AE",
+      "attributes": {"cost_of_living": "high", "climate": "warm", "language_ease": "english", "healthcare": "strong", "safety": "high", "political_stability": "high", "tax": "low", "visa": "medium", "expat_community": "large", "nature": "low", "internet": "fast"},
+      "summary_fr": "Aucune imposition sur le revenu, très sûr, été très chaud.",
+      "summary_en": "No income tax, very safe, extremely hot summers.",
+      "regions": []
+    },
+    {
+      "name": "Morocco", "iso_code": "MA",
+      "attributes": {"cost_of_living": "low", "climate": "warm", "language_ease": "french", "healthcare": "basic", "safety": "medium", "political_stability": "medium", "tax": "low", "visa": "easy", "expat_community": "large", "nature": "high", "internet": "ok"},
+      "summary_fr": "Francophone, proche, coût de la vie bas, climat ensoleillé.",
+      "summary_en": "French-speaking, close, low cost of living, sunny climate.",
+      "regions": []
+    },
+    {
+      "name": "Mauritius", "iso_code": "MU",
+      "attributes": {"cost_of_living": "medium", "climate": "tropical", "language_ease": "french", "healthcare": "good", "safety": "high", "political_stability": "high", "tax": "low", "visa": "easy", "expat_community": "medium", "nature": "high", "internet": "ok"},
+      "summary_fr": "Francophone, île sûre et stable, fiscalité attractive.",
+      "summary_en": "French-speaking, safe and stable island, attractive taxation.",
+      "regions": []
+    },
+    {
+      "name": "Cyprus", "iso_code": "CY",
+      "attributes": {"cost_of_living": "medium", "climate": "warm", "language_ease": "english", "healthcare": "good", "safety": "high", "political_stability": "medium", "tax": "low", "visa": "easy", "expat_community": "large", "nature": "medium", "internet": "ok"},
+      "summary_fr": "Dans l'UE, anglais répandu, fiscalité douce, climat chaud.",
+      "summary_en": "In the EU, English common, light taxation, warm climate.",
       "regions": []
     }
   ]

@@ -8,7 +8,7 @@ import { VoiceInput } from '../components/VoiceInput'
 import { useT } from '../i18n'
 import { api } from '../services/api'
 
-const CRITERIA = ['cost_of_living', 'climate', 'language_ease', 'healthcare', 'political_stability']
+const CRITERIA = ['cost_of_living', 'climate', 'language_ease', 'healthcare', 'political_stability'] as const
 
 // Scaffold of the spreadsheet-like comparison board (plan §6, mock-up #2). The top
 // candidates from the shortlist are shown as columns; criteria as rows. Add/remove
@@ -56,7 +56,7 @@ export function ComparisonPlayground() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-turquoise-50 text-left">
-              <th className="p-3 font-medium">Critère</th>
+              <th className="p-3 font-medium">{t.comparison.criterion}</th>
               {candidates.map((c) => (
                 <th key={c.id} className="p-3 font-medium">{places[c.place_id]?.name}</th>
               ))}
@@ -65,7 +65,7 @@ export function ComparisonPlayground() {
           <tbody>
             {CRITERIA.map((key) => (
               <tr key={key} className="border-t border-turquoise-100">
-                <td className="p-3 text-turquoise-800/70">{key}</td>
+                <td className="p-3 text-turquoise-800/70">{t.criteria[key]}</td>
                 {candidates.map((c) => (
                   <td key={c.id} className="p-3 text-center">
                     {String(c.per_criterion?.[key] ?? '—')}

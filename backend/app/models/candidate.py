@@ -20,6 +20,7 @@ class Candidate(Base):
     place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(10), default="active")  # active/removed
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    match_reasons: Mapped[list] = mapped_column(JSON, default=list)  # short "why this place" bullets
     per_criterion: Mapped[dict] = mapped_column(JSON, default=dict)
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     pinned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

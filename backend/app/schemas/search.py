@@ -37,6 +37,7 @@ class CandidateOut(BaseModel):
     place_id: int
     status: str
     match_score: float | None = None
+    match_reasons: list[str] = []
     per_criterion: dict
     rank: int | None = None
 
