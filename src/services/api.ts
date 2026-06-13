@@ -41,10 +41,11 @@ export const api = {
   me: () =>
     request<{
       id: number; email: string; is_admin: boolean; locale: string
-      first_name?: string; last_name?: string; current_country?: string
+      first_name?: string; last_name?: string; current_country?: string; citizenships?: string[]
     }>('/auth/me'),
-  updateMe: (body: { first_name?: string; last_name?: string; current_country?: string }) =>
-    request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
+  updateMe: (body: {
+    first_name?: string; last_name?: string; current_country?: string; citizenships?: string[]
+  }) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
   getProfile: () => request('/profile'),
   updateProfile: (data: unknown) =>
@@ -65,6 +66,10 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ selected }),
     }),
+  scoreExplanation: (id: number, candidateId: number) =>
+    request<{ score: number; weight_total: number; rows: any[] }>(
+      `/searches/${id}/candidates/${candidateId}/explanation`,
+    ),
   addCriterion: (id: number, key: string) =>
     request<any[]>(`/searches/${id}/criteria`, { method: 'POST', body: JSON.stringify({ key }) }),
   discriminate: (id: number) =>
@@ -74,6 +79,9 @@ export const api = {
   listPlaces: (kind?: string) =>
     request<any[]>(`/places${kind ? `?kind=${kind}` : ''}`),
   getPlace: (id: number) => request<any>(`/places/${id}`),
+  getFacts: (id: number) => request<any>(`/places/${id}/facts`),
+  getDetail: (id: number, lang: string) =>
+    request<{ criteria: any[] }>(`/places/${id}/detail?lang=${lang}`),
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),

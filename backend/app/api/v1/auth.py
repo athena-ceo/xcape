@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserOut, UserUpdate
 from app.services import geo
+from app.services import shortlist as shortlist_service
 
 router = APIRouter()
 
@@ -72,4 +73,7 @@ def update_me(
         setattr(user, field, value)
     db.commit()
     db.refresh(user)
+    # Citizenship & current country affect visa/ease-of-movement scoring — re-rank.
+    for search in user.searches:
+        shortlist_service.rescore_candidates(db, user, search)
     return user

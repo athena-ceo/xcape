@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import JSON, Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -21,6 +21,10 @@ class User(Base):
     # systematic comparison baseline. Defaulted at registration (geo-IP -> locale ->
     # France) and editable later.
     current_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # ISO alpha-2 codes of the citizenships held across the moving household (the user
+    # and any spouse/children). Drives visa / ease-of-movement scoring, which depends on
+    # citizenship, not residence (e.g. a US citizen residing in France has no EU mobility).
+    citizenships: Mapped[list | None] = mapped_column(JSON, default=list)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     locale: Mapped[str] = mapped_column(String(5), default="fr", nullable=False)

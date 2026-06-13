@@ -4,13 +4,20 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { Chip } from '../components/Chip'
+import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { VoiceField } from '../components/VoiceField'
+import {
+  CLIMATE_KEYS, HOUSEHOLDS, LANG_OPTIONS, LOCALE_LANGUAGE,
+  MAX_PRIORITIES, PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
+} from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
 import { useAuth } from '../store/auth'
 
 type StepId =
   | 'currentCountry'
+  | 'citizenship'
   | 'household'
   | 'reasons'
   | 'budget'
@@ -20,26 +27,13 @@ type StepId =
   | 'priorities'
 
 const STEPS: StepId[] = [
-  'currentCountry', 'household', 'reasons', 'budget', 'tenure', 'climate', 'language', 'priorities',
+  'currentCountry', 'citizenship', 'household', 'reasons', 'budget', 'tenure',
+  'climate', 'language', 'priorities',
 ]
-
-const REASON_KEYS = [
-  'politics', 'economy', 'safety', 'climate', 'cost', 'healthcare', 'lifestyle', 'career',
-] as const
-const CLIMATE_KEYS = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
-const PRIORITY_KEYS = [
-  'cost_of_living', 'healthcare', 'safety', 'political_stability',
-  'climate', 'language_ease', 'tax', 'visa', 'nature',
-] as const
-// Canonical (English) language names — must match the country `languages` data so the
-// backend can match a user's known languages against each country's.
-const LANG_OPTIONS = [
-  'French', 'English', 'Spanish', 'German', 'Italian', 'Portuguese', 'Dutch', 'Arabic',
-] as const
-const LOCALE_LANGUAGE: Record<string, string> = { fr: 'French', en: 'English' }
 
 interface Answers {
   current_country: string
+  citizenships: string[]
   household_type: string | null
   reasons_leaving: string[]
   budget_monthly: number | null
@@ -52,6 +46,7 @@ interface Answers {
 
 const EMPTY: Answers = {
   current_country: '',
+  citizenships: [],
   household_type: null,
   reasons_leaving: [],
   budget_monthly: null,
@@ -60,23 +55,6 @@ const EMPTY: Answers = {
   known_languages: [],
   willing_to_learn: null,
   priorities: [],
-}
-
-function Chip({ active, onClick, children }: {
-  active: boolean; onClick: () => void; children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg border px-4 py-2.5 text-sm text-left transition ${
-        active ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-600'
-               : 'border-turquoise-100 hover:border-turquoise-200'
-      }`}
-    >
-      {children}
-    </button>
-  )
 }
 
 export function Onboarding() {
@@ -91,7 +69,11 @@ export function Onboarding() {
   // previously saved language skills; default known languages to the UI locale.
   useEffect(() => {
     api.me().then((me) => {
-      if (me.current_country) setA((cur) => ({ ...cur, current_country: me.current_country! }))
+      setA((cur) => ({
+        ...cur,
+        current_country: me.current_country ?? cur.current_country,
+        citizenships: me.citizenships ?? cur.citizenships,
+      }))
     })
     api.getProfile().then((p: any) => {
       const known: string[] | undefined = p?.language_skills?.known
@@ -106,12 +88,6 @@ export function Onboarding() {
   const step = STEPS[index]
   const isLast = index === STEPS.length - 1
 
-  function toggle<T extends string>(list: T[], value: T, max = Infinity): T[] {
-    if (list.includes(value)) return list.filter((v) => v !== value)
-    if (list.length >= max) return list
-    return [...list, value]
-  }
-
   // Each step is "answered enough" to advance; most are optional.
   const canAdvance =
     step === 'household' ? !!a.household_type
@@ -121,7 +97,7 @@ export function Onboarding() {
   async function finish() {
     setBusy(true)
     try {
-      await api.updateMe({ current_country: a.current_country.trim() })
+      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships })
       // Re-read identity from the server so the cached store reflects the new truth.
       await refreshAuth()
       await api.updateProfile({
@@ -131,7 +107,7 @@ export function Onboarding() {
         tenure: a.tenure,
         climate_pref: a.climate_pref,
         language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
-        criteria_weights: Object.fromEntries(a.priorities.map((k) => [k, 2.0])),
+        criteria_weights: Object.fromEntries(a.priorities.map((k) => [k, PRIORITY_WEIGHT])),
       })
       const search = await api.createSearch(t.shortlist.title)
       await api.buildShortlist(search.id)
@@ -173,11 +149,23 @@ export function Onboarding() {
             </>
           )}
 
+          {step === 'citizenship' && (
+            <>
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.citizenship.q}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.citizenship.hint}</p>
+              <CountryMultiSelect
+                value={a.citizenships}
+                onChange={(v) => setA({ ...a, citizenships: v })}
+                addLabel={t.onboarding.citizenship.add}
+              />
+            </>
+          )}
+
           {step === 'household' && (
             <>
               <h1 className="text-xl font-medium text-turquoise-900 mb-4">{t.onboarding.household.q}</h1>
               <div className="grid sm:grid-cols-3 gap-3">
-                {(['single', 'couple', 'family'] as const).map((h) => (
+                {HOUSEHOLDS.map((h) => (
                   <Chip key={h} active={a.household_type === h}
                     onClick={() => setA({ ...a, household_type: h })}>
                     {t.onboarding.household[h]}
@@ -282,7 +270,7 @@ export function Onboarding() {
               <div className="grid sm:grid-cols-2 gap-3">
                 {PRIORITY_KEYS.map((k) => (
                   <Chip key={k} active={a.priorities.includes(k)}
-                    onClick={() => setA({ ...a, priorities: toggle(a.priorities, k, 3) })}>
+                    onClick={() => setA({ ...a, priorities: toggle(a.priorities, k, MAX_PRIORITIES) })}>
                     {t.criteria[k]}
                   </Chip>
                 ))}

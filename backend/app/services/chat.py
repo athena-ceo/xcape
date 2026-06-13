@@ -22,7 +22,8 @@ SYSTEM_PROMPT = (
     "move to, using their profile and shortlist. You MAY discuss political stability, "
     "governance trends, safety, prejudice and social climate of candidate destinations — "
     "these are legitimate relocation concerns. Politely decline anything unrelated to the "
-    "relocation search. Answer in the user's locale."
+    "relocation search. Answer in the user's locale. Format your answer in Markdown: short "
+    "paragraphs, and bullet lists or bold labels where they aid readability."
 )
 
 

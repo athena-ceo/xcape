@@ -5,6 +5,56 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Score explanation
+
+- Clicking a score in the comparison board opens a breakdown of how it was derived:
+  per criterion, the country's quality (0-100), the weight (with a "priority" marker
+  for user-boosted criteria), and the contribution in points — which sum to the score.
+  New `shortlist.explain_candidate` + `/searches/{id}/candidates/{cid}/explanation`.
+
+### 2026-06-14 — Citizenship-aware visa scoring, Markdown chat, source labels
+
+- Citizenship vs residence: the household's citizenship(s) (user + spouse/children) are
+  captured separately from the country of residence (`users.citizenships`, migration
+  0007) and drive visa / ease-of-movement scoring — a citizen of the destination or an
+  EU/EEA/CH citizen moving within that zone scores free movement, while a non-EU
+  resident (e.g. a US citizen in France) does not. Onboarding step + profile field
+  (localized country multi-select); editing citizenship re-scores. Tests added.
+- Chat answers are now requested as Markdown and rendered with react-markdown
+  (sanitized) — no more run-on paragraphs.
+- Drill-down sources now show the site name (hostname) as the link instead of
+  "Source 1/2/3"; inline URLs are kept out of the summary (prompt + display cleanup).
+
+### 2026-06-14 — All countries, interactive discriminator, AI spinners
+
+- Seed expanded from a sample to **every country** (217) — generated from World Bank
+  (roster, capital, region, coords, income) + Wikidata (official languages). The
+  curated 27 keep their hand-tuned attributes; generated countries get coarse honest
+  attributes (climate from latitude, cost/healthcare from income, languages), with the
+  rest left for AI to fill on demand. AI results are cached on the Place
+  (`facts`, `criteria_detail`, attributes via research) and as `MediaAsset` rows.
+- "Help me narrow down" is now interactive: each question targets a scoring criterion
+  with localized options carrying an importance weight; clicking sets that weight,
+  re-scores and re-ranks, and the scores in the table update. (Previously did nothing
+  and showed English options.)
+- Animated spinner during AI operations: chat, add-country research, narrowing,
+  drill-down detail/links.
+- Removed the nginx reminder from `deploy prod`.
+
+### 2026-06-14 — Editable profile & rich country drill-down
+
+- Profile editor at `/profile` (header link): all desiderata — name, current country,
+  household, reasons, budget, rent/buy, climate, known languages, priorities — visible
+  and editable any time. Saving re-scores and re-ranks every existing search
+  (`shortlist.rescore_candidates`), preserving each search's chosen candidates and
+  selection. Shared option vocabulary + `Chip` between onboarding and the editor.
+- Drill-down rebuilt: basic facts (capital, population, region, flag) from keyless
+  World Bank + flagcdn; an **inline OpenStreetMap** map and an **inline photo** (capital
+  city's Wikipedia lead image); AI per-criterion detail **with source links** (cached
+  per language); other resources as a link list. New `Place.facts` / `criteria_detail`
+  caches (migration 0006), `services/country_facts.py`, and `/places/{id}/facts` +
+  `/places/{id}/detail` endpoints.
+
 ### 2026-06-14 — Language-aware scoring
 
 - Onboarding now asks which languages the user already speaks (multi-select,

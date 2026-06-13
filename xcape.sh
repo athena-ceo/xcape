@@ -84,7 +84,7 @@ case "$CMD" in
     echo "--> Smoke tests"
     SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py \
       || { echo "SMOKE TESTS FAILED — investigate before sending traffic"; exit 1; }
-    echo "==> Deploy complete. Reminder: external nginx must include nginx/xcape-apps-location.conf" ;;
+    echo "==> Deploy complete." ;;
   reset-db)
     if [[ "$ENV" == "prod" ]]; then echo "Refusing to reset-db on prod."; exit 1; fi
     $COMPOSE down -v && $COMPOSE up -d db

@@ -125,6 +125,63 @@ def fill_criterion(db: Session, place: Place, key: str, *, user_id: int | None =
     return value
 
 
+_DETAIL_CRITERIA = [
+    "cost_of_living", "climate", "language_ease", "healthcare",
+    "safety", "political_stability", "tax", "visa",
+]
+
+
+def _detail_schema() -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "criteria": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "key": {"type": "string", "enum": _DETAIL_CRITERIA},
+                        "summary": {"type": "string"},
+                        "sources": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["key", "summary", "sources"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["criteria"],
+        "additionalProperties": False,
+    }
+
+
+def fetch_criteria_detail(
+    db: Session, place: Place, *, lang: str = "fr", user_id: int | None = None
+) -> dict:
+    """Per-criterion detailed summary with source URLs, cached per language."""
+    cache = place.criteria_detail or {}
+    if lang in cache:
+        return cache[lang]
+
+    language = "French" if lang == "fr" else "English"
+    data = ai_client.respond_json(
+        f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
+        f"explanation IN {language} for each of these criteria: {', '.join(_DETAIL_CRITERIA)}. "
+        f"Use web search for current facts. Put source URLs ONLY in the sources array — do "
+        f"NOT include any URLs or a 'Sources:' note inside the summary text.",
+        _detail_schema(),
+        schema_name="criteria_detail",
+        web_search=True,
+        system=_SYSTEM,
+        kind="research",
+        db=db,
+        user_id=user_id,
+    )
+    cache = {**cache, lang: data}
+    place.criteria_detail = cache
+    db.commit()
+    return data
+
+
 def fetch_media(db: Session, place: Place, *, user_id: int | None = None) -> list[MediaAsset]:
     """Discover a map link, useful links and photo references for a place; cache them."""
     schema = {

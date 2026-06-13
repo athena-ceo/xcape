@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { Markdown } from '../components/Markdown'
+import { Spinner } from '../components/Spinner'
 import { VoiceButton } from '../components/VoiceButton'
 import { VoiceField } from '../components/VoiceField'
 import { useT } from '../i18n'
@@ -36,8 +38,11 @@ export function ComparisonPlayground() {
 
   const [questions, setQuestions] = useState<any[]>([])
   const [narrowing, setNarrowing] = useState(false)
+  const [weights, setWeights] = useState<Record<string, number>>({})
+  const [applying, setApplying] = useState(false)
 
   const [baseline, setBaseline] = useState<any>(null)
+  const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
 
   // Re-read candidates from the server (the source of truth) and keep only the ones
   // the user selected for the comparison board.
@@ -47,9 +52,12 @@ export function ComparisonPlayground() {
   }
 
   async function reload() {
-    const [pls, hist] = await Promise.all([api.listPlaces('country'), api.getChat(sid)])
+    const [pls, hist, profile] = await Promise.all([
+      api.listPlaces('country'), api.getChat(sid), api.getProfile() as Promise<any>,
+    ])
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
     setMessages(hist)
+    setWeights(profile?.criteria_weights ?? {})
     await reloadCandidates()
   }
 
@@ -120,6 +128,27 @@ export function ComparisonPlayground() {
     }
   }
 
+  // Picking an answer sets that criterion's importance weight, which re-scores and
+  // re-ranks the candidates server-side. Make sure the criterion appears as a row too.
+  async function applyWeight(criterion: string, weight: number) {
+    if (applying) return
+    setApplying(true)
+    const next = { ...weights, [criterion]: weight }
+    setWeights(next)
+    if (!rows.includes(criterion)) setRows((r) => [...r, criterion])
+    try {
+      await api.updateProfile({ criteria_weights: next }) // triggers rescore
+      await reloadCandidates() // scores in the table update
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  async function showExplanation(candidate: any) {
+    const data = await api.scoreExplanation(sid, candidate.id)
+    setExplain({ candidate, data })
+  }
+
   const availableCriteria = ALL_CRITERIA.filter((k) => !rows.includes(k))
 
   return (
@@ -128,7 +157,8 @@ export function ComparisonPlayground() {
         <h1 className="text-xl font-medium text-turquoise-900">{t.comparison.title}</h1>
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
           <button onClick={narrow} disabled={narrowing}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50">
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
+            {narrowing && <Spinner />}
             {narrowing ? t.comparison.narrowing : t.comparison.narrow}
           </button>
         </div>
@@ -183,7 +213,12 @@ export function ComparisonPlayground() {
               {baseline && <td className="p-3 text-center bg-turquoise-100/60 text-turquoise-800/40">—</td>}
               {candidates.map((c) => (
                 <td key={c.id} className="p-3 text-center font-medium text-turquoise-600">
-                  {c.match_score != null ? `${Math.round(c.match_score)}%` : '—'}
+                  {c.match_score != null ? (
+                    <button onClick={() => showExplanation(c)} className="underline decoration-dotted hover:text-turquoise-800"
+                      title={t.comparison.explainTitle}>
+                      {Math.round(c.match_score)}%
+                    </button>
+                  ) : '—'}
                 </td>
               ))}
             </tr>
@@ -200,7 +235,8 @@ export function ComparisonPlayground() {
               className="w-full border border-turquoise-100 rounded-md pl-3 pr-10 py-1.5 text-sm" />
           </div>
           <button onClick={addCountry} disabled={researching}
-            className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5 text-sm disabled:opacity-50">
+            className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+            {researching && <Spinner className="border-turquoise-100 border-t-white" />}
             {researching ? t.comparison.researching : `+ ${t.comparison.addCountry}`}
           </button>
         </div>
@@ -219,20 +255,29 @@ export function ComparisonPlayground() {
         )}
       </div>
 
-      {/* Discriminator questions */}
+      {/* Discriminator questions — clicking an answer re-weights and re-ranks. */}
       {questions.length > 0 && (
         <div className="bg-white border border-turquoise-100 rounded-lg p-4 mb-4">
-          <div className="space-y-3">
+          <p className="text-sm text-turquoise-800/60 mb-3">{t.comparison.narrowHint}</p>
+          <div className="space-y-4">
             {questions.map((q, i) => (
               <div key={i}>
-                <p className="text-sm font-medium">{lang === 'fr' ? q.question_fr : q.question_en}</p>
+                <p className="text-sm font-medium">
+                  {(t.criteria as Record<string, string>)[q.criterion] ?? q.criterion} — {q.question}
+                </p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {(q.options ?? []).map((o: string) => (
-                    <button key={o} onClick={() => setChat(`${lang === 'fr' ? q.question_fr : q.question_en} ${o}`)}
-                      className="text-xs border border-turquoise-100 rounded-full px-2.5 py-0.5 hover:bg-turquoise-50">
-                      {o}
-                    </button>
-                  ))}
+                  {(q.options ?? []).map((o: any, j: number) => {
+                    const active = weights[q.criterion] === o.weight
+                    return (
+                      <button key={j} onClick={() => applyWeight(q.criterion, o.weight)}
+                        disabled={applying}
+                        className={`text-xs rounded-full px-2.5 py-1 border transition disabled:opacity-50 ${
+                          active ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700'
+                                 : 'border-turquoise-100 hover:bg-turquoise-50'}`}>
+                        {o.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -252,10 +297,14 @@ export function ComparisonPlayground() {
               className={`text-sm rounded-lg px-3 py-2 ${
                 m.role === 'user' ? 'bg-turquoise-600 text-turquoise-50 ml-8'
                                   : 'bg-white border border-turquoise-100 mr-8'}`}>
-              {m.content}
+              {m.role === 'user' ? m.content : <Markdown>{m.content}</Markdown>}
             </div>
           ))}
-          {chatBusy && <p className="text-sm text-turquoise-800/50">{t.comparison.thinking}</p>}
+          {chatBusy && (
+            <p className="text-sm text-turquoise-800/50 flex items-center gap-2">
+              <Spinner /> {t.comparison.thinking}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 bg-white rounded-md px-3 py-2">
           <input value={chat} onChange={(e) => setChat(e.target.value)}
@@ -266,6 +315,55 @@ export function ComparisonPlayground() {
           <button onClick={() => send(chat)} disabled={chatBusy} className="text-turquoise-600 disabled:opacity-40">→</button>
         </div>
       </div>
+
+      {/* Score explanation modal */}
+      {explain && (
+        <div onClick={() => setExplain(null)}
+          className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5">
+            <div className="flex items-start gap-3 mb-1">
+              <h2 className="text-lg font-medium text-turquoise-900">
+                {placeName(places[explain.candidate.place_id], lang)} — {t.comparison.explainTitle}
+              </h2>
+              <button onClick={() => setExplain(null)}
+                className="ml-auto text-turquoise-800/50 hover:text-turquoise-900" aria-label={t.comparison.close}>×</button>
+            </div>
+            <p className="text-sm text-turquoise-800/60 mb-4">{t.comparison.explainIntro}</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-turquoise-800/60 border-b border-turquoise-100">
+                  <th className="py-1.5">{t.comparison.explainCriterion}</th>
+                  <th className="py-1.5 text-right">{t.comparison.explainQuality}</th>
+                  <th className="py-1.5 text-right">{t.comparison.explainWeight}</th>
+                  <th className="py-1.5 text-right">{t.comparison.explainContribution}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(explain.data.rows ?? []).map((r: any) => (
+                  <tr key={r.key} className="border-b border-turquoise-50">
+                    <td className="py-1.5">
+                      {(t.criteria as Record<string, string>)[r.key] ?? r.key}
+                      {r.prioritized && (
+                        <span className="ml-1 text-xs text-turquoise-600">({t.comparison.explainPrioritized})</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right">{r.quality}%</td>
+                    <td className="py-1.5 text-right">×{r.weight}</td>
+                    <td className="py-1.5 text-right font-medium text-turquoise-700">{r.contribution} pts</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-turquoise-200">
+                  <td className="py-2 font-medium" colSpan={3}>{t.comparison.explainTotal}</td>
+                  <td className="py-2 text-right font-medium text-turquoise-700">{Math.round(explain.data.score)}%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

@@ -71,6 +71,35 @@ def test_selection_capped_at_five(auth_client, db_session):
     ).status_code == 200
 
 
+def test_profile_update_rescores_and_preserves_set(auth_client, db_session):
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    before = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
+    ids_before = {c["id"] for c in before}
+
+    # Editing the profile re-ranks the existing candidates without dropping any.
+    auth_client.put("/api/v1/profile", json={"criteria_weights": {"tax": 5.0}})
+    after = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+
+    assert {c["id"] for c in after} == ids_before  # membership preserved
+    assert sum(1 for c in after if c["selected"]) == 5  # selection preserved
+    scores = [c["match_score"] for c in after]
+    assert scores == sorted(scores, reverse=True)  # re-ranked
+
+
+def test_score_explanation_breaks_down_and_sums(auth_client, db_session):
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    cands = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
+    cid = cands[0]["id"]
+
+    exp = auth_client.get(f"/api/v1/searches/{sid}/candidates/{cid}/explanation").json()
+    assert exp["rows"], "expected per-criterion rows"
+    # Each row carries quality, weight and a contribution; contributions sum to score.
+    assert all({"key", "quality", "weight", "contribution"} <= set(r) for r in exp["rows"])
+    assert abs(sum(r["contribution"] for r in exp["rows"]) - exp["score"]) < 1.0
+
+
 def test_candidate_unique_per_search(auth_client, db_session):
     seed(db_session)
     sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]

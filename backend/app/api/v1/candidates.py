@@ -17,6 +17,7 @@ from app.schemas.search import (
     SetSelectedRequest,
 )
 from app.services import ai_client, comparison, place_research
+from app.services import shortlist as shortlist_service
 from app.services.shortlist import MAX_COMPARE
 
 router = APIRouter()
@@ -125,6 +126,21 @@ def add_candidate(
     db.commit()
     db.refresh(candidate)
     return candidate
+
+
+@router.get("/{search_id}/candidates/{candidate_id}/explanation")
+def explain(
+    search_id: int,
+    candidate_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """How this candidate's score was derived (per-criterion value × weight)."""
+    _owned(db, user, search_id)
+    candidate = db.get(Candidate, candidate_id)
+    if candidate is None or candidate.search_id != search_id:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return shortlist_service.explain_candidate(user, candidate)
 
 
 @router.patch("/{search_id}/candidates/{candidate_id}", response_model=CandidateOut)

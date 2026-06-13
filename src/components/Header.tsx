@@ -40,6 +40,8 @@ export function Header() {
                 {t.nav.greeting}, <span className="font-medium text-turquoise-900">{displayName}</span>
               </span>
             )}
+            <Link to="/search" className="text-turquoise-600">{t.nav.search}</Link>
+            <Link to="/profile" className="text-turquoise-600">{t.nav.profile}</Link>
             {isAdmin && <Link to="/admin" className="text-turquoise-600">{t.nav.admin}</Link>}
             <button
               onClick={() => { logout(); navigate('/') }}

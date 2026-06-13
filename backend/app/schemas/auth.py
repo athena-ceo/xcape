@@ -29,6 +29,7 @@ class UserUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     current_country: str | None = None
+    citizenships: list[str] | None = None
 
 
 class UserOut(BaseModel):
@@ -39,6 +40,7 @@ class UserOut(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     current_country: str | None = None
+    citizenships: list[str] = []
     is_admin: bool
     is_verified: bool
     locale: str

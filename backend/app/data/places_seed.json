@@ -18,6 +18,1112 @@
   },
   "countries": [
     {
+      "name": "Afghanistan",
+      "iso_code": "AF",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Uzbek",
+          "Turkmen",
+          "Arabic",
+          "Balochi"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Albania",
+      "iso_code": "AL",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Albanian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Algeria",
+      "iso_code": "DZ",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Arabic",
+          "Standard Algerian Berber"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "American Samoa",
+      "iso_code": "AS",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Andorra",
+      "iso_code": "AD",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Catalan"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Angola",
+      "iso_code": "AO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Portuguese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Antigua and Barbuda",
+      "iso_code": "AG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Argentina",
+      "iso_code": "AR",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Armenia",
+      "iso_code": "AM",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Armenian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Aruba",
+      "iso_code": "AW",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Dutch",
+          "Papiamento"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Australia",
+      "iso_code": "AU",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "warm",
+        "language_ease": "english",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "medium",
+        "visa": "hard",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": "Niveau de vie élevé, climat agréable, immigration sélective.",
+      "summary_en": "High living standards, pleasant climate, selective immigration.",
+      "regions": []
+    },
+    {
+      "name": "Austria",
+      "iso_code": "AT",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "German",
+          "Austrian Sign Language"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Azerbaijan",
+      "iso_code": "AZ",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Azerbaijani",
+          "Azerbaijani Sign Language"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bahamas, The",
+      "iso_code": "BS",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bahrain",
+      "iso_code": "BH",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bangladesh",
+      "iso_code": "BD",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Bangla"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Barbados",
+      "iso_code": "BB",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Bajan Creole"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Belarus",
+      "iso_code": "BY",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Russian",
+          "Belarusian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Belgium",
+      "iso_code": "BE",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "temperate",
+        "language_ease": "french",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "high",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "low",
+        "internet": "fast",
+        "languages": [
+          "French",
+          "Dutch",
+          "German"
+        ]
+      },
+      "summary_fr": "Francophone (Wallonie/Bruxelles), proche, dans l'UE.",
+      "summary_en": "French-speaking (Wallonia/Brussels), close by, in the EU.",
+      "regions": []
+    },
+    {
+      "name": "Belize",
+      "iso_code": "BZ",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Benin",
+      "iso_code": "BJ",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bermuda",
+      "iso_code": "BM",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bhutan",
+      "iso_code": "BT",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Dzongkha"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bolivia",
+      "iso_code": "BO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Spanish",
+          "Aymara",
+          "Quechua",
+          "Guarani"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bosnia and Herzegovina",
+      "iso_code": "BA",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Croatian",
+          "Bosnian",
+          "Serbian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Botswana",
+      "iso_code": "BW",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Brazil",
+      "iso_code": "BR",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Portuguese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "British Virgin Islands",
+      "iso_code": "VG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Brunei Darussalam",
+      "iso_code": "BN",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "British English",
+          "Malay"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Bulgaria",
+      "iso_code": "BG",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Bulgarian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Burkina Faso",
+      "iso_code": "BF",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Dioula",
+          "Bissa",
+          "Mooré"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Burundi",
+      "iso_code": "BI",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "English",
+          "Kirundi"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Cabo Verde",
+      "iso_code": "CV",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Portuguese",
+          "Cape Verdean Creole"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Cambodia",
+      "iso_code": "KH",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Khmer"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Cameroon",
+      "iso_code": "CM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Canada",
+      "iso_code": "CA",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "cold",
+        "language_ease": "english",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "high",
+        "visa": "medium",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "fast",
+        "languages": [
+          "English",
+          "French"
+        ]
+      },
+      "summary_fr": "Anglophone et francophone (Québec), très stable, hivers froids.",
+      "summary_en": "English and French (Quebec), very stable, cold winters.",
+      "regions": [
+        {
+          "name": "Quebec",
+          "attributes": {
+            "cost_of_living": "medium",
+            "climate": "cold",
+            "language_ease": "french"
+          }
+        },
+        {
+          "name": "British Columbia",
+          "attributes": {
+            "cost_of_living": "high",
+            "climate": "mild"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cayman Islands",
+      "iso_code": "KY",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Central African Republic",
+      "iso_code": "CF",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Sango"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Chad",
+      "iso_code": "TD",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Channel Islands",
+      "iso_code": "JG",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Chile",
+      "iso_code": "CL",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "temperate",
+        "language_ease": "hard",
+        "healthcare": "good",
+        "safety": "medium",
+        "political_stability": "medium",
+        "tax": "medium",
+        "visa": "medium",
+        "expat_community": "medium",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": "Paysages spectaculaires, économie stable pour la région.",
+      "summary_en": "Spectacular landscapes, stable economy for the region.",
+      "regions": []
+    },
+    {
+      "name": "China",
+      "iso_code": "CN",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Putonghua"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Colombia",
+      "iso_code": "CO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Comoros",
+      "iso_code": "KM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Arabic",
+          "Comorian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Congo, Dem. Rep.",
+      "iso_code": "CD",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Congo, Rep.",
+      "iso_code": "CG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Costa Rica",
+      "iso_code": "CR",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "tropical",
+        "language_ease": "hard",
+        "healthcare": "good",
+        "safety": "medium",
+        "political_stability": "high",
+        "tax": "low",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": "Démocratie stable sans armée, nature exceptionnelle.",
+      "summary_en": "Stable democracy with no army, exceptional nature.",
+      "regions": []
+    },
+    {
+      "name": "Cote d'Ivoire",
+      "iso_code": "CI",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Croatia",
+      "iso_code": "HR",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Croatian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Cuba",
+      "iso_code": "CU",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Curacao",
+      "iso_code": "CW",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Dutch",
+          "Papiamento"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Cyprus",
+      "iso_code": "CY",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "warm",
+        "language_ease": "english",
+        "healthcare": "good",
+        "safety": "high",
+        "political_stability": "medium",
+        "tax": "low",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "medium",
+        "internet": "ok",
+        "languages": [
+          "Greek",
+          "English"
+        ]
+      },
+      "summary_fr": "Dans l'UE, anglais répandu, fiscalité douce, climat chaud.",
+      "summary_en": "In the EU, English common, light taxation, warm climate.",
+      "regions": []
+    },
+    {
+      "name": "Czechia",
+      "iso_code": "CZ",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Czech"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Denmark",
+      "iso_code": "DK",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Danish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Djibouti",
+      "iso_code": "DJ",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Dominica",
+      "iso_code": "DM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Dominican Republic",
+      "iso_code": "DO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Ecuador",
+      "iso_code": "EC",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish",
+          "Shuar",
+          "Northern Quichua"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Egypt, Arab Rep.",
+      "iso_code": "EG",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "El Salvador",
+      "iso_code": "SV",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Equatorial Guinea",
+      "iso_code": "GQ",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "French",
+          "Spanish",
+          "Portuguese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Eritrea",
+      "iso_code": "ER",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Arabic",
+          "Tigrinya"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Estonia",
+      "iso_code": "EE",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Estonian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Eswatini",
+      "iso_code": "SZ",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Swazi"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Ethiopia",
+      "iso_code": "ET",
+      "attributes": {
+        "climate": "tropical",
+        "languages": [
+          "Amharic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Faroe Islands",
+      "iso_code": "FO",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Fiji",
+      "iso_code": "FJ",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Fijian",
+          "Fiji Hindi"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Finland",
+      "iso_code": "FI",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Finnish",
+          "Swedish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
       "name": "France",
       "iso_code": "FR",
       "attributes": {
@@ -38,6 +1144,1490 @@
       },
       "summary_fr": "Point de référence : votre situation actuelle pour comparer les destinations.",
       "summary_en": "Reference point: your current situation, to compare destinations against.",
+      "regions": []
+    },
+    {
+      "name": "French Polynesia",
+      "iso_code": "PF",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Gabon",
+      "iso_code": "GA",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Gambia, The",
+      "iso_code": "GM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Georgia",
+      "iso_code": "GE",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Abkhaz",
+          "Georgian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Germany",
+      "iso_code": "DE",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "temperate",
+        "language_ease": "medium",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "high",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "medium",
+        "internet": "ok",
+        "languages": [
+          "German",
+          "English"
+        ]
+      },
+      "summary_fr": "Économie solide, services publics fiables, hivers gris.",
+      "summary_en": "Strong economy, reliable public services, grey winters.",
+      "regions": []
+    },
+    {
+      "name": "Ghana",
+      "iso_code": "GH",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Gibraltar",
+      "iso_code": "GI",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Greece",
+      "iso_code": "GR",
+      "attributes": {
+        "cost_of_living": "low",
+        "climate": "warm",
+        "language_ease": "hard",
+        "healthcare": "good",
+        "safety": "high",
+        "political_stability": "medium",
+        "tax": "medium",
+        "visa": "easy",
+        "expat_community": "medium",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Greek",
+          "English"
+        ]
+      },
+      "summary_fr": "Coût de la vie bas, climat méditerranéen, îles superbes.",
+      "summary_en": "Low cost of living, Mediterranean climate, beautiful islands.",
+      "regions": [
+        {
+          "name": "Crete",
+          "attributes": {
+            "cost_of_living": "low",
+            "climate": "warm"
+          }
+        },
+        {
+          "name": "Athens",
+          "attributes": {
+            "cost_of_living": "medium",
+            "climate": "warm"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Greenland",
+      "iso_code": "GL",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Greenlandic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Grenada",
+      "iso_code": "GD",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Grenadian Creole English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Guam",
+      "iso_code": "GU",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Guatemala",
+      "iso_code": "GT",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Guinea",
+      "iso_code": "GN",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "languages of Guinea"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Guinea-Bissau",
+      "iso_code": "GW",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Portuguese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Guyana",
+      "iso_code": "GY",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Haiti",
+      "iso_code": "HT",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Haitian Creole"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Honduras",
+      "iso_code": "HN",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Hong Kong SAR, China",
+      "iso_code": "HK",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Hungary",
+      "iso_code": "HU",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Hungarian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Iceland",
+      "iso_code": "IS",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Icelandic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "India",
+      "iso_code": "IN",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Hindi",
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Indonesia",
+      "iso_code": "ID",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Indonesian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Iran, Islamic Rep.",
+      "iso_code": "IR",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Persian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Iraq",
+      "iso_code": "IQ",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Arabic",
+          "Kurdish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Ireland",
+      "iso_code": "IE",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "mild",
+        "language_ease": "english",
+        "healthcare": "good",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "medium",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "fast",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": "Anglophone, dans l'UE, économie dynamique, souvent pluvieux.",
+      "summary_en": "English-speaking, in the EU, dynamic economy, often rainy.",
+      "regions": []
+    },
+    {
+      "name": "Isle of Man",
+      "iso_code": "IM",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Israel",
+      "iso_code": "IL",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Hebrew"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Italy",
+      "iso_code": "IT",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "warm",
+        "language_ease": "easy",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "medium",
+        "tax": "high",
+        "visa": "medium",
+        "expat_community": "medium",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Italian"
+        ]
+      },
+      "summary_fr": "Culture, gastronomie, climat varié, mais bureaucratie lourde.",
+      "summary_en": "Culture, food, varied climate, but heavy bureaucracy.",
+      "regions": [
+        {
+          "name": "Tuscany",
+          "attributes": {
+            "cost_of_living": "medium",
+            "climate": "mild"
+          }
+        },
+        {
+          "name": "Puglia",
+          "attributes": {
+            "cost_of_living": "low",
+            "climate": "warm"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jamaica",
+      "iso_code": "JM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Jamaican Patois"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Japan",
+      "iso_code": "JP",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "temperate",
+        "language_ease": "hard",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "medium",
+        "visa": "hard",
+        "expat_community": "medium",
+        "nature": "high",
+        "internet": "fast",
+        "languages": [
+          "Japanese"
+        ]
+      },
+      "summary_fr": "Extrêmement sûr, langue difficile, culture unique.",
+      "summary_en": "Extremely safe, difficult language, unique culture.",
+      "regions": []
+    },
+    {
+      "name": "Jordan",
+      "iso_code": "JO",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Kazakhstan",
+      "iso_code": "KZ",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Russian",
+          "Kazakh"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Kenya",
+      "iso_code": "KE",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Swahili"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Kiribati",
+      "iso_code": "KI",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Gilbertese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Korea, Dem. People's Rep.",
+      "iso_code": "KP",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Korean",
+          "North Korean standard language"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Korea, Rep.",
+      "iso_code": "KR",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Korean",
+          "Korean Sign Language"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Kosovo",
+      "iso_code": "XK",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Albanian",
+          "Serbian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Kuwait",
+      "iso_code": "KW",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Kyrgyz Republic",
+      "iso_code": "KG",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Kyrgyz"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Lao PDR",
+      "iso_code": "LA",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Lao"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Latvia",
+      "iso_code": "LV",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Latvian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Lebanon",
+      "iso_code": "LB",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Lesotho",
+      "iso_code": "LS",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Sesotho"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Liberia",
+      "iso_code": "LR",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Libya",
+      "iso_code": "LY",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Liechtenstein",
+      "iso_code": "LI",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "German"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Lithuania",
+      "iso_code": "LT",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Lithuanian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Luxembourg",
+      "iso_code": "LU",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "French",
+          "German",
+          "Luxembourgish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Macao SAR, China",
+      "iso_code": "MO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Madagascar",
+      "iso_code": "MG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Malagasy"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Malawi",
+      "iso_code": "MW",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Chewa",
+          "Tumbuka"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Malaysia",
+      "iso_code": "MY",
+      "attributes": {
+        "cost_of_living": "low",
+        "climate": "tropical",
+        "language_ease": "medium",
+        "healthcare": "good",
+        "safety": "medium",
+        "political_stability": "medium",
+        "tax": "low",
+        "visa": "medium",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "fast",
+        "languages": [
+          "Malay",
+          "English"
+        ]
+      },
+      "summary_fr": "Anglais répandu, coût bas, programme de résidence MM2H.",
+      "summary_en": "English common, low cost, MM2H residency program.",
+      "regions": []
+    },
+    {
+      "name": "Maldives",
+      "iso_code": "MV",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Maldivian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Mali",
+      "iso_code": "ML",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Senufo",
+          "Bambara",
+          "Minyanka",
+          "Bozo"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Malta",
+      "iso_code": "MT",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Maltese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Marshall Islands",
+      "iso_code": "MH",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Marshallese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Mauritania",
+      "iso_code": "MR",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Mauritius",
+      "iso_code": "MU",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "tropical",
+        "language_ease": "french",
+        "healthcare": "good",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "low",
+        "visa": "easy",
+        "expat_community": "medium",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "French",
+          "English"
+        ]
+      },
+      "summary_fr": "Francophone, île sûre et stable, fiscalité attractive.",
+      "summary_en": "French-speaking, safe and stable island, attractive taxation.",
+      "regions": []
+    },
+    {
+      "name": "Mexico",
+      "iso_code": "MX",
+      "attributes": {
+        "cost_of_living": "low",
+        "climate": "warm",
+        "language_ease": "hard",
+        "healthcare": "good",
+        "safety": "low",
+        "political_stability": "medium",
+        "tax": "low",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": "Coût de la vie très bas, grande communauté d'expatriés.",
+      "summary_en": "Very low cost of living, large expat community.",
+      "regions": [
+        {
+          "name": "Mexico City",
+          "attributes": {
+            "cost_of_living": "medium",
+            "safety": "medium"
+          }
+        },
+        {
+          "name": "Yucatan",
+          "attributes": {
+            "cost_of_living": "low",
+            "safety": "high",
+            "climate": "tropical"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Micronesia, Fed. Sts.",
+      "iso_code": "FM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Moldova",
+      "iso_code": "MD",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Romanian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Monaco",
+      "iso_code": "MC",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Mongolia",
+      "iso_code": "MN",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Mongolian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Montenegro",
+      "iso_code": "ME",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Montenegrin"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Morocco",
+      "iso_code": "MA",
+      "attributes": {
+        "cost_of_living": "low",
+        "climate": "warm",
+        "language_ease": "french",
+        "healthcare": "basic",
+        "safety": "medium",
+        "political_stability": "medium",
+        "tax": "low",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Arabic",
+          "French"
+        ]
+      },
+      "summary_fr": "Francophone, proche, coût de la vie bas, climat ensoleillé.",
+      "summary_en": "French-speaking, close, low cost of living, sunny climate.",
+      "regions": []
+    },
+    {
+      "name": "Mozambique",
+      "iso_code": "MZ",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Portuguese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Myanmar",
+      "iso_code": "MM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Burmese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Namibia",
+      "iso_code": "NA",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Nauru",
+      "iso_code": "NR",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Nauruan"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Nepal",
+      "iso_code": "NP",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Nepali"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Netherlands",
+      "iso_code": "NL",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "temperate",
+        "language_ease": "medium",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "high",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "low",
+        "internet": "fast",
+        "languages": [
+          "Dutch",
+          "English"
+        ]
+      },
+      "summary_fr": "Très anglophone au quotidien, sûr, excellent vélo et services.",
+      "summary_en": "English widely spoken, safe, excellent cycling and services.",
+      "regions": []
+    },
+    {
+      "name": "New Caledonia",
+      "iso_code": "NC",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "New Zealand",
+      "iso_code": "NZ",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "temperate",
+        "language_ease": "english",
+        "healthcare": "strong",
+        "safety": "high",
+        "political_stability": "high",
+        "tax": "medium",
+        "visa": "hard",
+        "expat_community": "medium",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": "Très sûr et stable, nature spectaculaire, mais éloigné.",
+      "summary_en": "Very safe and stable, spectacular nature, but remote.",
+      "regions": []
+    },
+    {
+      "name": "Nicaragua",
+      "iso_code": "NI",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Niger",
+      "iso_code": "NE",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Hausa"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Nigeria",
+      "iso_code": "NG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "North Macedonia",
+      "iso_code": "MK",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Albanian",
+          "Macedonian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Northern Mariana Islands",
+      "iso_code": "MP",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Norway",
+      "iso_code": "NO",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Norwegian",
+          "Sámi",
+          "Nynorsk",
+          "Bokmål"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Oman",
+      "iso_code": "OM",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Pakistan",
+      "iso_code": "PK",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Urdu"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Palau",
+      "iso_code": "PW",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Japanese",
+          "Palauan"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Panama",
+      "iso_code": "PA",
+      "attributes": {
+        "cost_of_living": "medium",
+        "climate": "tropical",
+        "language_ease": "hard",
+        "healthcare": "good",
+        "safety": "medium",
+        "political_stability": "medium",
+        "tax": "low",
+        "visa": "easy",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Spanish"
+        ]
+      },
+      "summary_fr": "Dollar US, fiscalité douce, programmes de résidence accessibles.",
+      "summary_en": "US dollar, light taxation, accessible residency programs.",
+      "regions": []
+    },
+    {
+      "name": "Papua New Guinea",
+      "iso_code": "PG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Hiri Motu",
+          "Tok Pisin",
+          "Papua New Guinean Sign Language"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Paraguay",
+      "iso_code": "PY",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish",
+          "Guarani"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Peru",
+      "iso_code": "PE",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Spanish",
+          "Aymara",
+          "Quechua"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Philippines",
+      "iso_code": "PH",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Filipino",
+          "Taglish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Poland",
+      "iso_code": "PL",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Polish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
@@ -87,6 +2677,336 @@
       ]
     },
     {
+      "name": "Puerto Rico (US)",
+      "iso_code": "PR",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Qatar",
+      "iso_code": "QA",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Romania",
+      "iso_code": "RO",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Romanian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Russian Federation",
+      "iso_code": "RU",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Russian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Rwanda",
+      "iso_code": "RW",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "English",
+          "Swahili",
+          "Kinyarwanda"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Samoa",
+      "iso_code": "WS",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Samoan"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "San Marino",
+      "iso_code": "SM",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Italian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Sao Tome and Principe",
+      "iso_code": "ST",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Portuguese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Saudi Arabia",
+      "iso_code": "SA",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Senegal",
+      "iso_code": "SN",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French",
+          "Badyara",
+          "Wolof",
+          "Balanta"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Serbia",
+      "iso_code": "RS",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Serbian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Seychelles",
+      "iso_code": "SC",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "French",
+          "English",
+          "Seychellois Creole"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Sierra Leone",
+      "iso_code": "SL",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Krio"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Singapore",
+      "iso_code": "SG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Malay",
+          "Tamil",
+          "Mandarin"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Sint Maarten (Dutch part)",
+      "iso_code": "SX",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English",
+          "Dutch"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Slovak Republic",
+      "iso_code": "SK",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Slovak"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Slovenia",
+      "iso_code": "SI",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Slovene"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Solomon Islands",
+      "iso_code": "SB",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Somalia, Fed. Rep.",
+      "iso_code": "SO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Somali",
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "South Africa",
+      "iso_code": "ZA",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Xhosa",
+          "Zulu",
+          "Venda"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "South Sudan",
+      "iso_code": "SS",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
       "name": "Spain",
       "iso_code": "ES",
       "attributes": {
@@ -132,176 +3052,122 @@
       ]
     },
     {
-      "name": "Italy",
-      "iso_code": "IT",
+      "name": "Sri Lanka",
+      "iso_code": "LK",
       "attributes": {
-        "cost_of_living": "medium",
-        "climate": "warm",
-        "language_ease": "easy",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "medium",
-        "tax": "high",
-        "visa": "medium",
-        "expat_community": "medium",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "Italian"
-        ]
-      },
-      "summary_fr": "Culture, gastronomie, climat varié, mais bureaucratie lourde.",
-      "summary_en": "Culture, food, varied climate, but heavy bureaucracy.",
-      "regions": [
-        {
-          "name": "Tuscany",
-          "attributes": {
-            "cost_of_living": "medium",
-            "climate": "mild"
-          }
-        },
-        {
-          "name": "Puglia",
-          "attributes": {
-            "cost_of_living": "low",
-            "climate": "warm"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Greece",
-      "iso_code": "GR",
-      "attributes": {
+        "climate": "tropical",
         "cost_of_living": "low",
-        "climate": "warm",
-        "language_ease": "hard",
-        "healthcare": "good",
-        "safety": "high",
-        "political_stability": "medium",
-        "tax": "medium",
-        "visa": "easy",
-        "expat_community": "medium",
-        "nature": "high",
-        "internet": "ok",
+        "healthcare": "basic",
         "languages": [
-          "Greek",
-          "English"
+          "Tamil",
+          "Sinhala"
         ]
       },
-      "summary_fr": "Coût de la vie bas, climat méditerranéen, îles superbes.",
-      "summary_en": "Low cost of living, Mediterranean climate, beautiful islands.",
-      "regions": [
-        {
-          "name": "Crete",
-          "attributes": {
-            "cost_of_living": "low",
-            "climate": "warm"
-          }
-        },
-        {
-          "name": "Athens",
-          "attributes": {
-            "cost_of_living": "medium",
-            "climate": "warm"
-          }
-        }
-      ]
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
     },
     {
-      "name": "Ireland",
-      "iso_code": "IE",
+      "name": "St. Kitts and Nevis",
+      "iso_code": "KN",
       "attributes": {
+        "climate": "tropical",
         "cost_of_living": "high",
-        "climate": "mild",
-        "language_ease": "english",
+        "healthcare": "strong",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "St. Lucia",
+      "iso_code": "LC",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
         "healthcare": "good",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "medium",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "fast",
         "languages": [
           "English"
         ]
       },
-      "summary_fr": "Anglophone, dans l'UE, économie dynamique, souvent pluvieux.",
-      "summary_en": "English-speaking, in the EU, dynamic economy, often rainy.",
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
-      "name": "Netherlands",
-      "iso_code": "NL",
+      "name": "St. Martin (French part)",
+      "iso_code": "MF",
       "attributes": {
+        "climate": "temperate",
         "cost_of_living": "high",
-        "climate": "temperate",
-        "language_ease": "medium",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "high",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "low",
-        "internet": "fast",
-        "languages": [
-          "Dutch",
-          "English"
-        ]
+        "healthcare": "strong"
       },
-      "summary_fr": "Très anglophone au quotidien, sûr, excellent vélo et services.",
-      "summary_en": "English widely spoken, safe, excellent cycling and services.",
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
-      "name": "Germany",
-      "iso_code": "DE",
+      "name": "St. Vincent and the Grenadines",
+      "iso_code": "VC",
       "attributes": {
+        "climate": "tropical",
         "cost_of_living": "medium",
-        "climate": "temperate",
-        "language_ease": "medium",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "high",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "medium",
-        "internet": "ok",
+        "healthcare": "good",
         "languages": [
-          "German",
           "English"
         ]
       },
-      "summary_fr": "Économie solide, services publics fiables, hivers gris.",
-      "summary_en": "Strong economy, reliable public services, grey winters.",
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
-      "name": "Belgium",
-      "iso_code": "BE",
+      "name": "Sudan",
+      "iso_code": "SD",
       "attributes": {
-        "cost_of_living": "medium",
-        "climate": "temperate",
-        "language_ease": "french",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "high",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "low",
-        "internet": "fast",
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
         "languages": [
-          "French",
-          "Dutch",
-          "German"
+          "English",
+          "Arabic"
         ]
       },
-      "summary_fr": "Francophone (Wallonie/Bruxelles), proche, dans l'UE.",
-      "summary_en": "French-speaking (Wallonia/Brussels), close by, in the EU.",
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Suriname",
+      "iso_code": "SR",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Dutch"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Sweden",
+      "iso_code": "SE",
+      "attributes": {
+        "climate": "cold",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "Swedish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
@@ -346,44 +3212,309 @@
       ]
     },
     {
-      "name": "Canada",
-      "iso_code": "CA",
+      "name": "Syrian Arab Republic",
+      "iso_code": "SY",
+      "attributes": {
+        "climate": "warm",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Tajikistan",
+      "iso_code": "TJ",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Tajik"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Tanzania",
+      "iso_code": "TZ",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Swahili"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Thailand",
+      "iso_code": "TH",
+      "attributes": {
+        "cost_of_living": "low",
+        "climate": "tropical",
+        "language_ease": "hard",
+        "healthcare": "good",
+        "safety": "medium",
+        "political_stability": "low",
+        "tax": "low",
+        "visa": "medium",
+        "expat_community": "large",
+        "nature": "high",
+        "internet": "ok",
+        "languages": [
+          "Thai"
+        ]
+      },
+      "summary_fr": "Coût de la vie très bas, climat tropical, visas variables.",
+      "summary_en": "Very low cost of living, tropical climate, variable visas.",
+      "regions": []
+    },
+    {
+      "name": "Timor-Leste",
+      "iso_code": "TL",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Portuguese",
+          "Tetum"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Togo",
+      "iso_code": "TG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "French"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Tonga",
+      "iso_code": "TO",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Tongan"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Trinidad and Tobago",
+      "iso_code": "TT",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Tunisia",
+      "iso_code": "TN",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Turkiye",
+      "iso_code": "TR",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Turkish"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Turkmenistan",
+      "iso_code": "TM",
+      "attributes": {
+        "climate": "mild",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Turkmen"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Turks and Caicos Islands",
+      "iso_code": "TC",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Tuvalu",
+      "iso_code": "TV",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "English",
+          "Tuvaluan"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Uganda",
+      "iso_code": "UG",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "English",
+          "Swahili"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Ukraine",
+      "iso_code": "UA",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "medium",
+        "healthcare": "good",
+        "languages": [
+          "Ukrainian"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "United Arab Emirates",
+      "iso_code": "AE",
       "attributes": {
         "cost_of_living": "high",
-        "climate": "cold",
+        "climate": "warm",
         "language_ease": "english",
         "healthcare": "strong",
         "safety": "high",
         "political_stability": "high",
-        "tax": "high",
+        "tax": "low",
         "visa": "medium",
+        "expat_community": "large",
+        "nature": "low",
+        "internet": "fast",
+        "languages": [
+          "Arabic",
+          "English"
+        ]
+      },
+      "summary_fr": "Aucune imposition sur le revenu, très sûr, été très chaud.",
+      "summary_en": "No income tax, very safe, extremely hot summers.",
+      "regions": []
+    },
+    {
+      "name": "United Kingdom",
+      "iso_code": "GB",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "mild",
+        "language_ease": "english",
+        "healthcare": "good",
+        "safety": "high",
+        "political_stability": "medium",
+        "tax": "high",
+        "visa": "hard",
+        "expat_community": "large",
+        "nature": "medium",
+        "internet": "fast",
+        "languages": [
+          "English"
+        ]
+      },
+      "summary_fr": "Anglophone, hors UE depuis le Brexit, visas plus stricts.",
+      "summary_en": "English-speaking, outside the EU since Brexit, stricter visas.",
+      "regions": []
+    },
+    {
+      "name": "United States",
+      "iso_code": "US",
+      "attributes": {
+        "cost_of_living": "high",
+        "climate": "temperate",
+        "language_ease": "english",
+        "healthcare": "basic",
+        "safety": "medium",
+        "political_stability": "medium",
+        "tax": "medium",
+        "visa": "hard",
         "expat_community": "large",
         "nature": "high",
         "internet": "fast",
         "languages": [
-          "English",
-          "French"
+          "English"
         ]
       },
-      "summary_fr": "Anglophone et francophone (Québec), très stable, hivers froids.",
-      "summary_en": "English and French (Quebec), very stable, cold winters.",
-      "regions": [
-        {
-          "name": "Quebec",
-          "attributes": {
-            "cost_of_living": "medium",
-            "climate": "cold",
-            "language_ease": "french"
-          }
-        },
-        {
-          "name": "British Columbia",
-          "attributes": {
-            "cost_of_living": "high",
-            "climate": "mild"
-          }
-        }
-      ]
+      "summary_fr": "Opportunités vastes, mais santé coûteuse et visas difficiles.",
+      "summary_en": "Vast opportunity, but costly healthcare and hard visas.",
+      "regions": []
     },
     {
       "name": "Uruguay",
@@ -417,369 +3548,139 @@
       ]
     },
     {
-      "name": "Costa Rica",
-      "iso_code": "CR",
+      "name": "Uzbekistan",
+      "iso_code": "UZ",
       "attributes": {
-        "cost_of_living": "medium",
-        "climate": "tropical",
-        "language_ease": "hard",
-        "healthcare": "good",
-        "safety": "medium",
-        "political_stability": "high",
-        "tax": "low",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "Spanish"
-        ]
-      },
-      "summary_fr": "Démocratie stable sans armée, nature exceptionnelle.",
-      "summary_en": "Stable democracy with no army, exceptional nature.",
-      "regions": []
-    },
-    {
-      "name": "Mexico",
-      "iso_code": "MX",
-      "attributes": {
-        "cost_of_living": "low",
-        "climate": "warm",
-        "language_ease": "hard",
-        "healthcare": "good",
-        "safety": "low",
-        "political_stability": "medium",
-        "tax": "low",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "Spanish"
-        ]
-      },
-      "summary_fr": "Coût de la vie très bas, grande communauté d'expatriés.",
-      "summary_en": "Very low cost of living, large expat community.",
-      "regions": [
-        {
-          "name": "Mexico City",
-          "attributes": {
-            "cost_of_living": "medium",
-            "safety": "medium"
-          }
-        },
-        {
-          "name": "Yucatan",
-          "attributes": {
-            "cost_of_living": "low",
-            "safety": "high",
-            "climate": "tropical"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Panama",
-      "iso_code": "PA",
-      "attributes": {
-        "cost_of_living": "medium",
-        "climate": "tropical",
-        "language_ease": "hard",
-        "healthcare": "good",
-        "safety": "medium",
-        "political_stability": "medium",
-        "tax": "low",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "Spanish"
-        ]
-      },
-      "summary_fr": "Dollar US, fiscalité douce, programmes de résidence accessibles.",
-      "summary_en": "US dollar, light taxation, accessible residency programs.",
-      "regions": []
-    },
-    {
-      "name": "Chile",
-      "iso_code": "CL",
-      "attributes": {
-        "cost_of_living": "medium",
-        "climate": "temperate",
-        "language_ease": "hard",
-        "healthcare": "good",
-        "safety": "medium",
-        "political_stability": "medium",
-        "tax": "medium",
-        "visa": "medium",
-        "expat_community": "medium",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "Spanish"
-        ]
-      },
-      "summary_fr": "Paysages spectaculaires, économie stable pour la région.",
-      "summary_en": "Spectacular landscapes, stable economy for the region.",
-      "regions": []
-    },
-    {
-      "name": "United States",
-      "iso_code": "US",
-      "attributes": {
-        "cost_of_living": "high",
-        "climate": "temperate",
-        "language_ease": "english",
-        "healthcare": "basic",
-        "safety": "medium",
-        "political_stability": "medium",
-        "tax": "medium",
-        "visa": "hard",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "fast",
-        "languages": [
-          "English"
-        ]
-      },
-      "summary_fr": "Opportunités vastes, mais santé coûteuse et visas difficiles.",
-      "summary_en": "Vast opportunity, but costly healthcare and hard visas.",
-      "regions": []
-    },
-    {
-      "name": "United Kingdom",
-      "iso_code": "GB",
-      "attributes": {
-        "cost_of_living": "high",
         "climate": "mild",
-        "language_ease": "english",
-        "healthcare": "good",
-        "safety": "high",
-        "political_stability": "medium",
-        "tax": "high",
-        "visa": "hard",
-        "expat_community": "large",
-        "nature": "medium",
-        "internet": "fast",
-        "languages": [
-          "English"
-        ]
-      },
-      "summary_fr": "Anglophone, hors UE depuis le Brexit, visas plus stricts.",
-      "summary_en": "English-speaking, outside the EU since Brexit, stricter visas.",
-      "regions": []
-    },
-    {
-      "name": "New Zealand",
-      "iso_code": "NZ",
-      "attributes": {
-        "cost_of_living": "high",
-        "climate": "temperate",
-        "language_ease": "english",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "medium",
-        "visa": "hard",
-        "expat_community": "medium",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "English"
-        ]
-      },
-      "summary_fr": "Très sûr et stable, nature spectaculaire, mais éloigné.",
-      "summary_en": "Very safe and stable, spectacular nature, but remote.",
-      "regions": []
-    },
-    {
-      "name": "Australia",
-      "iso_code": "AU",
-      "attributes": {
-        "cost_of_living": "high",
-        "climate": "warm",
-        "language_ease": "english",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "medium",
-        "visa": "hard",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "English"
-        ]
-      },
-      "summary_fr": "Niveau de vie élevé, climat agréable, immigration sélective.",
-      "summary_en": "High living standards, pleasant climate, selective immigration.",
-      "regions": []
-    },
-    {
-      "name": "Japan",
-      "iso_code": "JP",
-      "attributes": {
-        "cost_of_living": "medium",
-        "climate": "temperate",
-        "language_ease": "hard",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "medium",
-        "visa": "hard",
-        "expat_community": "medium",
-        "nature": "high",
-        "internet": "fast",
-        "languages": [
-          "Japanese"
-        ]
-      },
-      "summary_fr": "Extrêmement sûr, langue difficile, culture unique.",
-      "summary_en": "Extremely safe, difficult language, unique culture.",
-      "regions": []
-    },
-    {
-      "name": "Thailand",
-      "iso_code": "TH",
-      "attributes": {
         "cost_of_living": "low",
-        "climate": "tropical",
-        "language_ease": "hard",
-        "healthcare": "good",
-        "safety": "medium",
-        "political_stability": "low",
-        "tax": "low",
-        "visa": "medium",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "ok",
-        "languages": [
-          "Thai"
-        ]
-      },
-      "summary_fr": "Coût de la vie très bas, climat tropical, visas variables.",
-      "summary_en": "Very low cost of living, tropical climate, variable visas.",
-      "regions": []
-    },
-    {
-      "name": "Malaysia",
-      "iso_code": "MY",
-      "attributes": {
-        "cost_of_living": "low",
-        "climate": "tropical",
-        "language_ease": "medium",
-        "healthcare": "good",
-        "safety": "medium",
-        "political_stability": "medium",
-        "tax": "low",
-        "visa": "medium",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "fast",
-        "languages": [
-          "Malay",
-          "English"
-        ]
-      },
-      "summary_fr": "Anglais répandu, coût bas, programme de résidence MM2H.",
-      "summary_en": "English common, low cost, MM2H residency program.",
-      "regions": []
-    },
-    {
-      "name": "United Arab Emirates",
-      "iso_code": "AE",
-      "attributes": {
-        "cost_of_living": "high",
-        "climate": "warm",
-        "language_ease": "english",
-        "healthcare": "strong",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "low",
-        "visa": "medium",
-        "expat_community": "large",
-        "nature": "low",
-        "internet": "fast",
-        "languages": [
-          "Arabic",
-          "English"
-        ]
-      },
-      "summary_fr": "Aucune imposition sur le revenu, très sûr, été très chaud.",
-      "summary_en": "No income tax, very safe, extremely hot summers.",
-      "regions": []
-    },
-    {
-      "name": "Morocco",
-      "iso_code": "MA",
-      "attributes": {
-        "cost_of_living": "low",
-        "climate": "warm",
-        "language_ease": "french",
         "healthcare": "basic",
-        "safety": "medium",
-        "political_stability": "medium",
-        "tax": "low",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "high",
-        "internet": "ok",
         "languages": [
-          "Arabic",
-          "French"
+          "Uzbek"
         ]
       },
-      "summary_fr": "Francophone, proche, coût de la vie bas, climat ensoleillé.",
-      "summary_en": "French-speaking, close, low cost of living, sunny climate.",
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
-      "name": "Mauritius",
-      "iso_code": "MU",
+      "name": "Vanuatu",
+      "iso_code": "VU",
       "attributes": {
-        "cost_of_living": "medium",
         "climate": "tropical",
-        "language_ease": "french",
-        "healthcare": "good",
-        "safety": "high",
-        "political_stability": "high",
-        "tax": "low",
-        "visa": "easy",
-        "expat_community": "medium",
-        "nature": "high",
-        "internet": "ok",
+        "cost_of_living": "low",
+        "healthcare": "basic",
         "languages": [
           "French",
-          "English"
+          "English",
+          "Bislama"
         ]
       },
-      "summary_fr": "Francophone, île sûre et stable, fiscalité attractive.",
-      "summary_en": "French-speaking, safe and stable island, attractive taxation.",
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     },
     {
-      "name": "Cyprus",
-      "iso_code": "CY",
+      "name": "Venezuela, RB",
+      "iso_code": "VE",
       "attributes": {
-        "cost_of_living": "medium",
-        "climate": "warm",
-        "language_ease": "english",
-        "healthcare": "good",
-        "safety": "high",
-        "political_stability": "medium",
-        "tax": "low",
-        "visa": "easy",
-        "expat_community": "large",
-        "nature": "medium",
-        "internet": "ok",
+        "climate": "tropical",
         "languages": [
-          "Greek",
+          "Spanish",
+          "Venezuelan Sign Language"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Viet Nam",
+      "iso_code": "VN",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Vietnamese"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Virgin Islands (U.S.)",
+      "iso_code": "VI",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "high",
+        "healthcare": "strong"
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "West Bank and Gaza",
+      "iso_code": "PS",
+      "attributes": {
+        "climate": "temperate",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Yemen, Rep.",
+      "iso_code": "YE",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Arabic"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Zambia",
+      "iso_code": "ZM",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
           "English"
         ]
       },
-      "summary_fr": "Dans l'UE, anglais répandu, fiscalité douce, climat chaud.",
-      "summary_en": "In the EU, English common, light taxation, warm climate.",
+      "summary_fr": null,
+      "summary_en": null,
+      "regions": []
+    },
+    {
+      "name": "Zimbabwe",
+      "iso_code": "ZW",
+      "attributes": {
+        "climate": "tropical",
+        "cost_of_living": "low",
+        "healthcare": "basic",
+        "languages": [
+          "Tonga",
+          "Tswana",
+          "Sesotho",
+          "Tsonga"
+        ]
+      },
+      "summary_fr": null,
+      "summary_en": null,
       "regions": []
     }
   ]

@@ -11,7 +11,9 @@ import { Drilldown } from './pages/Drilldown'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { Onboarding } from './pages/Onboarding'
+import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
+import { SearchRedirect } from './pages/SearchRedirect'
 import { Shortlist } from './pages/Shortlist'
 import { useAuth } from './store/auth'
 
@@ -37,6 +39,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/search" element={<RequireAuth><SearchRedirect /></RequireAuth>} />
         <Route path="/shortlist/:searchId" element={<RequireAuth><Shortlist /></RequireAuth>} />
         <Route path="/compare/:searchId" element={<RequireAuth><ComparisonPlayground /></RequireAuth>} />
         <Route path="/drilldown/:placeId" element={<RequireAuth><Drilldown /></RequireAuth>} />

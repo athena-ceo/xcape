@@ -96,7 +96,38 @@ def _effective_weights(profile: Profile | None) -> dict[str, float]:
     return weights
 
 
-def _criterion_value(key: str, attrs: dict, profile: Profile | None) -> float:
+# EU/EEA + Switzerland — the freedom-of-movement zone: citizens of any of these can
+# settle in any other with no visa. iso 3166-1 alpha-2.
+_EU_FOM = {
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+    "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+    "IS", "LI", "NO", "CH",
+}
+
+
+def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> float:
+    """Ease of moving there given the household's citizenships (not residence)."""
+    citz = (
+        {str(c).upper() for c in (profile.user.citizenships or [])}
+        if (profile and profile.user and profile.user.citizenships)
+        else set()
+    )
+    base = _SCALES["visa"].get(str(attrs.get("visa", "")).lower(), 0.5)
+    if not citz:
+        return base  # citizenship unknown — fall back to general accessibility
+    dest = (place.iso_code or "").upper() if place else ""
+    if dest and dest in citz:
+        return 1.0  # already a citizen of the destination
+    if dest in _EU_FOM:
+        # Free movement only if someone in the household is an EU/EEA/CH citizen;
+        # otherwise (e.g. a US citizen residing in France) it is genuinely hard.
+        return 1.0 if (citz & _EU_FOM) else 0.3
+    return base
+
+
+def _criterion_value(key: str, attrs: dict, profile: Profile | None, place: Place | None = None) -> float:
+    if key == "visa":
+        return _visa_value(attrs, profile, place)
     if key == "climate":
         pref = profile.climate_pref if profile else None
         return 1.0 if (pref and attrs.get("climate") == pref) else 0.5
@@ -125,7 +156,7 @@ def _score_place(place: Place, weights: dict[str, float], profile: Profile | Non
     for key, weight in weights.items():
         if weight <= 0:
             continue
-        val = _criterion_value(key, attrs, profile)
+        val = _criterion_value(key, attrs, profile, place)
         total += val * weight
         wsum += weight
         contributions.append((key, val * weight))
@@ -140,6 +171,60 @@ def _score_place(place: Place, weights: dict[str, float], profile: Profile | Non
         if k in _REASON_LABELS and _criterion_value(k, attrs, profile) >= 0.7
     ]
     return score, reasons
+
+
+def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidate]:
+    """Recompute score/reasons/rank for a search's existing candidates against the
+    current profile, preserving membership and selection. Used after profile edits.
+    """
+    profile = user.profile
+    weights = _effective_weights(profile)
+    candidates = (
+        db.query(Candidate)
+        .filter(Candidate.search_id == search.id, Candidate.status == "active")
+        .all()
+    )
+    scorable = [c for c in candidates if c.place]
+    for cand in scorable:
+        score, reasons = _score_place(cand.place, weights, profile)
+        cand.match_score = score
+        cand.match_reasons = reasons
+    for rank, cand in enumerate(
+        sorted(scorable, key=lambda c: c.match_score or 0, reverse=True), start=1
+    ):
+        cand.rank = rank
+    db.commit()
+    for cand in candidates:
+        db.refresh(cand)
+    return candidates
+
+
+def explain_candidate(user: User, candidate: Candidate) -> dict:
+    """Break down how a candidate's score was derived: each weighted criterion's
+    quality (0-100), its weight, and the contribution it adds to the final score.
+    Contributions sum to the score.
+    """
+    profile = user.profile
+    weights = _effective_weights(profile)
+    place = candidate.place
+    attrs = (place.attributes or {}) if place else {}
+    prioritized = set((profile.criteria_weights or {}).keys()) if profile else set()
+
+    active = {k: w for k, w in weights.items() if w > 0}
+    wsum = sum(active.values())
+    rows = []
+    for key, weight in active.items():
+        quality = _criterion_value(key, attrs, profile, place)
+        rows.append({
+            "key": key,
+            "quality": round(quality * 100),       # how good this country is on this criterion
+            "weight": round(weight, 2),            # how much the user cares
+            "contribution": round(100 * quality * weight / wsum, 1) if wsum else 0,
+            "prioritized": key in prioritized,
+        })
+    rows.sort(key=lambda r: r["contribution"], reverse=True)
+    score = round(sum(r["contribution"] for r in rows), 1)
+    return {"score": score, "weight_total": round(wsum, 2), "rows": rows}
 
 
 def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Candidate]:

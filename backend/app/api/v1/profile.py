@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
+from app.services import shortlist as shortlist_service
 
 router = APIRouter()
 
@@ -39,4 +40,8 @@ def update_profile(
         setattr(profile, field, value)
     db.commit()
     db.refresh(profile)
+    # Profile drives scoring — re-rank every existing search to reflect the change,
+    # keeping each search's chosen candidates and selection intact.
+    for search in user.searches:
+        shortlist_service.rescore_candidates(db, user, search)
     return profile
