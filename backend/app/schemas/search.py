@@ -36,6 +36,7 @@ class CandidateOut(BaseModel):
     id: int
     place_id: int
     status: str
+    selected: bool = False
     match_score: float | None = None
     match_reasons: list[str] = []
     per_criterion: dict
@@ -52,3 +53,7 @@ class AddCriterionRequest(BaseModel):
     key: str
     label_fr: str | None = None
     label_en: str | None = None
+
+
+class SetSelectedRequest(BaseModel):
+    selected: bool

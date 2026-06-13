@@ -5,6 +5,33 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Language-aware scoring
+
+- Onboarding now asks which languages the user already speaks (multi-select,
+  pre-filled from their locale) alongside the willingness-to-learn question; stored as
+  `language_skills = { known: [...], willing_to_learn }`.
+- Each country carries a `languages` list (official + widely-spoken English). The
+  shortlist scores language ease against the user's known languages: a match → full
+  value; otherwise it falls back to learn-difficulty, softened if willing to learn.
+  AI place research returns `languages` too.
+- Verified: a Spanish speaker surfaces Spanish-speaking countries; an English speaker
+  surfaces English-usable ones.
+
+### 2026-06-14 — Shortlist selection, full localization, conservative reads
+
+- Shortlist: user picks up to 5 countries for the comparison board via checkboxes
+  (top 5 pre-selected). Selection is server state (`candidates.selected`, migration
+  0005; server enforces the max-5 cap), re-read after every toggle. The comparison
+  board shows exactly the selected set; "×" there unselects (keeps it in the shortlist
+  for reselection).
+- Full i18n: localized all attribute values (low/medium/high, mild, strong, …) via a
+  `values` map, the admin page, and the voice-button messages. Country names render in
+  the active language via `Intl.DisplayNames` on the ISO code (Spain → Espagne,
+  United States → États-Unis). Swept pages for hard-coded strings.
+- Conservative reads: comparison-board mutations (add criterion, remove/​unselect,
+  add country) now re-read candidates from the server instead of trusting local state;
+  onboarding re-reads identity after updating it.
+
 ### 2026-06-14 — CI: smoke tests on every push
 
 - GitHub Actions (`.github/workflows/ci.yml`) on push + PR to main, three jobs:

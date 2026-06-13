@@ -41,6 +41,36 @@ def test_shortlist_reflects_profile_priorities(auth_client, db_session):
     assert top["attributes"]["political_stability"] == "high"
 
 
+def test_shortlist_preselects_top_five(auth_client, db_session):
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    cands = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
+    selected = [c for c in cands if c["selected"]]
+    assert len(selected) == 5
+    # The five highest-ranked are the ones pre-selected.
+    assert {c["id"] for c in selected} == {c["id"] for c in cands[:5]}
+
+
+def test_selection_capped_at_five(auth_client, db_session):
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    cands = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
+    sixth = next(c for c in cands if not c["selected"])
+    # Five already selected -> selecting a sixth is rejected.
+    resp = auth_client.patch(
+        f"/api/v1/searches/{sid}/candidates/{sixth['id']}", json={"selected": True}
+    )
+    assert resp.status_code == 409
+    # Unselect one, then the sixth fits.
+    first = cands[0]["id"]
+    assert auth_client.patch(
+        f"/api/v1/searches/{sid}/candidates/{first}", json={"selected": False}
+    ).status_code == 200
+    assert auth_client.patch(
+        f"/api/v1/searches/{sid}/candidates/{sixth['id']}", json={"selected": True}
+    ).status_code == 200
+
+
 def test_candidate_unique_per_search(auth_client, db_session):
     seed(db_session)
     sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]

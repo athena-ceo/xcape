@@ -12,6 +12,7 @@ export const en: Dict = {
     logout: 'Log out',
     search: 'My search',
     admin: 'Admin',
+    greeting: 'Hello',
   },
   home: {
     heroTitle: 'What if your next home were somewhere else?',
@@ -82,6 +83,8 @@ export const en: Dict = {
       tropical: 'Tropical',
     },
     language: {
+      knownQ: 'Which languages do you already speak?',
+      knownHint: 'We’ll favour countries where you can communicate.',
       q: 'Are you willing to learn a new language?',
       hint: 'It widens the range of possible destinations.',
       willing: 'Yes, happily',
@@ -109,7 +112,26 @@ export const en: Dict = {
     title: 'Your first shortlist',
     subtitle: 'An instant list based on your priorities. Let’s refine it together.',
     matchScore: 'Score',
-    refine: 'Refine in the comparison board',
+    selectHint: 'Choose up to 5 countries to compare',
+    selectedLabel: 'selected',
+    compare: 'Compare selection',
+  },
+  langNames: {
+    French: 'French', English: 'English', Spanish: 'Spanish', German: 'German',
+    Italian: 'Italian', Portuguese: 'Portuguese', Dutch: 'Dutch', Arabic: 'Arabic',
+    Greek: 'Greek', Japanese: 'Japanese', Thai: 'Thai', Malay: 'Malay',
+  },
+  values: {
+    low: 'Low', medium: 'Medium', high: 'High',
+    cold: 'Cold', temperate: 'Temperate', mild: 'Mild', warm: 'Warm', tropical: 'Tropical',
+    french: 'French', english: 'English', easy: 'Easy', hard: 'Hard',
+    strong: 'Strong', good: 'Good', basic: 'Basic',
+    large: 'Large', small: 'Small',
+    fast: 'Fast', ok: 'OK', slow: 'Slow',
+  },
+  admin: {
+    title: 'Admin',
+    subtitle: 'Users · Searches · Place database · AI usage log — coming soon.',
   },
   comparison: {
     title: 'Your comparison board',
@@ -139,6 +161,13 @@ export const en: Dict = {
     noMedia: 'No resources found yet.',
     links: 'Useful links',
     summary: 'Overview',
+  },
+  voice: {
+    label: 'Voice input',
+    micBlocked: 'Microphone access was blocked. Allow mic access for this site and retry.',
+    failed: 'Transcription failed',
+    noSpeech: 'No speech detected.',
+    needAuth: 'Sign in to use voice.',
   },
   common: {
     loading: 'Loading…',

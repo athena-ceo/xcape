@@ -10,6 +10,7 @@ export const fr = {
     logout: 'Déconnexion',
     search: 'Ma recherche',
     admin: 'Administration',
+    greeting: 'Bonjour',
   },
   home: {
     heroTitle: 'Et si votre prochain chez-vous était ailleurs ?',
@@ -80,6 +81,8 @@ export const fr = {
       tropical: 'Tropical',
     },
     language: {
+      knownQ: 'Quelles langues parlez-vous déjà ?',
+      knownHint: 'Nous valoriserons les pays où vous pourrez communiquer.',
       q: 'Êtes-vous prêt·e à apprendre une nouvelle langue ?',
       hint: 'Cela élargit les destinations possibles.',
       willing: 'Oui, volontiers',
@@ -107,7 +110,26 @@ export const fr = {
     title: 'Votre première sélection',
     subtitle: 'Une liste instantanée selon vos priorités. Affinons-la ensemble.',
     matchScore: 'Score',
-    refine: 'Affiner dans le comparateur',
+    selectHint: 'Choisissez jusqu’à 5 pays à comparer',
+    selectedLabel: 'sélectionné(s)',
+    compare: 'Comparer la sélection',
+  },
+  langNames: {
+    French: 'Français', English: 'Anglais', Spanish: 'Espagnol', German: 'Allemand',
+    Italian: 'Italien', Portuguese: 'Portugais', Dutch: 'Néerlandais', Arabic: 'Arabe',
+    Greek: 'Grec', Japanese: 'Japonais', Thai: 'Thaï', Malay: 'Malais',
+  },
+  values: {
+    low: 'Bas', medium: 'Moyen', high: 'Élevé',
+    cold: 'Froid', temperate: 'Tempéré', mild: 'Doux', warm: 'Chaud', tropical: 'Tropical',
+    french: 'Français', english: 'Anglais', easy: 'Facile', hard: 'Difficile',
+    strong: 'Solide', good: 'Bon', basic: 'Basique',
+    large: 'Grande', small: 'Petite',
+    fast: 'Rapide', ok: 'Correct', slow: 'Lent',
+  },
+  admin: {
+    title: 'Administration',
+    subtitle: 'Utilisateurs · Recherches · Base de pays · Journal IA — bientôt disponible.',
   },
   comparison: {
     title: 'Votre tableau de comparaison',
@@ -137,6 +159,13 @@ export const fr = {
     noMedia: 'Aucune ressource trouvée pour le moment.',
     links: 'Liens utiles',
     summary: 'Aperçu',
+  },
+  voice: {
+    label: 'Saisie vocale',
+    micBlocked: 'Accès au micro bloqué. Autorisez le micro pour ce site, puis réessayez.',
+    failed: 'Échec de la transcription',
+    noSpeech: 'Aucune parole détectée.',
+    needAuth: 'Connectez-vous pour utiliser la voix.',
   },
   common: {
     loading: 'Chargement…',

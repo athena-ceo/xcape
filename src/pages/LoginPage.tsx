@@ -4,7 +4,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { VoiceField } from '../components/VoiceField'
 import { useT } from '../i18n'
 import { useAuth } from '../store/auth'
 
@@ -31,9 +30,10 @@ export function LoginPage() {
     <main className="max-w-sm mx-auto px-5 py-16">
       <h1 className="text-2xl font-medium text-turquoise-900 mb-6">{t.auth.loginTitle}</h1>
       <form onSubmit={submit} className="space-y-4">
-        <VoiceField
+        <input
           type="email" required placeholder={t.auth.email}
-          value={email} onChange={setEmail}
+          value={email} onChange={(e) => setEmail(e.target.value)}
+          className="w-full border border-turquoise-100 rounded-md px-3 py-2"
         />
         <input
           type="password" required placeholder={t.auth.password}

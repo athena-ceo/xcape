@@ -1,6 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { Header } from './components/Header'
@@ -20,6 +21,14 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
+  // On load (and reload), if a token is stored, fetch the user so the greeting and
+  // name are available on every page.
+  const token = useAuth((s) => s.token)
+  const refresh = useAuth((s) => s.refresh)
+  useEffect(() => {
+    if (token) refresh()
+  }, [token, refresh])
+
   return (
     <div className="min-h-screen">
       <Header />

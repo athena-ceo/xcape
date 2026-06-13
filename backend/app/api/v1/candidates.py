@@ -10,8 +10,14 @@ from app.models.candidate import Candidate
 from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
-from app.schemas.search import AddCandidateRequest, AddCriterionRequest, CandidateOut
+from app.schemas.search import (
+    AddCandidateRequest,
+    AddCriterionRequest,
+    CandidateOut,
+    SetSelectedRequest,
+)
 from app.services import ai_client, comparison, place_research
+from app.services.shortlist import MAX_COMPARE
 
 router = APIRouter()
 
@@ -21,6 +27,17 @@ def _owned(db: Session, user: User, search_id: int) -> Search:
     if search is None or search.user_id != user.id:
         raise HTTPException(status_code=404, detail="Search not found")
     return search
+
+
+def _selected_count(db: Session, search_id: int, exclude_id: int | None = None) -> int:
+    q = db.query(Candidate).filter(
+        Candidate.search_id == search_id,
+        Candidate.status == "active",
+        Candidate.selected.is_(True),
+    )
+    if exclude_id is not None:
+        q = q.filter(Candidate.id != exclude_id)
+    return q.count()
 
 
 @router.get("/{search_id}/candidates", response_model=list[CandidateOut])
@@ -38,8 +55,27 @@ def list_candidates(
     # (fast path: baseline must already be in the DB; France is seeded).
     baseline = comparison.get_current_country_place(db, user, research=False)
     base_attrs = baseline.attributes if baseline else None
+
+    # Language is judged by whether the user can communicate (their known languages),
+    # so the arrow stays consistent with the displayed languages.
+    profile = user.profile
+    known = {
+        str(lang).lower()
+        for lang in ((profile.language_skills or {}).get("known") or [] if profile else [])
+    }
+    base_langs = {str(lang).lower() for lang in ((base_attrs or {}).get("languages") or [])}
+
     for cand in candidates:
         cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
+        if known:
+            # Read languages from the live place so existing searches benefit without
+            # needing the shortlist rebuilt.
+            place_attrs = cand.place.attributes if cand.place else (cand.per_criterion or {})
+            cand_langs = {str(lang).lower() for lang in (place_attrs.get("languages") or [])}
+            cand_ok, base_ok = bool(known & cand_langs), bool(known & base_langs)
+            cand.vs_current["language_ease"] = (
+                "same" if cand_ok == base_ok else ("better" if cand_ok else "worse")
+            )
     return candidates
 
 
@@ -78,8 +114,38 @@ def add_candidate(
         db.refresh(existing)
         return existing
 
-    candidate = Candidate(search_id=search_id, place_id=place.id, per_criterion=place.attributes or {})
+    # A freshly added country joins the comparison if there's still room (<= 5).
+    candidate = Candidate(
+        search_id=search_id,
+        place_id=place.id,
+        per_criterion=place.attributes or {},
+        selected=_selected_count(db, search_id) < MAX_COMPARE,
+    )
     db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+@router.patch("/{search_id}/candidates/{candidate_id}", response_model=CandidateOut)
+def set_selected(
+    search_id: int,
+    candidate_id: int,
+    body: SetSelectedRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Select / unselect a candidate for the comparison board (server enforces max 5)."""
+    _owned(db, user, search_id)
+    candidate = db.get(Candidate, candidate_id)
+    if candidate is None or candidate.search_id != search_id:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    if body.selected and not candidate.selected:
+        if _selected_count(db, search_id, exclude_id=candidate_id) >= MAX_COMPARE:
+            raise HTTPException(
+                status_code=409, detail=f"At most {MAX_COMPARE} countries can be compared"
+            )
+    candidate.selected = body.selected
     db.commit()
     db.refresh(candidate)
     return candidate

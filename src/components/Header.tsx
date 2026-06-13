@@ -8,8 +8,12 @@ import { useAuth } from '../store/auth'
 
 export function Header() {
   const { t, lang, setLang } = useT()
-  const { token, isAdmin, logout } = useAuth()
+  const { token, isAdmin, logout, firstName, email } = useAuth()
   const navigate = useNavigate()
+
+  // Friendly greeting with the user's name; fall back to the email handle if the
+  // account has no first name yet.
+  const displayName = firstName || email?.split('@')[0] || ''
 
   return (
     <header className="flex items-center gap-4 px-5 py-3 bg-white border-b border-turquoise-100">
@@ -31,6 +35,11 @@ export function Header() {
 
         {token ? (
           <>
+            {displayName && (
+              <span className="text-turquoise-800/80">
+                {t.nav.greeting}, <span className="font-medium text-turquoise-900">{displayName}</span>
+              </span>
+            )}
             {isAdmin && <Link to="/admin" className="text-turquoise-600">{t.nav.admin}</Link>}
             <button
               onClick={() => { logout(); navigate('/') }}

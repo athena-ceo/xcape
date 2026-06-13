@@ -9,10 +9,8 @@ export function AdminDashboard() {
   const { t } = useT()
   return (
     <main className="max-w-4xl mx-auto px-5 py-10">
-      <h1 className="text-2xl font-medium text-turquoise-900 mb-2">{t.nav.admin}</h1>
-      <p className="text-turquoise-800/70">
-        Users · Searches · Place database · AI usage log — coming in the admin build phase.
-      </p>
+      <h1 className="text-2xl font-medium text-turquoise-900 mb-2">{t.admin.title}</h1>
+      <p className="text-turquoise-800/70">{t.admin.subtitle}</p>
     </main>
   )
 }

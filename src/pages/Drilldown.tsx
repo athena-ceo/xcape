@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { useT } from '../i18n'
+import { placeName } from '../i18n/places'
 import { api } from '../services/api'
 
 // Drill-down on a candidate: built-in summary + AI/web-discovered media (maps, links,
@@ -31,7 +32,7 @@ export function Drilldown() {
         ← {t.drilldown.back}
       </button>
 
-      <h1 className="text-2xl font-medium text-turquoise-900 mb-2">{place?.name ?? ''}</h1>
+      <h1 className="text-2xl font-medium text-turquoise-900 mb-2">{placeName(place, lang)}</h1>
       {summary && (
         <p className="text-turquoise-800/80 mb-6">{summary}</p>
       )}

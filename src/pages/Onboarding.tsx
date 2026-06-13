@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { VoiceField } from '../components/VoiceField'
 import { useT } from '../i18n'
 import { api } from '../services/api'
+import { useAuth } from '../store/auth'
 
 type StepId =
   | 'currentCountry'
@@ -30,6 +31,12 @@ const PRIORITY_KEYS = [
   'cost_of_living', 'healthcare', 'safety', 'political_stability',
   'climate', 'language_ease', 'tax', 'visa', 'nature',
 ] as const
+// Canonical (English) language names — must match the country `languages` data so the
+// backend can match a user's known languages against each country's.
+const LANG_OPTIONS = [
+  'French', 'English', 'Spanish', 'German', 'Italian', 'Portuguese', 'Dutch', 'Arabic',
+] as const
+const LOCALE_LANGUAGE: Record<string, string> = { fr: 'French', en: 'English' }
 
 interface Answers {
   current_country: string
@@ -38,6 +45,7 @@ interface Answers {
   budget_monthly: number | null
   tenure: 'rent' | 'buy' | null
   climate_pref: string | null
+  known_languages: string[]
   willing_to_learn: boolean | null
   priorities: string[]
 }
@@ -49,6 +57,7 @@ const EMPTY: Answers = {
   budget_monthly: null,
   tenure: null,
   climate_pref: null,
+  known_languages: [],
   willing_to_learn: null,
   priorities: [],
 }
@@ -71,18 +80,28 @@ function Chip({ active, onClick, children }: {
 }
 
 export function Onboarding() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const navigate = useNavigate()
+  const refreshAuth = useAuth((s) => s.refresh)
   const [index, setIndex] = useState(0)
   const [a, setA] = useState<Answers>(EMPTY)
   const [busy, setBusy] = useState(false)
 
-  // Pre-fill the current country with the value detected at registration.
+  // Pre-fill from the server: current country (detected at registration) and any
+  // previously saved language skills; default known languages to the UI locale.
   useEffect(() => {
     api.me().then((me) => {
       if (me.current_country) setA((cur) => ({ ...cur, current_country: me.current_country! }))
     })
-  }, [])
+    api.getProfile().then((p: any) => {
+      const known: string[] | undefined = p?.language_skills?.known
+      setA((cur) => ({
+        ...cur,
+        known_languages: known?.length ? known : [LOCALE_LANGUAGE[lang] ?? 'English'],
+        willing_to_learn: p?.language_skills?.willing_to_learn ?? cur.willing_to_learn,
+      }))
+    }).catch(() => {})
+  }, [lang])
 
   const step = STEPS[index]
   const isLast = index === STEPS.length - 1
@@ -103,13 +122,15 @@ export function Onboarding() {
     setBusy(true)
     try {
       await api.updateMe({ current_country: a.current_country.trim() })
+      // Re-read identity from the server so the cached store reflects the new truth.
+      await refreshAuth()
       await api.updateProfile({
         household_type: a.household_type,
         reasons_leaving: a.reasons_leaving,
         budget_monthly: a.budget_monthly,
         tenure: a.tenure,
         climate_pref: a.climate_pref,
-        language_skills: { willing_to_learn: !!a.willing_to_learn },
+        language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
         criteria_weights: Object.fromEntries(a.priorities.map((k) => [k, 2.0])),
       })
       const search = await api.createSearch(t.shortlist.title)
@@ -228,8 +249,19 @@ export function Onboarding() {
 
           {step === 'language' && (
             <>
-              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.language.q}</h1>
-              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.language.hint}</p>
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.language.knownQ}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.language.knownHint}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                {LANG_OPTIONS.map((l) => (
+                  <Chip key={l} active={a.known_languages.includes(l)}
+                    onClick={() => setA({ ...a, known_languages: toggle(a.known_languages, l) })}>
+                    {t.langNames[l]}
+                  </Chip>
+                ))}
+              </div>
+
+              <p className="text-sm font-medium text-turquoise-900 mb-1">{t.onboarding.language.q}</p>
+              <p className="text-sm text-turquoise-800/60 mb-3">{t.onboarding.language.hint}</p>
               <div className="grid gap-3">
                 <Chip active={a.willing_to_learn === true}
                   onClick={() => setA({ ...a, willing_to_learn: true })}>

@@ -3,7 +3,17 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -19,6 +29,8 @@ class Candidate(Base):
     search_id: Mapped[int] = mapped_column(ForeignKey("searches.id", ondelete="CASCADE"), index=True)
     place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(10), default="active")  # active/removed
+    # Whether this candidate is chosen for the comparison board (max 5 per search).
+    selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     match_reasons: Mapped[list] = mapped_column(JSON, default=list)  # short "why this place" bullets
     per_criterion: Mapped[dict] = mapped_column(JSON, default=dict)

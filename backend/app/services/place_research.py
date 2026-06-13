@@ -39,6 +39,9 @@ _SYSTEM = (
 
 
 def _place_schema() -> dict:
+    attr_props: dict = {k: {"type": "string", "enum": v} for k, v in _ENUMS.items()}
+    # Languages a resident actually uses (official + widely-spoken English where usable).
+    attr_props["languages"] = {"type": "array", "items": {"type": "string"}}
     return {
         "type": "object",
         "properties": {
@@ -46,8 +49,8 @@ def _place_schema() -> dict:
             "iso_code": {"type": "string"},
             "attributes": {
                 "type": "object",
-                "properties": {k: {"type": "string", "enum": v} for k, v in _ENUMS.items()},
-                "required": list(_ENUMS.keys()),
+                "properties": attr_props,
+                "required": [*_ENUMS.keys(), "languages"],
                 "additionalProperties": False,
             },
             "summary_fr": {"type": "string"},

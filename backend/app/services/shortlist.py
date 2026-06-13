@@ -26,6 +26,7 @@ from app.models.search import Search
 from app.models.user import User
 
 SHORTLIST_SIZE = 15
+MAX_COMPARE = 5  # how many candidates can sit in the comparison board at once
 
 # Ordinal scales: 0..1, higher is better for the user.
 _SCALES: dict[str, dict[str, float]] = {
@@ -100,10 +101,19 @@ def _criterion_value(key: str, attrs: dict, profile: Profile | None) -> float:
         pref = profile.climate_pref if profile else None
         return 1.0 if (pref and attrs.get("climate") == pref) else 0.5
     if key == "language_ease":
+        skills = (profile.language_skills or {}) if profile else {}
+        known = {str(lang).lower() for lang in (skills.get("known") or [])}
+        willing = bool(skills.get("willing_to_learn"))
+        country_langs = {str(lang).lower() for lang in (attrs.get("languages") or [])}
+        # You already speak a language used there — best possible fit.
+        if known and country_langs and (known & country_langs):
+            return 1.0
+        # Otherwise fall back to how learnable the language is (static proxy), softened
+        # if the user is willing to learn.
         base = _SCALES["language_ease"].get(str(attrs.get(key, "")).lower(), 0.5)
-        willing = bool((profile.language_skills or {}).get("willing_to_learn")) if profile else False
-        # Willing learners are less penalised by a hard language.
-        return min(1.0, base + 0.2) if willing and base < 0.6 else base
+        if willing:
+            return min(1.0, base + 0.2)
+        return round(base * 0.7, 3)
     scale = _SCALES.get(key, {})
     return scale.get(str(attrs.get(key, "")).lower(), 0.5)
 
@@ -153,6 +163,7 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
             match_score=score,
             match_reasons=reasons,
             rank=rank,
+            selected=rank <= MAX_COMPARE,  # default: top 5 pre-selected for comparison
             per_criterion=place.attributes or {},
         )
         db.add(cand)

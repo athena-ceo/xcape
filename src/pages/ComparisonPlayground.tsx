@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom'
 import { VoiceButton } from '../components/VoiceButton'
 import { VoiceField } from '../components/VoiceField'
 import { useT } from '../i18n'
+import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
 
 const DEFAULT_ROWS = ['cost_of_living', 'climate', 'language_ease', 'healthcare', 'political_stability']
@@ -38,22 +39,25 @@ export function ComparisonPlayground() {
 
   const [baseline, setBaseline] = useState<any>(null)
 
+  // Re-read candidates from the server (the source of truth) and keep only the ones
+  // the user selected for the comparison board.
+  async function reloadCandidates() {
+    const cands = await api.listCandidates(sid)
+    setCandidates(cands.filter((c) => c.selected))
+  }
+
   async function reload() {
-    const [cands, pls, hist] = await Promise.all([
-      api.listCandidates(sid),
-      api.listPlaces('country'),
-      api.getChat(sid),
-    ])
-    setCandidates(cands.slice(0, 8))
+    const [pls, hist] = await Promise.all([api.listPlaces('country'), api.getChat(sid)])
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
     setMessages(hist)
+    await reloadCandidates()
   }
 
   async function loadBaseline() {
     // May research the current country on first call (cache-first thereafter).
     const b = await api.getBaseline(sid)
     setBaseline(b)
-    if (b) setCandidates((await api.listCandidates(sid)).slice(0, 8)) // refresh deltas
+    if (b) await reloadCandidates() // deltas need the baseline; re-read from server
   }
 
   useEffect(() => { reload(); loadBaseline() }, [sid]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -95,13 +99,15 @@ export function ComparisonPlayground() {
     const key = newCriterion
     setNewCriterion('')
     if (!rows.includes(key)) setRows((r) => [...r, key])
-    const updated = await api.addCriterion(sid, key)
-    setCandidates((cur) => cur.map((c) => updated.find((u) => u.id === c.id) ?? c))
+    await api.addCriterion(sid, key)
+    await reloadCandidates() // re-read from server rather than trusting the response
   }
 
+  // "×" removes a country from the comparison board by unselecting it — it stays in the
+  // shortlist for reselection.
   async function removeCountry(candidateId: number) {
-    await api.removeCandidate(sid, candidateId)
-    setCandidates((c) => c.filter((x) => x.id !== candidateId))
+    await api.setSelected(sid, candidateId, false)
+    await reloadCandidates()
   }
 
   async function narrow() {
@@ -136,13 +142,13 @@ export function ComparisonPlayground() {
               <th className="p-3 font-medium">{t.comparison.criterion}</th>
               {baseline && (
                 <th className="p-3 font-medium bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
-                  {baseline.name}
+                  {placeName(baseline, lang)}
                 </th>
               )}
               {candidates.map((c) => (
                 <th key={c.id} className="p-3 font-medium whitespace-nowrap">
                   <Link to={`/drilldown/${c.place_id}`} className="text-turquoise-600 hover:underline">
-                    {places[c.place_id]?.name}
+                    {placeName(places[c.place_id], lang)}
                   </Link>
                   <button onClick={() => removeCountry(c.id)}
                     title={t.comparison.remove}
@@ -157,12 +163,17 @@ export function ComparisonPlayground() {
                 <td className="p-3 text-turquoise-800/70">{t.criteria[key as CritKey] ?? key}</td>
                 {baseline && (
                   <td className="p-3 text-center bg-turquoise-50">
-                    {String(baseline.attributes?.[key] ?? '—')}
+                    {key === 'language_ease'
+                      ? languageCell(t, baseline.attributes)
+                      : attrValue(t, baseline.attributes?.[key])}
                   </td>
                 )}
                 {candidates.map((c) => (
                   <td key={c.id} className="p-3 text-center">
-                    {String(c.per_criterion?.[key] ?? '—')} {indicator(c.vs_current?.[key])}
+                    {key === 'language_ease'
+                      ? languageCell(t, places[c.place_id]?.attributes)
+                      : attrValue(t, c.per_criterion?.[key])}
+                    {' '}{indicator(c.vs_current?.[key])}
                   </td>
                 ))}
               </tr>

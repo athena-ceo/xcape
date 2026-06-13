@@ -60,6 +60,11 @@ export const api = {
     request<any>(`/searches/${id}/candidates`, { method: 'POST', body: JSON.stringify(body) }),
   removeCandidate: (id: number, candidateId: number) =>
     request<void>(`/searches/${id}/candidates/${candidateId}`, { method: 'DELETE' }),
+  setSelected: (id: number, candidateId: number, selected: boolean) =>
+    request<any>(`/searches/${id}/candidates/${candidateId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ selected }),
+    }),
   addCriterion: (id: number, key: string) =>
     request<any[]>(`/searches/${id}/criteria`, { method: 'POST', body: JSON.stringify({ key }) }),
   discriminate: (id: number) =>
