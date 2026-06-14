@@ -287,6 +287,7 @@ export const fr = {
     links: 'Liens utiles',
     summary: 'Aperçu',
     detailTitle: 'Détail par critère',
+    assessmentPending: 'Évaluation détaillée à venir.',
     source: 'Source',
     sources: 'Sources',
     capital: 'Capitale',

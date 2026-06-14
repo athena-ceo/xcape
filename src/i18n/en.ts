@@ -289,6 +289,7 @@ export const en: Dict = {
     links: 'Useful links',
     summary: 'Overview',
     detailTitle: 'Detail by criterion',
+    assessmentPending: 'Detailed assessment coming.',
     source: 'Source',
     sources: 'Sources',
     capital: 'Capital',

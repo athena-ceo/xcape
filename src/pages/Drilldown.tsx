@@ -153,7 +153,9 @@ export function Drilldown() {
               {d.label ?? (t.criteria as Record<string, string>)[d.key] ?? d.key}
               {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
             </p>
-            <p className="text-sm text-turquoise-800/80">{cleanSummary(d.summary)}</p>
+            <p className={`text-sm ${d.summary ? 'text-turquoise-800/80' : 'text-turquoise-800/40 italic'}`}>
+              {d.summary ? cleanSummary(d.summary) : t.drilldown.assessmentPending}
+            </p>
             {Array.isArray(d.sources) && d.sources.length > 0 && (
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                 <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>

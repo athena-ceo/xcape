@@ -24,7 +24,17 @@ export function ComparisonPlayground() {
   const [evaluating, setEvaluating] = useState(false)
   const evaluatingRef = useRef(false)
   const [places, setPlaces] = useState<Record<number, any>>({})
-  const [openCats, setOpenCats] = useState<Record<string, boolean>>({})  // category key → expanded
+  // Category expand/collapse, persisted across refreshes; collapsed by default.
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('xcape_open_cats') || '{}') } catch { return {} }
+  })
+  function toggleCat(key: string, open: boolean) {
+    setOpenCats((o) => {
+      const next = { ...o, [key]: !open }
+      try { localStorage.setItem('xcape_open_cats', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
 
   const [chat, setChat] = useState('')
   const [messages, setMessages] = useState<any[]>([])
@@ -349,9 +359,8 @@ export function ComparisonPlayground() {
       : []),
   ]
   const weightOf = (key: string) => weights[key] ?? 0
-  // A category is open by default when it has at least one weighted leaf.
-  const isOpen = (g: { key: string; leaves: string[] }) =>
-    openCats[g.key] ?? g.leaves.some((k) => weightOf(k) > 0)
+  // Collapsed by default; the user's choice persists (see openCats / toggleCat).
+  const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? false
   // Roll-up colour tier for a category column = weighted average of its leaves' tiers.
   function rollupTier(cand: any, leaves: string[]): string | undefined {
     let num = 0, den = 0
@@ -511,7 +520,7 @@ export function ComparisonPlayground() {
               return (
                 <Fragment key={g.key}>
                   <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none"
-                    onClick={() => setOpenCats((o) => ({ ...o, [g.key]: !open }))}>
+                    onClick={() => toggleCat(g.key, open)}>
                     <td className="p-2.5 font-medium text-turquoise-900">
                       <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>{g.label}
                     </td>

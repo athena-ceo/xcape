@@ -29,6 +29,27 @@ def test_detail_includes_custom_criteria(auth_client, db_session):
     assert crits["custom_vegan"]["label"] == "Vegan"
     assert crits["custom_vegan"]["score"] == 88
     assert crits["custom_vegan"]["summary"] == "Great"
-    # Built-in criteria are treated identically — every one carries a numeric score too.
-    assert "safety" in crits and isinstance(crits["safety"]["score"], int)
-    assert "tax" in crits and isinstance(crits["tax"]["score"], int)
+    # An objective leaf with only a coarse seed bucket and no eval/justification must NOT
+    # show a fabricated score.
+    assert "safety" in crits and crits["safety"]["score"] is None
+
+
+def test_unjustified_objective_score_is_hidden_and_proximity_justified(db_session):
+    from app.models.place import Place
+    from app.services import board
+
+    class _Prof:
+        def __init__(self):
+            self.minority_groups = []
+            self.language_skills = {}
+            self.climate_pref = None
+            self.user = type("U", (), {"current_country": "France", "citizenships": []})()
+
+    place = Place(kind="country", name="Spain", iso_code="ES",
+                  attributes={"culture": "high"})  # bucket only, no eval
+    db_session.add(place)
+    db_session.commit()
+    details = {d["key"]: d for d in board.criterion_details(db_session, place, _Prof(), [], "en", {"criteria": []})}
+    assert details["culture"]["score"] is None        # bucket-only → no fabricated number
+    assert details["proximity"]["score"] is not None  # distance-justified
+    assert "km" in details["proximity"]["summary"].lower()

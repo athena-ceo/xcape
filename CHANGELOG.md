@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Collapsible categories persist; no unjustified drill-down scores
+
+- Comparison-table categories are **collapsed by default** and the expand/collapse state is
+  **remembered across refreshes** (localStorage).
+- Drill-down no longer shows a precise `NN/100` for a criterion with **no justification**
+  (e.g. a score derived only from a coarse seed bucket, not yet AI-evaluated): the score is
+  hidden and a "detailed assessment coming" note is shown until the eval is populated.
+  **Proximity** now carries a real distance-based justification (≈ km from the current
+  country + rough flight time).
+
 ### 2026-06-14 — Phase 2: data-driven criteria tree, tags, persona content, AI selection
 
 - **Single-source registry** (`app/data/criteria.json`, served by `GET /criteria`): a

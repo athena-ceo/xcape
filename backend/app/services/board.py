@@ -47,10 +47,11 @@ def criterion_details(
     db: Session, place: Place, profile: Profile | None, custom_defs: list | None,
     lang: str, legacy: dict | None,
 ) -> list[dict]:
-    """One uniform per-criterion detail list for the drill-down — built-in AND custom
-    criteria treated identically: every entry has a 0-100 score (the same value the summary
-    table shows), a justification and sources. Justification comes from the unified eval
-    cache when present, else the legacy long-form `criteria_detail` text."""
+    """Per-criterion detail for the drill-down. A 0-100 score is shown ONLY when it's
+    justified — by a cached AI eval, by legacy `criteria_detail` text, or (for proximity) a
+    synthesised distance explanation. An objective leaf that only has a coarse seed bucket
+    (no evaluation yet) returns score=None so we never show a precise number with no
+    evidence; it gets a real justified score once the eval is populated."""
     custom_lookup = {c["key"]: c for c in (custom_defs or []) if c.get("key")}
     custom_keys = list(custom_lookup.keys())
     eval_keys = criteria.OBJECTIVE_KEYS + custom_keys
@@ -61,16 +62,41 @@ def criterion_details(
 
     out: list[dict] = []
     for key in list(sl.CRITERIA_KEYS) + custom_keys:
-        score = round(sl._criterion_value(key, attrs, profile, place, eval_values) * 100)
+        value = sl._criterion_value(key, attrs, profile, place, eval_values)
         ev = rows.get(key)
+        summary, sources, justified = "", [], False
         if ev is not None:
             summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr or ""
             sources = ev.sources or []
-        else:
-            ld = legacy_map.get(key) or {}
-            summary, sources = ld.get("summary", ""), ld.get("sources", [])
+            justified = True
+        elif key in legacy_map:
+            summary = legacy_map[key].get("summary", "")
+            sources = legacy_map[key].get("sources", [])
+            justified = bool(summary)
+        elif key == "proximity":
+            summary = _proximity_summary(profile, place, lang)
+            justified = bool(summary)
         out.append({
             "key": key, "label": custom_lookup.get(key, {}).get("label"),
-            "score": score, "summary": summary, "sources": sources,
+            "score": round(value * 100) if justified else None,
+            "summary": summary, "sources": sources,
         })
     return out
+
+
+def _proximity_summary(profile: Profile | None, place: Place, lang: str) -> str:
+    """A distance-based justification for proximity (no AI). Travel time is a rough flight
+    estimate; cost is noted as not yet estimated."""
+    from app.services import geo
+
+    origin = profile.user.current_country if (profile and profile.user) else None
+    km = geo.distance_between(origin, (place.iso_code or "") if place else "")
+    if km is None:
+        return ""
+    km_r = int(round(km / 50.0) * 50)
+    hours = round(km / 800.0 + 1.5)  # cruise ~800 km/h + ground time
+    if lang == "fr":
+        return (f"≈ {km_r} km de {origin or 'votre pays'} (~{hours} h de vol). "
+                f"Coût du trajet : non estimé pour l'instant.")
+    return (f"≈ {km_r} km from {origin or 'your country'} (~{hours} h by air). "
+            f"Travel cost: not yet estimated.")
