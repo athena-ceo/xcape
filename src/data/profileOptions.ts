@@ -6,18 +6,18 @@
 
 export const HOUSEHOLDS = ['single', 'couple', 'family'] as const
 export const REASON_KEYS = [
-  'politics', 'economy', 'safety', 'discrimination', 'climate', 'cost', 'healthcare',
-  'lifestyle', 'career',
+  'politics', 'economy', 'safety', 'discrimination', 'patrimoine', 'retirement', 'climate',
+  'cost', 'healthcare', 'lifestyle', 'career',
 ] as const
 export const CLIMATE_KEYS = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
 export const PRIORITY_KEYS = [
   'cost_of_living', 'healthcare', 'safety', 'political_stability', 'inclusion',
   'gender_equality', 'climate', 'language_ease', 'culture', 'food', 'tax', 'visa', 'nature',
 ] as const
-// Communities a user can flag as mattering to them (optional, private) — drives the
-// inclusion criterion. Must match backend shortlist.MINORITY_GROUPS.
+// Fallback community list (used only if the registry hasn't loaded yet) — the live set
+// comes from the criteria registry (active communities). Drives the inclusion criterion.
 export const MINORITY_GROUPS = [
-  'lgbtq', 'jewish', 'muslim', 'ethnic_minorities', 'immigrants',
+  'lgbtq', 'jewish', 'muslim', 'ethnic_minorities', 'other_religious_minority',
 ] as const
 // Canonical (English) language names — must match the country `languages` data.
 export const LANG_OPTIONS = [
@@ -25,7 +25,6 @@ export const LANG_OPTIONS = [
 ] as const
 export const LOCALE_LANGUAGE: Record<string, string> = { fr: 'French', en: 'English' }
 
-export const MAX_PRIORITIES = 3
 export const PRIORITY_WEIGHT = 2.0
 
 export function toggle<T>(list: T[], value: T, max = Infinity): T[] {

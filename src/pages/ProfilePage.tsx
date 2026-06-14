@@ -10,7 +10,7 @@ import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS, MAX_PRIORITIES,
+  CLIMATE_KEYS, HOUSEHOLDS,
   PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
@@ -32,6 +32,7 @@ interface Form {
   known_languages: string[]
   willing_to_learn: boolean | null
   priorities: string[]
+  priorities_text: string
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -69,6 +70,7 @@ export function ProfilePage() {
         known_languages: p?.language_skills?.known ?? [],
         willing_to_learn: p?.language_skills?.willing_to_learn ?? null,
         priorities: Object.keys(p?.criteria_weights ?? {}),
+        priorities_text: p?.priorities_text ?? '',
       })
     })
   }, [])
@@ -98,6 +100,7 @@ export function ProfilePage() {
         climate_pref: f.climate_pref,
         language_skills: { known: f.known_languages, willing_to_learn: !!f.willing_to_learn },
         criteria_weights: Object.fromEntries(f.priorities.map((k) => [k, PRIORITY_WEIGHT])),
+        priorities_text: f.priorities_text.trim(),
       })
       await refreshAuth() // re-read identity from the server
       setSaved(true)
@@ -233,11 +236,18 @@ export function ProfilePage() {
           <div className="grid sm:grid-cols-2 gap-3">
             {PRIORITY_KEYS.map((k) => (
               <Chip key={k} active={f.priorities.includes(k)}
-                onClick={() => set('priorities', toggle(f.priorities, k, MAX_PRIORITIES))}>
+                onClick={() => set('priorities', toggle(f.priorities, k))}>
                 {t.criteria[k]}
               </Chip>
             ))}
           </div>
+          <p className="text-sm font-medium text-turquoise-900 mt-4 mb-1">{t.onboarding.priorities.moreQ}</p>
+          <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.priorities.moreHint}</p>
+          <VoiceField
+            value={f.priorities_text}
+            onChange={(v) => set('priorities_text', v)}
+            placeholder={t.onboarding.priorities.morePlaceholder}
+          />
         </Section>
       </div>
 

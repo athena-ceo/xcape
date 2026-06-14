@@ -30,7 +30,8 @@
     {"key": "jewish", "label_fr": "Communauté juive", "label_en": "Jewish community"},
     {"key": "muslim", "label_fr": "Communauté musulmane / arabe", "label_en": "Muslim / Arab community"},
     {"key": "ethnic_minorities", "label_fr": "Minorités noires et ethniques", "label_en": "Black & ethnic minorities"},
-    {"key": "immigrants", "label_fr": "Immigrés", "label_en": "Immigrants"}
+    {"key": "other_religious_minority", "label_fr": "Autre minorité religieuse", "label_en": "Other religious minority"},
+    {"key": "immigrants", "label_fr": "Immigrés", "label_en": "Immigrants", "active": false}
   ],
 
   "reason_tags": {

@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -20,6 +20,8 @@ class Profile(Base):
     intends_children: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     origin_country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     reasons_leaving: Mapped[list | None] = mapped_column(JSON, default=list)
+    # Free-text priorities (any number, beyond the preset chips) → AI criterion selection.
+    priorities_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     budget_monthly: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tenure: Mapped[str | None] = mapped_column(String(10), nullable=True)  # rent/buy
     climate_pref: Mapped[str | None] = mapped_column(String(20), nullable=True)

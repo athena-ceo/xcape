@@ -10,7 +10,7 @@ import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE, MAX_PRIORITIES,
+  CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
   PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
@@ -28,11 +28,12 @@ type StepId =
   | 'language'
   | 'priorities'
 
-// rent/buy (tenure) is not asked here — it only matters for the detailed cost analysis;
-// it stays editable in the profile page.
+// Priorities come early (right after the reasons for leaving) so the profile of what
+// matters is captured up front. rent/buy (tenure) is not asked here — it only matters
+// for the detailed cost analysis; it stays editable in the profile page.
 const STEPS: StepId[] = [
-  'currentCountry', 'citizenship', 'household', 'reasons', 'communities', 'budget',
-  'climate', 'language', 'priorities',
+  'currentCountry', 'citizenship', 'household', 'reasons', 'priorities', 'communities',
+  'budget', 'climate', 'language',
 ]
 
 interface Answers {
@@ -48,6 +49,7 @@ interface Answers {
   known_languages: string[]
   willing_to_learn: boolean | null
   priorities: string[]
+  priorities_text: string
 }
 
 const EMPTY: Answers = {
@@ -63,6 +65,7 @@ const EMPTY: Answers = {
   known_languages: [],
   willing_to_learn: null,
   priorities: [],
+  priorities_text: '',
 }
 
 export function Onboarding() {
@@ -97,6 +100,7 @@ export function Onboarding() {
         tenure: p?.tenure ?? cur.tenure,
         climate_pref: p?.climate_pref ?? cur.climate_pref,
         priorities: Object.keys(p?.criteria_weights ?? {}),
+        priorities_text: p?.priorities_text ?? cur.priorities_text,
         known_languages: known?.length ? known : [LOCALE_LANGUAGE[lang] ?? 'English'],
         willing_to_learn: p?.language_skills?.willing_to_learn ?? cur.willing_to_learn,
       }))
@@ -128,9 +132,15 @@ export function Onboarding() {
         language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
         criteria_weights: Object.fromEntries(a.priorities.map((k) => [k, PRIORITY_WEIGHT])),
         minority_groups: a.minority_groups,
+        priorities_text: a.priorities_text.trim(),
       })
       const search = await api.createSearch(t.shortlist.title)
       await api.buildShortlist(search.id)
+      // Free-text priorities → let the AI pick & weight extra criteria from them, so the
+      // user's own words shape the comparison (best-effort; never blocks the flow).
+      if (a.priorities_text.trim()) {
+        await api.suggestCriteria(search.id, [], a.priorities_text.trim()).catch(() => {})
+      }
       // Straight to the comparison table (pre-filled with the top matches) — the old
       // checklist step added friction without value.
       navigate(`/compare/${search.id}`)
@@ -304,11 +314,18 @@ export function Onboarding() {
               <div className="grid sm:grid-cols-2 gap-3">
                 {PRIORITY_KEYS.map((k) => (
                   <Chip key={k} active={a.priorities.includes(k)}
-                    onClick={() => setA({ ...a, priorities: toggle(a.priorities, k, MAX_PRIORITIES) })}>
+                    onClick={() => setA({ ...a, priorities: toggle(a.priorities, k) })}>
                     {t.criteria[k]}
                   </Chip>
                 ))}
               </div>
+              <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.priorities.moreQ}</p>
+              <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.priorities.moreHint}</p>
+              <VoiceField
+                value={a.priorities_text}
+                onChange={(v) => setA({ ...a, priorities_text: v })}
+                placeholder={t.onboarding.priorities.morePlaceholder}
+              />
             </>
           )}
 

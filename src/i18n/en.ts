@@ -90,6 +90,8 @@ export const en: Dict = {
       economy: 'Economic situation',
       safety: 'Safety',
       discrimination: 'Discrimination / intolerance',
+      patrimoine: 'Protecting my assets',
+      retirement: 'Retirement',
       climate: 'Climate / weather',
       cost: 'Cost of living',
       healthcare: 'Healthcare',
@@ -131,7 +133,10 @@ export const en: Dict = {
     },
     priorities: {
       q: 'What matters most to you?',
-      hint: 'Choose up to 3 priorities — they’ll weigh more in the ranking.',
+      hint: 'Pick as many priorities as you like — they’ll weigh more in the ranking.',
+      moreQ: 'Anything else?',
+      moreHint: 'Describe in your own words any other priorities — we’ll turn them into criteria.',
+      morePlaceholder: 'e.g. a strong startup scene and good international schools',
     },
   },
   criteria: {
@@ -157,6 +162,7 @@ export const en: Dict = {
     jewish: 'Jewish community',
     muslim: 'Muslim / Arab community',
     ethnic_minorities: 'Black & ethnic minorities',
+    other_religious_minority: 'Other religious minority',
     immigrants: 'Immigrants',
   },
   shortlist: {

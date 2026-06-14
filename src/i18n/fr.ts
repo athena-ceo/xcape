@@ -88,6 +88,8 @@ export const fr = {
       economy: 'Situation économique',
       safety: 'Sécurité',
       discrimination: 'Discrimination / intolérance',
+      patrimoine: 'Protection du patrimoine',
+      retirement: 'Retraite',
       climate: 'Climat / météo',
       cost: 'Coût de la vie',
       healthcare: 'Santé',
@@ -129,7 +131,10 @@ export const fr = {
     },
     priorities: {
       q: 'Qu’est-ce qui compte le plus pour vous ?',
-      hint: 'Choisissez jusqu’à 3 priorités — elles pèseront davantage dans le classement.',
+      hint: 'Choisissez autant de priorités que vous voulez — elles pèseront davantage dans le classement.',
+      moreQ: 'Autre chose ?',
+      moreHint: 'Décrivez avec vos mots d’autres priorités — nous en ferons des critères.',
+      morePlaceholder: 'ex. un écosystème start-up dynamique et de bonnes écoles internationales',
     },
   },
   criteria: {
@@ -155,6 +160,7 @@ export const fr = {
     jewish: 'Communauté juive',
     muslim: 'Communauté musulmane / arabe',
     ethnic_minorities: 'Minorités noires et ethniques',
+    other_religious_minority: 'Autre minorité religieuse',
     immigrants: 'Immigrés',
   },
   shortlist: {

@@ -4,6 +4,7 @@
 import { useState } from 'react'
 
 import { MINORITY_GROUPS, toggle } from '../data/profileOptions'
+import { useCriteria } from '../services/criteria'
 import { useT } from '../i18n'
 import { Chip } from './Chip'
 
@@ -12,13 +13,18 @@ interface Props {
   onChange: (groups: string[]) => void
 }
 
-// Preset communities as toggle chips, plus a free-text field so users can name any other
+// Communities as toggle chips driven by the registry (active set; falls back to the
+// bundled list until it loads), plus a free-text field so users can name any other
 // community that matters to them (stored verbatim in the same list).
 export function CommunitySelect({ value, onChange }: Props) {
-  const { t } = useT()
+  const { t, lang } = useT()
+  const reg = useCriteria()
   const [draft, setDraft] = useState('')
-  const presets = MINORITY_GROUPS as readonly string[]
-  const custom = value.filter((g) => !presets.includes(g))
+  const groups: { key: string; label: string }[] = reg?.communities?.length
+    ? reg.communities.map((c) => ({ key: c.key, label: (lang === 'fr' ? c.label_fr : c.label_en) || c.label_en }))
+    : (MINORITY_GROUPS as readonly string[]).map((g) => ({ key: g, label: (t.groups as Record<string, string>)[g] ?? g }))
+  const presetKeys = groups.map((g) => g.key)
+  const custom = value.filter((g) => !presetKeys.includes(g))
 
   function addCustom() {
     const v = draft.trim()
@@ -30,9 +36,9 @@ export function CommunitySelect({ value, onChange }: Props) {
   return (
     <div>
       <div className="grid sm:grid-cols-2 gap-3">
-        {MINORITY_GROUPS.map((g) => (
-          <Chip key={g} active={value.includes(g)} onClick={() => onChange(toggle(value, g))}>
-            {t.groups[g]}
+        {groups.map((g) => (
+          <Chip key={g.key} active={value.includes(g.key)} onClick={() => onChange(toggle(value, g.key))}>
+            {g.label}
           </Chip>
         ))}
       </div>
