@@ -331,6 +331,17 @@ export const en: Dict = {
     saved: 'Saved.',
     newKey: 'Key for the new criterion (e.g. job_security):',
   },
+  adminPlaces: {
+    kind: 'Type',
+    name: 'Name',
+    parent: 'Parent',
+    country: 'Country',
+    region: 'Region',
+    city: 'City',
+    add: 'Add place',
+    active: 'Active',
+    saved: 'Saved.',
+  },
   waiting: {
     messages: [
       'Researching with up-to-date sources…',

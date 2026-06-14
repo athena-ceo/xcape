@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useT } from '../i18n'
 import { api } from '../services/api'
 import { AdminCriteria } from './AdminCriteria'
+import { AdminPlaces } from './AdminPlaces'
 
 type Tab = 'users' | 'searches' | 'places' | 'ailog' | 'criteria'
 
@@ -20,7 +21,7 @@ export function AdminDashboard() {
   useEffect(() => {
     setQuery('')
     setSort({ key: '', dir: 1 })
-    if (tab === 'criteria') { setLoading(false); setRows([]); return }
+    if (tab === 'criteria' || tab === 'places') { setLoading(false); setRows([]); return }
     setLoading(true)
     const fetcher = {
       users: api.getAdminUsers, searches: api.getAdminSearches,
@@ -110,13 +111,15 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      {tab !== 'criteria' && (
+      {tab !== 'criteria' && tab !== 'places' && (
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.admin.search}
           className="w-full sm:w-72 border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
       )}
 
       {tab === 'criteria' ? (
         <AdminCriteria />
+      ) : tab === 'places' ? (
+        <AdminPlaces />
       ) : loading ? (
         <p className="text-turquoise-800/60">{t.common.loading}</p>
       ) : view.length === 0 ? (
@@ -157,7 +160,9 @@ export function AdminDashboard() {
           </table>
         </div>
       )}
-      <p className="text-xs text-turquoise-800/50 mt-2">{view.length}</p>
+      {tab !== 'criteria' && tab !== 'places' && (
+        <p className="text-xs text-turquoise-800/50 mt-2">{view.length}</p>
+      )}
     </main>
   )
 }

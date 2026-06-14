@@ -329,6 +329,17 @@ export const fr = {
     saved: 'Enregistré.',
     newKey: 'Clé du nouveau critère (ex. job_security) :',
   },
+  adminPlaces: {
+    kind: 'Type',
+    name: 'Nom',
+    parent: 'Parent',
+    country: 'Pays',
+    region: 'Région',
+    city: 'Ville',
+    add: 'Ajouter un lieu',
+    active: 'Actif',
+    saved: 'Enregistré.',
+  },
   waiting: {
     messages: [
       'Recherche avec des sources à jour…',
