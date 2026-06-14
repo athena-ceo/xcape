@@ -253,6 +253,7 @@ export const fr = {
     tableHint: 'Astuce : cliquez un pays pour l’explorer, une valeur pour sa justification, un score pour le détail du calcul.',
     suggested: 'Suggestions — touchez pour ajouter à la comparaison :',
     boardFull: 'Le tableau est complet (5 pays). Retirez-en un pour en ajouter un autre.',
+    customGroup: 'Vos critères',
     customCriterion: 'Critère personnalisé',
     customNamePrompt: 'Nom court (ex. Végane)',
     customDescPrompt: 'Que doit évaluer l’IA ? (ex. offre de cuisine et restaurants véganes)',

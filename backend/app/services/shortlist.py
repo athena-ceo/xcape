@@ -256,7 +256,9 @@ def passes_filters(place: Place, profile: Profile | None) -> bool:
             if not (known and langs and (known & langs)):
                 return False
         elif key == "climate":
-            if attrs.get("climate") != fval:
+            # Accept a single climate or a list of acceptable climates (any-of).
+            allowed = fval if isinstance(fval, list) else [fval]
+            if attrs.get("climate") not in allowed:
                 return False
         elif key == "visa":
             if _visa_value(attrs, profile, place) < 0.9:

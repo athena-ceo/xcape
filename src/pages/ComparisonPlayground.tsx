@@ -1,7 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { CriteriaSettings } from '../components/CriteriaSettings'
@@ -12,21 +12,11 @@ import { VoiceButton } from '../components/VoiceButton'
 import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
-
-const DEFAULT_ROWS = [
-  'cost_of_living', 'inclusion', 'gender_equality', 'climate', 'language_ease',
-  'healthcare', 'education', 'political_stability',
-]
-const ALL_CRITERIA = [
-  'cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'safety',
-  'political_stability', 'inclusion', 'gender_equality', 'tax', 'visa',
-  'expat_community', 'culture', 'food', 'nature', 'internet',
-] as const
-
-type CritKey = (typeof ALL_CRITERIA)[number]
+import { categories, labelOf, useCriteria, valueLabel } from '../services/criteria'
 
 export function ComparisonPlayground() {
   const { t, lang } = useT()
+  const reg = useCriteria()  // the criteria registry (tree, labels, value labels) — single catalog
   const { searchId } = useParams()
   const sid = Number(searchId)
   const [candidates, setCandidates] = useState<any[]>([])
@@ -34,7 +24,7 @@ export function ComparisonPlayground() {
   const [evaluating, setEvaluating] = useState(false)
   const evaluatingRef = useRef(false)
   const [places, setPlaces] = useState<Record<number, any>>({})
-  const [rows, setRows] = useState<string[]>(DEFAULT_ROWS)
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>({})  // category key → expanded
 
   const [chat, setChat] = useState('')
   const [messages, setMessages] = useState<any[]>([])
@@ -42,7 +32,6 @@ export function ComparisonPlayground() {
 
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
-  const [newCriterion, setNewCriterion] = useState<CritKey | ''>('')
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
@@ -121,9 +110,7 @@ export function ComparisonPlayground() {
     setMessages(hist)
     setWeights(profile?.criteria_weights ?? {})
     setFilters(profile?.filters ?? {})
-    setCustomCrit(custom.map((c) => ({ key: c.key, label: c.label })))
-    // Make sure user-defined criteria appear as rows on the board.
-    setRows((r) => [...r, ...custom.map((c) => c.key).filter((k) => !r.includes(k))])
+    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label })))
     await reloadCandidates()
   }
 
@@ -182,19 +169,9 @@ export function ComparisonPlayground() {
     return attrValue(t, byTier[tier ?? ''] ?? attrs?.visa)
   }
 
-  // Inclusion is user-relative (it depends on the communities they flagged), so the cell
-  // reflects the computed quality tier rather than a single raw attribute.
-  function inclusionCell(tier: string | undefined) {
-    const byTier: Record<string, string> = { good: 'welcoming', ok: 'mixed', bad: 'guarded' }
-    return attrValue(t, byTier[tier ?? ''] ?? 'mixed')
-  }
-
-  // Label for any criterion — built-in (i18n) or custom (its user-given name). Pure label
-  // resolution, not behaviour: custom and built-in criteria are handled the same elsewhere.
+  // Label for any criterion — resolved from the registry, falling back to a custom name.
   function critLabel(key: string) {
-    return (t.criteria as Record<string, string>)[key]
-      ?? customCrit.find((c) => c.key === key)?.label
-      ?? key
+    return labelOf(reg, key, lang, customCrit)
   }
 
   // Generic quality word from a tier — used when an objective criterion has an AI score but
@@ -207,11 +184,11 @@ export function ComparisonPlayground() {
   }
 
   function cellValue(key: string, attrs: any, tier?: string) {
-    // User-relative criteria have bespoke labels; every other criterion (built-in objective
-    // or custom) shows its seed bucket word, falling back to the score-derived tier word.
     if (key === 'language_ease') return languageCell(t, attrs)
     if (key === 'visa') return visaCell(tier, attrs)
-    if (key === 'inclusion') return inclusionCell(tier)
+    // Criteria with registry value labels (inclusion, proximity…) show their tier word.
+    const vl = valueLabel(reg, key, tier, lang)
+    if (vl) return vl
     const raw = attrs?.[key]
     return raw ? attrValue(t, raw) : tierWord(tier)
   }
@@ -268,15 +245,6 @@ export function ComparisonPlayground() {
     }
   }
 
-  async function addCriterion() {
-    if (!newCriterion) return
-    const key = newCriterion
-    setNewCriterion('')
-    if (!rows.includes(key)) setRows((r) => [...r, key])
-    await api.addCriterion(sid, key)
-    await reloadCandidates() // re-read from server rather than trusting the response
-  }
-
   // Add a user-defined criterion: a short name for the column + an optional longer
   // description that guides the AI. The AI rates every country, then it joins the board.
   async function addCustom() {
@@ -318,13 +286,12 @@ export function ComparisonPlayground() {
   }
 
   // Picking an answer sets that criterion's importance weight, which re-scores and
-  // re-ranks the candidates server-side. Make sure the criterion appears as a row too.
+  // re-ranks the candidates server-side.
   async function applyWeight(criterion: string, weight: number) {
     if (applying) return
     setApplying(true)
     const next = { ...weights, [criterion]: weight }
     setWeights(next)
-    if (!rows.includes(criterion)) setRows((r) => [...r, criterion])
     try {
       await api.updateProfile({ criteria_weights: next }) // triggers rescore
       await reloadCandidates() // scores in the table update
@@ -352,7 +319,34 @@ export function ComparisonPlayground() {
     }
   }
 
-  const availableCriteria = ALL_CRITERIA.filter((k) => !rows.includes(k))
+  // Criteria grouped for the table: registry categories + a synthetic group for the
+  // search's custom criteria. Each group = {key, label, leaves[]}.
+  const TIER_VALUE: Record<string, number> = { good: 1, ok: 0.6, bad: 0.3 }
+  const groups = [
+    ...categories(reg).map((c) => ({
+      key: c.key, label: labelOf(reg, c.key, lang), leaves: c.leaves,
+    })),
+    ...(customCrit.length
+      ? [{ key: '__custom', label: t.comparison.customGroup, leaves: customCrit.map((c) => c.key) }]
+      : []),
+  ]
+  const weightOf = (key: string) => weights[key] ?? 0
+  // A category is open by default when it has at least one weighted leaf.
+  const isOpen = (g: { key: string; leaves: string[] }) =>
+    openCats[g.key] ?? g.leaves.some((k) => weightOf(k) > 0)
+  // Roll-up colour tier for a category column = weighted average of its leaves' tiers.
+  function rollupTier(cand: any, leaves: string[]): string | undefined {
+    let num = 0, den = 0
+    for (const k of leaves) {
+      const tier = cand.quality?.[k]
+      if (!tier) continue
+      const w = weightOf(k) || 0.5
+      num += TIER_VALUE[tier] * w; den += w
+    }
+    if (!den) return undefined
+    const v = num / den
+    return v >= 0.7 ? 'good' : v >= 0.45 ? 'ok' : 'bad'
+  }
 
   // Known countries matching the picker text (localized name substring), excluding ones
   // already on the board. Resolves French names → the canonical place.
@@ -364,6 +358,40 @@ export function ComparisonPlayground() {
         .sort((a: any, b: any) => placeName(a, lang).localeCompare(placeName(b, lang), lang))
         .slice(0, 8)
     : []
+
+  // One leaf criterion row (used inside each open category group).
+  function leafRow(key: string) {
+    return (
+      <tr key={key} className="border-t border-turquoise-50">
+        <td className="p-3 pl-8 text-turquoise-800/70">{critLabel(key)}</td>
+        {baseline && (() => {
+          const bpending = (baseline.pending || []).includes(key)
+          const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
+          return (
+            <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
+              <button onClick={() => openWhy(bcol, key)} className="block w-full p-3 hover:underline cursor-pointer">
+                {bpending
+                  ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
+                  : cellValue(key, baseline.attributes, baseline.quality?.[key])}
+              </button>
+            </td>
+          )
+        })()}
+        {candidates.map((c) => {
+          const pending = (c.pending || []).includes(key)
+          return (
+            <td key={c.id} className={`p-0 text-center ${pending ? '' : qualityClass(c.quality?.[key])}`}>
+              <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
+                {pending
+                  ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
+                  : cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}
+              </button>
+            </td>
+          )
+        })}
+      </tr>
+    )
+  }
 
   return (
     <main className="max-w-4xl mx-auto px-5 py-8">
@@ -428,40 +456,30 @@ export function ComparisonPlayground() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((key) => (
-              <tr key={key} className="border-t border-turquoise-100">
-                <td className="p-3 text-turquoise-800/70">{critLabel(key)}</td>
-                {baseline && (() => {
-                  // The current-country column is computed + evaluated like the candidates,
-                  // so it shows real values (and a justification popover) — no blanks.
-                  const bpending = (baseline.pending || []).includes(key)
-                  const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
-                  return (
-                    <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
-                      <button onClick={() => openWhy(bcol, key)} className="block w-full p-3 hover:underline cursor-pointer">
-                        {bpending
-                          ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
-                          : cellValue(key, baseline.attributes, baseline.quality?.[key])}
-                      </button>
+            {groups.map((g) => {
+              const open = isOpen(g)
+              return (
+                <Fragment key={g.key}>
+                  <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none"
+                    onClick={() => setOpenCats((o) => ({ ...o, [g.key]: !open }))}>
+                    <td className="p-2.5 font-medium text-turquoise-900">
+                      <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>{g.label}
                     </td>
-                  )
-                })()}
-                {candidates.map((c) => {
-                  // A cell still being AI-evaluated shows a spinner; otherwise the value +
-                  // colour. Tapping shows the score + justification popover.
-                  const pending = (c.pending || []).includes(key)
-                  return (
-                    <td key={c.id} className={`p-0 text-center ${pending ? '' : qualityClass(c.quality?.[key])}`}>
-                      <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
-                        {pending
-                          ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
-                          : cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}
-                      </button>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+                    {baseline && (
+                      <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
+                        {tierWord(rollupTier(baseline, g.leaves))}
+                      </td>
+                    )}
+                    {candidates.map((c) => (
+                      <td key={c.id} className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(c, g.leaves))}`}>
+                        {tierWord(rollupTier(c, g.leaves))}
+                      </td>
+                    ))}
+                  </tr>
+                  {open && g.leaves.map((key) => leafRow(key))}
+                </Fragment>
+              )
+            })}
             <tr className="border-t border-turquoise-200 bg-turquoise-50">
               <td className="p-3 font-medium">{t.comparison.matchScore}</td>
               {baseline && <td className="p-3 text-center bg-turquoise-100/60 text-turquoise-800/40">—</td>}
@@ -530,19 +548,6 @@ export function ComparisonPlayground() {
             {researching ? t.comparison.researching : `+ ${t.comparison.addCountry}`}
           </button>
         </div>
-        )}
-        {availableCriteria.length > 0 && (
-          <div className="flex items-center gap-2">
-            <select value={newCriterion} onChange={(e) => setNewCriterion(e.target.value as CritKey)}
-              className="border border-turquoise-100 rounded-md px-2 py-1.5 text-sm">
-              <option value="">{t.comparison.addCriterion}…</option>
-              {availableCriteria.map((k) => <option key={k} value={k}>{t.criteria[k]}</option>)}
-            </select>
-            <button onClick={addCriterion} disabled={!newCriterion}
-              className="border border-turquoise-100 rounded-md px-3 py-1.5 text-sm disabled:opacity-50">
-              +
-            </button>
-          </div>
         )}
         {/* User-defined criterion: a short column name + an optional longer description
             that guides the AI, which then scores each country on it. */}

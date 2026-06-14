@@ -47,6 +47,7 @@ export const api = {
     first_name?: string; last_name?: string; current_country?: string; citizenships?: string[]
   }) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
+  getCriteria: () => request<any>('/criteria'),
   getProfile: () => request('/profile'),
   updateProfile: (data: unknown) =>
     request('/profile', { method: 'PUT', body: JSON.stringify(data) }),

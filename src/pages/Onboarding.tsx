@@ -24,14 +24,15 @@ type StepId =
   | 'reasons'
   | 'communities'
   | 'budget'
-  | 'tenure'
   | 'climate'
   | 'language'
   | 'priorities'
 
+// rent/buy (tenure) is not asked here — it only matters for the detailed cost analysis;
+// it stays editable in the profile page.
 const STEPS: StepId[] = [
   'currentCountry', 'citizenship', 'household', 'reasons', 'communities', 'budget',
-  'tenure', 'climate', 'language', 'priorities',
+  'climate', 'language', 'priorities',
 ]
 
 interface Answers {
@@ -254,19 +255,6 @@ export function Onboarding() {
             </>
           )}
 
-          {step === 'tenure' && (
-            <>
-              <h1 className="text-xl font-medium text-turquoise-900 mb-4">{t.onboarding.tenure.q}</h1>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {([['rent', 'rent'], ['buy', 'buy'], ['either', null]] as const).map(([label, val]) => (
-                  <Chip key={label} active={a.tenure === val}
-                    onClick={() => setA({ ...a, tenure: val })}>
-                    {t.onboarding.tenure[label]}
-                  </Chip>
-                ))}
-              </div>
-            </>
-          )}
 
           {step === 'climate' && (
             <>

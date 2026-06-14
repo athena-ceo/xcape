@@ -1,26 +1,15 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 
 import { useT } from '../i18n'
+import { categories, labelOf, nodeOf, useCriteria } from '../services/criteria'
 
-const CRITERIA = [
-  'cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'safety',
-  'political_stability', 'inclusion', 'gender_equality', 'tax', 'visa',
-  'expat_community', 'culture', 'food', 'nature', 'internet',
-] as const
 const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
-
-const LEVELS: Record<string, number> = { ignore: 0, low: 0.5, normal: 1, high: 2.5 }
-
-function levelOf(weight: number | undefined): string {
-  if (weight === undefined) return 'default'
-  if (weight >= 2) return 'high'
-  if (weight >= 0.8) return 'normal'
-  if (weight > 0) return 'low'
-  return 'ignore'
-}
+const PRESETS: { key: string; w: number }[] = [
+  { key: 'impIgnore', w: 0 }, { key: 'impLow', w: 0.5 }, { key: 'impNormal', w: 1 }, { key: 'impHigh', w: 2.5 },
+]
 
 interface Props {
   weights: Record<string, number>
@@ -29,26 +18,68 @@ interface Props {
   onApply: (weights: Record<string, number>, filters: Record<string, any>) => void
 }
 
-// Revealed affordance: per-criterion importance plus the key hard filters (language,
-// climate, visa). "Apply" rebuilds the shortlist with these settings.
+// Criteria control: per-criterion numeric importance (with quick presets), grouped by
+// category, plus the hard filters. Reads the catalog from the registry.
 export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
-  const { t } = useT()
-  const [levels, setLevels] = useState<Record<string, string>>(
-    Object.fromEntries(CRITERIA.map((k) => [k, levelOf(weights[k])])),
-  )
+  const { t, lang } = useT()
+  const reg = useCriteria()
+  const [w, setW] = useState<Record<string, number>>({ ...weights })
   const [f, setF] = useState<Record<string, any>>({ ...filters })
+  const climateSel: string[] = Array.isArray(f.climate) ? f.climate : (f.climate ? [f.climate] : [])
 
+  function weightFor(key: string): number {
+    return w[key] ?? nodeOf(reg, key)?.default_weight ?? 0
+  }
+  function setWeight(key: string, val: number) {
+    setW({ ...w, [key]: Math.max(0, Math.min(5, val)) })
+  }
+  function toggleClimate(c: string) {
+    const next = climateSel.includes(c) ? climateSel.filter((x) => x !== c) : [...climateSel, c]
+    setF({ ...f, climate: next })
+  }
   function apply() {
-    const w: Record<string, number> = {}
-    for (const k of CRITERIA) {
-      if (levels[k] !== 'default') w[k] = LEVELS[levels[k]]
-    }
-    // Drop empty filters.
     const cleaned: Record<string, any> = {}
     for (const [k, v] of Object.entries(f)) {
-      if (v) cleaned[k] = v
+      if (Array.isArray(v) ? v.length : v) cleaned[k] = v
     }
     onApply(w, cleaned)
+  }
+
+  function filterCell(key: string) {
+    if (key === 'language_ease') return (
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={!!f.language_ease} className="accent-turquoise-600"
+          onChange={(e) => setF({ ...f, language_ease: e.target.checked })} />
+        {t.comparison.filterLanguageOnly}
+      </label>
+    )
+    if (key === 'visa') return (
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={!!f.visa} className="accent-turquoise-600"
+          onChange={(e) => setF({ ...f, visa: e.target.checked })} />
+        {t.comparison.filterVisaOnly}
+      </label>
+    )
+    if (key === 'inclusion') return (
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={!!f.inclusion} className="accent-turquoise-600"
+          onChange={(e) => setF({ ...f, inclusion: e.target.checked })} />
+        {t.comparison.filterWelcomingOnly}
+      </label>
+    )
+    if (key === 'climate') return (
+      <div className="flex flex-wrap gap-1.5">
+        {CLIMATES.map((c) => (
+          <button key={c} type="button" onClick={() => toggleClimate(c)}
+            className={`text-xs rounded-full border px-2 py-0.5 ${
+              climateSel.includes(c) ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700'
+                                     : 'border-turquoise-100'}`}>
+            {t.onboarding.climate[c]}
+          </button>
+        ))}
+      </div>
+    )
+    return null
   }
 
   return (
@@ -63,53 +94,33 @@ export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
           </tr>
         </thead>
         <tbody>
-          {CRITERIA.map((k) => (
-            <tr key={k} className="border-t border-turquoise-50">
-              <td className="py-1.5 pr-2">{t.criteria[k]}</td>
-              <td className="py-1.5 pr-2">
-                <select value={levels[k]} onChange={(e) => setLevels({ ...levels, [k]: e.target.value })}
-                  className="border border-turquoise-100 rounded-md px-2 py-1">
-                  <option value="default">{t.comparison.impDefault}</option>
-                  <option value="ignore">{t.comparison.impIgnore}</option>
-                  <option value="low">{t.comparison.impLow}</option>
-                  <option value="normal">{t.comparison.impNormal}</option>
-                  <option value="high">{t.comparison.impHigh}</option>
-                </select>
-              </td>
-              <td className="py-1.5">
-                {k === 'language_ease' && (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={!!f.language_ease}
-                      onChange={(e) => setF({ ...f, language_ease: e.target.checked })}
-                      className="accent-turquoise-600" />
-                    {t.comparison.filterLanguageOnly}
-                  </label>
-                )}
-                {k === 'visa' && (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={!!f.visa}
-                      onChange={(e) => setF({ ...f, visa: e.target.checked })}
-                      className="accent-turquoise-600" />
-                    {t.comparison.filterVisaOnly}
-                  </label>
-                )}
-                {k === 'inclusion' && (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={!!f.inclusion}
-                      onChange={(e) => setF({ ...f, inclusion: e.target.checked })}
-                      className="accent-turquoise-600" />
-                    {t.comparison.filterWelcomingOnly}
-                  </label>
-                )}
-                {k === 'climate' && (
-                  <select value={f.climate ?? ''} onChange={(e) => setF({ ...f, climate: e.target.value })}
-                    className="border border-turquoise-100 rounded-md px-2 py-1">
-                    <option value="">{t.comparison.filterAny}</option>
-                    {CLIMATES.map((c) => <option key={c} value={c}>{t.onboarding.climate[c]}</option>)}
-                  </select>
-                )}
-              </td>
-            </tr>
+          {categories(reg).map((cat) => (
+            <Fragment key={cat.key}>
+              <tr className="border-t border-turquoise-100 bg-turquoise-50/60">
+                <td colSpan={3} className="py-1.5 font-medium text-turquoise-900">{labelOf(reg, cat.key, lang)}</td>
+              </tr>
+              {cat.leaves.map((key) => (
+                <tr key={key} className="border-t border-turquoise-50">
+                  <td className="py-1.5 pr-2 pl-3">{labelOf(reg, key, lang)}</td>
+                  <td className="py-1.5 pr-2">
+                    <div className="flex items-center gap-2">
+                      <input type="number" min={0} max={5} step={0.5} value={weightFor(key)}
+                        onChange={(e) => setWeight(key, Number(e.target.value))}
+                        className="w-16 border border-turquoise-100 rounded-md px-2 py-1" />
+                      <div className="flex gap-1">
+                        {PRESETS.map((p) => (
+                          <button key={p.key} type="button" onClick={() => setWeight(key, p.w)}
+                            className="text-xs rounded border border-turquoise-100 px-1.5 py-0.5 hover:bg-turquoise-50">
+                            {(t.comparison as Record<string, string>)[p.key]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-1.5">{filterCell(key)}</td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>

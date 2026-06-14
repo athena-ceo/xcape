@@ -255,6 +255,7 @@ export const en: Dict = {
     tableHint: 'Tip: click a country to explore it, a value for its rationale, a score for the calculation breakdown.',
     suggested: 'Suggested matches — tap to add to the comparison:',
     boardFull: 'The board is full (5 countries). Remove one to add another.',
+    customGroup: 'Your criteria',
     customCriterion: 'Custom criterion',
     customNamePrompt: 'Short name (e.g. Vegan)',
     customDescPrompt: 'What should the AI judge? (e.g. availability of vegan food & restaurants)',
