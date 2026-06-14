@@ -2,7 +2,7 @@
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { Spinner } from '../components/Spinner'
 import { useT } from '../i18n'
@@ -16,6 +16,7 @@ export function Drilldown() {
   const { t, lang } = useT()
   const { placeId } = useParams()
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const id = Number(placeId)
 
   const [place, setPlace] = useState<any>(null)
@@ -32,6 +33,18 @@ export function Drilldown() {
       .finally(() => setLoadingDetail(false))
     api.getMedia(id).then(setMedia).catch(() => {}).finally(() => setLoadingMedia(false))
   }, [id, lang])
+
+  // After the criterion detail renders, scroll to the section the user clicked (the URL
+  // hash, e.g. #criterion-healthcare), with a brief highlight.
+  useEffect(() => {
+    if (loadingDetail || !hash) return
+    const el = document.getElementById(hash.slice(1))
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      el.classList.add('ring-2', 'ring-turquoise-300')
+      setTimeout(() => el.classList.remove('ring-2', 'ring-turquoise-300'), 1800)
+    }
+  }, [loadingDetail, hash])
 
   const summary = place && (lang === 'fr' ? place.summary_fr : place.summary_en)
   const photos = media.filter((m) => m.type === 'photo')
@@ -132,7 +145,8 @@ export function Drilldown() {
       )}
       <div className="space-y-3 mb-6">
         {(detail ?? []).map((d) => (
-          <div key={d.key} className="bg-white border border-turquoise-100 rounded-lg p-4">
+          <div key={d.key} id={`criterion-${d.key}`}
+            className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
             <p className="text-sm font-medium text-turquoise-900 mb-1">
               {(t.criteria as Record<string, string>)[d.key] ?? d.key}
             </p>

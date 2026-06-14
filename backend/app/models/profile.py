@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -16,6 +16,8 @@ class Profile(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
 
     household_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # single/couple/family
+    # Whether a couple plans to have children — makes education a scored criterion.
+    intends_children: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     origin_country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     reasons_leaving: Mapped[list | None] = mapped_column(JSON, default=list)
     budget_monthly: Mapped[int | None] = mapped_column(Integer, nullable=True)

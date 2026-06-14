@@ -30,6 +30,12 @@ def test_non_eu_resident_cannot_move_freely_within_eu():
     assert _visa_value({"visa": "easy"}, _Profile(["US"]), spain) == 0.3
 
 
+def test_mixed_household_uses_most_restrictive_citizenship():
+    # French + American household -> judged by the American passport for an EU move.
+    spain = _Place("ES")
+    assert _visa_value({"visa": "easy"}, _Profile(["FR", "US"]), spain) == 0.3
+
+
 def test_citizen_of_destination_is_trivial():
     usa = _Place("US")
     assert _visa_value({"visa": "hard"}, _Profile(["US"]), usa) == 1.0

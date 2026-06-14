@@ -56,6 +56,11 @@ case "$CMD" in
     EMAIL="${1:-}"; NEWPW="${2:-}"
     [[ -z "$EMAIL" || -z "$NEWPW" ]] && { echo "usage: ./xcape.sh reset-password <dev|prod> <email> <newpassword>"; exit 1; }
     $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.set_password "$EMAIL" "$NEWPW" ;;
+  purge-test-users)
+    if [[ "$ENV" == "prod" ]]; then echo "Refusing to purge on prod."; exit 1; fi
+    $COMPOSE exec -T db psql -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-xcape_dev}" \
+      -c "delete from users where email ilike '%@example.com' or email ilike '%@xcape.test';"
+    echo "Purged test users (@example.com / @xcape.test) and their data." ;;
   test)     $COMPOSE exec "$BACKEND_SVC" python -m pytest /app/tests -q ;;
   smoke)    SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py ;;
   shell)    $COMPOSE exec "$BACKEND_SVC" bash ;;
@@ -111,6 +116,7 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   seed                    load the bundled place database
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
+  purge-test-users <env>    (dev) delete @example.com / @xcape.test test users
   test                    run backend pytest
   smoke                   run end-to-end smoke tests against the running stack
   shell                   open a backend shell

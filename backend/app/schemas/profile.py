@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ProfileUpdate(BaseModel):
     household_type: str | None = None
+    intends_children: bool | None = None
     origin_country: str | None = None
     reasons_leaving: list[str] | None = None
     budget_monthly: int | None = None

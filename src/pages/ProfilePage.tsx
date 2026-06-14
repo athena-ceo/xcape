@@ -22,6 +22,7 @@ interface Form {
   current_country: string
   citizenships: string[]
   household_type: string | null
+  intends_children: boolean | null
   reasons_leaving: string[]
   budget_monthly: number | null
   tenure: 'rent' | 'buy' | null
@@ -57,6 +58,7 @@ export function ProfilePage() {
         current_country: me.current_country ?? '',
         citizenships: me.citizenships ?? [],
         household_type: p?.household_type ?? null,
+        intends_children: p?.intends_children ?? null,
         reasons_leaving: p?.reasons_leaving ?? [],
         budget_monthly: p?.budget_monthly ?? null,
         tenure: p?.tenure ?? null,
@@ -85,6 +87,7 @@ export function ProfilePage() {
       })
       await api.updateProfile({
         household_type: f.household_type,
+        intends_children: f.intends_children,
         reasons_leaving: f.reasons_leaving,
         budget_monthly: f.budget_monthly,
         tenure: f.tenure,
@@ -140,6 +143,19 @@ export function ProfilePage() {
               </Chip>
             ))}
           </div>
+          {f.household_type === 'couple' && (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-turquoise-900 mb-2">{t.onboarding.household.intendsQ}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Chip active={f.intends_children === true} onClick={() => set('intends_children', true)}>
+                  {t.onboarding.household.intendsYes}
+                </Chip>
+                <Chip active={f.intends_children === false} onClick={() => set('intends_children', false)}>
+                  {t.onboarding.household.intendsNo}
+                </Chip>
+              </div>
+            </div>
+          )}
         </Section>
 
         <Section title={t.onboarding.reasons.q}>

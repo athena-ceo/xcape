@@ -70,6 +70,10 @@ def list_candidates(
         cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
         if cand.place:
             cand.quality = shortlist_service.candidate_quality(cand.place, profile)
+            cand.reasons = {
+                k: comparison.criterion_reason(cand.place, profile, k)
+                for k in shortlist_service.CRITERIA_KEYS
+            }
         if known:
             # Read languages from the live place so existing searches benefit without
             # needing the shortlist rebuilt.

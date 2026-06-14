@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 
 const CRITERIA = [
-  'cost_of_living', 'climate', 'language_ease', 'healthcare', 'safety',
+  'cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'safety',
   'political_stability', 'tax', 'visa', 'expat_community', 'nature', 'internet',
 ] as const
 const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const

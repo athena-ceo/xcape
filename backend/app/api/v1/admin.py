@@ -11,9 +11,8 @@ from app.models.ai_log import AIQueryLog
 from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
+from app.models.candidate import Candidate
 from app.schemas.auth import AdminPasswordReset, UserOut
-from app.schemas.place import PlaceOut
-from app.schemas.search import SearchOut
 
 router = APIRouter()
 
@@ -38,14 +37,41 @@ def list_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     return db.query(User).order_by(User.created_at.desc()).all()
 
 
-@router.get("/searches", response_model=list[SearchOut])
+@router.get("/searches")
 def list_searches(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    return db.query(Search).order_by(Search.updated_at.desc()).limit(500).all()
+    """All users' searches with who owns them and how many candidates they hold."""
+    rows = db.query(Search).order_by(Search.updated_at.desc()).limit(500).all()
+    out = []
+    for s in rows:
+        active = [c for c in s.candidates if c.status == "active"]
+        out.append({
+            "id": s.id,
+            "user_email": s.user.email if s.user else None,
+            "title": s.title,
+            "candidates": len(active),
+            "selected": sum(1 for c in active if c.selected),
+            "updated_at": s.updated_at,
+        })
+    return out
 
 
-@router.get("/places", response_model=list[PlaceOut])
+@router.get("/places")
 def list_places(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    return db.query(Place).order_by(Place.name).all()
+    """The place database with data provenance & freshness, so admins can see which
+    countries are still seed-only vs AI-enriched."""
+    rows = db.query(Place).order_by(Place.name).all()
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "kind": p.kind,
+            "iso_code": p.iso_code,
+            "source": p.source,
+            "enriched": bool(p.source == "ai" or p.facts or p.criteria_detail),
+            "freshness_at": p.freshness_at,
+        }
+        for p in rows
+    ]
 
 
 @router.get("/ai-log")

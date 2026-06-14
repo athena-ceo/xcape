@@ -85,6 +85,9 @@ export const api = {
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getAdminUsers: () => request<any[]>('/admin/users'),
+  getAdminSearches: () => request<any[]>('/admin/searches'),
+  getAdminPlaces: () => request<any[]>('/admin/places'),
+  getAdminAiLog: () => request<any[]>('/admin/ai-log'),
   adminResetPassword: (userId: number, password: string) =>
     request<void>(`/admin/users/${userId}/reset-password`, {
       method: 'POST',

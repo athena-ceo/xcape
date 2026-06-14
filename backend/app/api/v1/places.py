@@ -67,10 +67,18 @@ def get_media(place_id: int, user: User = Depends(get_current_user), db: Session
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     existing = db.query(MediaAsset).filter(MediaAsset.place_id == place_id).all()
-    if existing:
-        return existing
-    # Cache miss — discover media via web search (best-effort).
-    try:
-        return place_research.fetch_media(db, place, user_id=user.id)
-    except ai_client.AIUnavailable:
-        return []
+    if not existing:
+        # Cache miss — discover media via web search (best-effort).
+        try:
+            existing = place_research.fetch_media(db, place, user_id=user.id)
+        except ai_client.AIUnavailable:
+            return []
+    # De-duplicate by URL (older rows may contain dupes with differing titles).
+    seen: set[str] = set()
+    unique = []
+    for m in existing:
+        nu = place_research.normalize_url(m.url)
+        if nu not in seen:
+            seen.add(nu)
+            unique.append(m)
+    return unique

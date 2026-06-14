@@ -13,7 +13,8 @@
       "expat_community": "large | medium | small",
       "nature": "high | medium | low",
       "internet": "fast | ok | slow",
-      "languages": "array of languages a resident uses (official + widely-spoken English); matched against the user's known languages"
+      "languages": "array of languages a resident uses (official + widely-spoken English); matched against the user's known languages",
+      "education": "strong | good | basic"
     }
   },
   "countries": [
@@ -29,7 +30,8 @@
           "Turkmen",
           "Arabic",
           "Balochi"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -44,7 +46,8 @@
         "healthcare": "good",
         "languages": [
           "Albanian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -60,7 +63,8 @@
         "languages": [
           "Arabic",
           "Standard Algerian Berber"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -72,7 +76,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -87,7 +92,8 @@
         "healthcare": "strong",
         "languages": [
           "Catalan"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -102,7 +108,8 @@
         "healthcare": "basic",
         "languages": [
           "Portuguese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -117,7 +124,8 @@
         "healthcare": "strong",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -132,7 +140,8 @@
         "healthcare": "good",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -147,7 +156,8 @@
         "healthcare": "good",
         "languages": [
           "Armenian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -163,7 +173,8 @@
         "languages": [
           "Dutch",
           "Papiamento"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -186,7 +197,8 @@
         "internet": "ok",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Niveau de vie élevé, climat agréable, immigration sélective.",
       "summary_en": "High living standards, pleasant climate, selective immigration.",
@@ -202,7 +214,8 @@
         "languages": [
           "German",
           "Austrian Sign Language"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -218,7 +231,8 @@
         "languages": [
           "Azerbaijani",
           "Azerbaijani Sign Language"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -233,7 +247,8 @@
         "healthcare": "strong",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -248,7 +263,8 @@
         "healthcare": "strong",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -263,7 +279,8 @@
         "healthcare": "basic",
         "languages": [
           "Bangla"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -279,7 +296,8 @@
         "languages": [
           "English",
           "Bajan Creole"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -295,7 +313,8 @@
         "languages": [
           "Russian",
           "Belarusian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -320,7 +339,8 @@
           "French",
           "Dutch",
           "German"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Francophone (Wallonie/Bruxelles), proche, dans l'UE.",
       "summary_en": "French-speaking (Wallonia/Brussels), close by, in the EU.",
@@ -335,7 +355,8 @@
         "healthcare": "good",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -350,7 +371,8 @@
         "healthcare": "basic",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -362,7 +384,8 @@
       "attributes": {
         "climate": "warm",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -377,7 +400,8 @@
         "healthcare": "basic",
         "languages": [
           "Dzongkha"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -395,7 +419,8 @@
           "Aymara",
           "Quechua",
           "Guarani"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -412,7 +437,8 @@
           "Croatian",
           "Bosnian",
           "Serbian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -427,7 +453,8 @@
         "healthcare": "good",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -442,7 +469,8 @@
         "healthcare": "good",
         "languages": [
           "Portuguese"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -454,7 +482,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -470,7 +499,8 @@
         "languages": [
           "British English",
           "Malay"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -485,7 +515,8 @@
         "healthcare": "strong",
         "languages": [
           "Bulgarian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -502,7 +533,8 @@
           "Dioula",
           "Bissa",
           "Mooré"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -519,7 +551,8 @@
           "French",
           "English",
           "Kirundi"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -535,7 +568,8 @@
         "languages": [
           "Portuguese",
           "Cape Verdean Creole"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -550,7 +584,8 @@
         "healthcare": "basic",
         "languages": [
           "Khmer"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -566,7 +601,8 @@
         "languages": [
           "French",
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -590,7 +626,8 @@
         "languages": [
           "English",
           "French"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Anglophone et francophone (Québec), très stable, hivers froids.",
       "summary_en": "English and French (Quebec), very stable, cold winters.",
@@ -618,7 +655,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -634,7 +672,8 @@
         "languages": [
           "French",
           "Sango"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -650,7 +689,8 @@
         "languages": [
           "French",
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -662,7 +702,8 @@
       "attributes": {
         "climate": "temperate",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -685,7 +726,8 @@
         "internet": "ok",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Paysages spectaculaires, économie stable pour la région.",
       "summary_en": "Spectacular landscapes, stable economy for the region.",
@@ -700,7 +742,8 @@
         "healthcare": "good",
         "languages": [
           "Putonghua"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -715,7 +758,8 @@
         "healthcare": "good",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -732,7 +776,8 @@
           "French",
           "Arabic",
           "Comorian"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -747,7 +792,8 @@
         "healthcare": "basic",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -762,7 +808,8 @@
         "healthcare": "basic",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -785,7 +832,8 @@
         "internet": "ok",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Démocratie stable sans armée, nature exceptionnelle.",
       "summary_en": "Stable democracy with no army, exceptional nature.",
@@ -800,7 +848,8 @@
         "healthcare": "basic",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -815,7 +864,8 @@
         "healthcare": "strong",
         "languages": [
           "Croatian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -830,7 +880,8 @@
         "healthcare": "good",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -847,7 +898,8 @@
           "English",
           "Dutch",
           "Papiamento"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -871,7 +923,8 @@
         "languages": [
           "Greek",
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Dans l'UE, anglais répandu, fiscalité douce, climat chaud.",
       "summary_en": "In the EU, English common, light taxation, warm climate.",
@@ -886,7 +939,8 @@
         "healthcare": "strong",
         "languages": [
           "Czech"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -901,7 +955,8 @@
         "healthcare": "strong",
         "languages": [
           "Danish"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -917,7 +972,8 @@
         "languages": [
           "French",
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -932,7 +988,8 @@
         "healthcare": "good",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -947,7 +1004,8 @@
         "healthcare": "good",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -964,7 +1022,8 @@
           "Spanish",
           "Shuar",
           "Northern Quichua"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -979,7 +1038,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -994,7 +1054,8 @@
         "healthcare": "good",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1011,7 +1072,8 @@
           "French",
           "Spanish",
           "Portuguese"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1028,7 +1090,8 @@
           "English",
           "Arabic",
           "Tigrinya"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1043,7 +1106,8 @@
         "healthcare": "strong",
         "languages": [
           "Estonian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1059,7 +1123,8 @@
         "languages": [
           "English",
           "Swazi"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1072,7 +1137,8 @@
         "climate": "tropical",
         "languages": [
           "Amharic"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1084,7 +1150,8 @@
       "attributes": {
         "climate": "cold",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1101,7 +1168,8 @@
           "English",
           "Fijian",
           "Fiji Hindi"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1117,7 +1185,8 @@
         "languages": [
           "Finnish",
           "Swedish"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1140,7 +1209,8 @@
         "internet": "fast",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Point de référence : votre situation actuelle pour comparer les destinations.",
       "summary_en": "Reference point: your current situation, to compare destinations against.",
@@ -1152,7 +1222,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1167,7 +1238,8 @@
         "healthcare": "good",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1182,7 +1254,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1198,7 +1271,8 @@
         "languages": [
           "Abkhaz",
           "Georgian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1222,7 +1296,8 @@
         "languages": [
           "German",
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Économie solide, services publics fiables, hivers gris.",
       "summary_en": "Strong economy, reliable public services, grey winters.",
@@ -1237,7 +1312,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1249,7 +1325,8 @@
       "attributes": {
         "climate": "temperate",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1273,7 +1350,8 @@
         "languages": [
           "Greek",
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Coût de la vie bas, climat méditerranéen, îles superbes.",
       "summary_en": "Low cost of living, Mediterranean climate, beautiful islands.",
@@ -1303,7 +1381,8 @@
         "healthcare": "strong",
         "languages": [
           "Greenlandic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1319,7 +1398,8 @@
         "languages": [
           "English",
           "Grenadian Creole English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1331,7 +1411,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1346,7 +1427,8 @@
         "healthcare": "good",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1362,7 +1444,8 @@
         "languages": [
           "French",
           "languages of Guinea"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1377,7 +1460,8 @@
         "healthcare": "basic",
         "languages": [
           "Portuguese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1392,7 +1476,8 @@
         "healthcare": "strong",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1408,7 +1493,8 @@
         "languages": [
           "French",
           "Haitian Creole"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1423,7 +1509,8 @@
         "healthcare": "basic",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1435,7 +1522,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1450,7 +1538,8 @@
         "healthcare": "strong",
         "languages": [
           "Hungarian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1465,7 +1554,8 @@
         "healthcare": "strong",
         "languages": [
           "Icelandic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1481,7 +1571,8 @@
         "languages": [
           "Hindi",
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1496,7 +1587,8 @@
         "healthcare": "good",
         "languages": [
           "Indonesian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1511,7 +1603,8 @@
         "healthcare": "good",
         "languages": [
           "Persian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1527,7 +1620,8 @@
         "languages": [
           "Arabic",
           "Kurdish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1550,7 +1644,8 @@
         "internet": "fast",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Anglophone, dans l'UE, économie dynamique, souvent pluvieux.",
       "summary_en": "English-speaking, in the EU, dynamic economy, often rainy.",
@@ -1562,7 +1657,8 @@
       "attributes": {
         "climate": "temperate",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1577,7 +1673,8 @@
         "healthcare": "strong",
         "languages": [
           "Hebrew"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1600,7 +1697,8 @@
         "internet": "ok",
         "languages": [
           "Italian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Culture, gastronomie, climat varié, mais bureaucratie lourde.",
       "summary_en": "Culture, food, varied climate, but heavy bureaucracy.",
@@ -1631,7 +1729,8 @@
         "languages": [
           "English",
           "Jamaican Patois"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1654,7 +1753,8 @@
         "internet": "fast",
         "languages": [
           "Japanese"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Extrêmement sûr, langue difficile, culture unique.",
       "summary_en": "Extremely safe, difficult language, unique culture.",
@@ -1669,7 +1769,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1685,7 +1786,8 @@
         "languages": [
           "Russian",
           "Kazakh"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1701,7 +1803,8 @@
         "languages": [
           "English",
           "Swahili"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1717,7 +1820,8 @@
         "languages": [
           "English",
           "Gilbertese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1733,7 +1837,8 @@
         "languages": [
           "Korean",
           "North Korean standard language"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1749,7 +1854,8 @@
         "languages": [
           "Korean",
           "Korean Sign Language"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1765,7 +1871,8 @@
         "languages": [
           "Albanian",
           "Serbian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1780,7 +1887,8 @@
         "healthcare": "strong",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1795,7 +1903,8 @@
         "healthcare": "basic",
         "languages": [
           "Kyrgyz"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1810,7 +1919,8 @@
         "healthcare": "basic",
         "languages": [
           "Lao"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1825,7 +1935,8 @@
         "healthcare": "strong",
         "languages": [
           "Latvian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1840,7 +1951,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1856,7 +1968,8 @@
         "languages": [
           "English",
           "Sesotho"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1871,7 +1984,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1886,7 +2000,8 @@
         "healthcare": "good",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1901,7 +2016,8 @@
         "healthcare": "strong",
         "languages": [
           "German"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1916,7 +2032,8 @@
         "healthcare": "strong",
         "languages": [
           "Lithuanian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1933,7 +2050,8 @@
           "French",
           "German",
           "Luxembourgish"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1945,7 +2063,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1961,7 +2080,8 @@
         "languages": [
           "French",
           "Malagasy"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -1978,7 +2098,8 @@
           "English",
           "Chewa",
           "Tumbuka"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2002,7 +2123,8 @@
         "languages": [
           "Malay",
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Anglais répandu, coût bas, programme de résidence MM2H.",
       "summary_en": "English common, low cost, MM2H residency program.",
@@ -2017,7 +2139,8 @@
         "healthcare": "good",
         "languages": [
           "Maldivian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2035,7 +2158,8 @@
           "Bambara",
           "Minyanka",
           "Bozo"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2051,7 +2175,8 @@
         "languages": [
           "English",
           "Maltese"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2067,7 +2192,8 @@
         "languages": [
           "English",
           "Marshallese"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2082,7 +2208,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2106,7 +2233,8 @@
         "languages": [
           "French",
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Francophone, île sûre et stable, fiscalité attractive.",
       "summary_en": "French-speaking, safe and stable island, attractive taxation.",
@@ -2129,7 +2257,8 @@
         "internet": "ok",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Coût de la vie très bas, grande communauté d'expatriés.",
       "summary_en": "Very low cost of living, large expat community.",
@@ -2160,7 +2289,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2175,7 +2305,8 @@
         "healthcare": "good",
         "languages": [
           "Romanian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2190,7 +2321,8 @@
         "healthcare": "strong",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2205,7 +2337,8 @@
         "healthcare": "good",
         "languages": [
           "Mongolian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2220,7 +2353,8 @@
         "healthcare": "good",
         "languages": [
           "Montenegrin"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2244,7 +2378,8 @@
         "languages": [
           "Arabic",
           "French"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": "Francophone, proche, coût de la vie bas, climat ensoleillé.",
       "summary_en": "French-speaking, close, low cost of living, sunny climate.",
@@ -2259,7 +2394,8 @@
         "healthcare": "basic",
         "languages": [
           "Portuguese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2274,7 +2410,8 @@
         "healthcare": "basic",
         "languages": [
           "Burmese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2289,7 +2426,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2305,7 +2443,8 @@
         "languages": [
           "English",
           "Nauruan"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2320,7 +2459,8 @@
         "healthcare": "basic",
         "languages": [
           "Nepali"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2344,7 +2484,8 @@
         "languages": [
           "Dutch",
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Très anglophone au quotidien, sûr, excellent vélo et services.",
       "summary_en": "English widely spoken, safe, excellent cycling and services.",
@@ -2356,7 +2497,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2379,7 +2521,8 @@
         "internet": "ok",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Très sûr et stable, nature spectaculaire, mais éloigné.",
       "summary_en": "Very safe and stable, spectacular nature, but remote.",
@@ -2394,7 +2537,8 @@
         "healthcare": "basic",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2409,7 +2553,8 @@
         "healthcare": "basic",
         "languages": [
           "Hausa"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2424,7 +2569,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2440,7 +2586,8 @@
         "languages": [
           "Albanian",
           "Macedonian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2452,7 +2599,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2470,7 +2618,8 @@
           "Sámi",
           "Nynorsk",
           "Bokmål"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2485,7 +2634,8 @@
         "healthcare": "strong",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2501,7 +2651,8 @@
         "languages": [
           "English",
           "Urdu"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2518,7 +2669,8 @@
           "English",
           "Japanese",
           "Palauan"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2541,7 +2693,8 @@
         "internet": "ok",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Dollar US, fiscalité douce, programmes de résidence accessibles.",
       "summary_en": "US dollar, light taxation, accessible residency programs.",
@@ -2559,7 +2712,8 @@
           "Hiri Motu",
           "Tok Pisin",
           "Papua New Guinean Sign Language"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2575,7 +2729,8 @@
         "languages": [
           "Spanish",
           "Guarani"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2592,7 +2747,8 @@
           "Spanish",
           "Aymara",
           "Quechua"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2609,7 +2765,8 @@
           "English",
           "Filipino",
           "Taglish"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2624,7 +2781,8 @@
         "healthcare": "strong",
         "languages": [
           "Polish"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2648,7 +2806,8 @@
         "languages": [
           "Portuguese",
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Climat doux, coût de la vie modéré, sûr et accueillant pour les expatriés.",
       "summary_en": "Mild climate, moderate cost of living, safe and welcoming to newcomers.",
@@ -2682,7 +2841,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2697,7 +2857,8 @@
         "healthcare": "strong",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2712,7 +2873,8 @@
         "healthcare": "strong",
         "languages": [
           "Romanian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2727,7 +2889,8 @@
         "healthcare": "strong",
         "languages": [
           "Russian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2745,7 +2908,8 @@
           "English",
           "Swahili",
           "Kinyarwanda"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2761,7 +2925,8 @@
         "languages": [
           "English",
           "Samoan"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2776,7 +2941,8 @@
         "healthcare": "strong",
         "languages": [
           "Italian"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2791,7 +2957,8 @@
         "healthcare": "basic",
         "languages": [
           "Portuguese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2806,7 +2973,8 @@
         "healthcare": "strong",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2824,7 +2992,8 @@
           "Badyara",
           "Wolof",
           "Balanta"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2839,7 +3008,8 @@
         "healthcare": "good",
         "languages": [
           "Serbian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2856,7 +3026,8 @@
           "French",
           "English",
           "Seychellois Creole"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2872,7 +3043,8 @@
         "languages": [
           "English",
           "Krio"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2890,7 +3062,8 @@
           "Malay",
           "Tamil",
           "Mandarin"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2906,7 +3079,8 @@
         "languages": [
           "English",
           "Dutch"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2921,7 +3095,8 @@
         "healthcare": "strong",
         "languages": [
           "Slovak"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2936,7 +3111,8 @@
         "healthcare": "strong",
         "languages": [
           "Slovene"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2951,7 +3127,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2967,7 +3144,8 @@
         "languages": [
           "Somali",
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -2985,7 +3163,8 @@
           "Xhosa",
           "Zulu",
           "Venda"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3000,7 +3179,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3023,7 +3203,8 @@
         "internet": "fast",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Climat chaud, forte culture, vaste communauté internationale.",
       "summary_en": "Warm climate, rich culture, large international community.",
@@ -3061,7 +3242,8 @@
         "languages": [
           "Tamil",
           "Sinhala"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3076,7 +3258,8 @@
         "healthcare": "strong",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3091,7 +3274,8 @@
         "healthcare": "good",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3103,7 +3287,8 @@
       "attributes": {
         "climate": "temperate",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3118,7 +3303,8 @@
         "healthcare": "good",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3134,7 +3320,8 @@
         "languages": [
           "English",
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3149,7 +3336,8 @@
         "healthcare": "good",
         "languages": [
           "Dutch"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3164,7 +3352,8 @@
         "healthcare": "strong",
         "languages": [
           "Swedish"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3190,7 +3379,8 @@
           "German",
           "Italian",
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Régions francophones, très sûr et stable, coût très élevé.",
       "summary_en": "French-speaking regions, very safe and stable, very expensive.",
@@ -3220,7 +3410,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3235,7 +3426,8 @@
         "healthcare": "basic",
         "languages": [
           "Tajik"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3251,7 +3443,8 @@
         "languages": [
           "English",
           "Swahili"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3274,7 +3467,8 @@
         "internet": "ok",
         "languages": [
           "Thai"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Coût de la vie très bas, climat tropical, visas variables.",
       "summary_en": "Very low cost of living, tropical climate, variable visas.",
@@ -3290,7 +3484,8 @@
         "languages": [
           "Portuguese",
           "Tetum"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3305,7 +3500,8 @@
         "healthcare": "basic",
         "languages": [
           "French"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3321,7 +3517,8 @@
         "languages": [
           "English",
           "Tongan"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3336,7 +3533,8 @@
         "healthcare": "strong",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3351,7 +3549,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3366,7 +3565,8 @@
         "healthcare": "good",
         "languages": [
           "Turkish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3381,7 +3581,8 @@
         "healthcare": "good",
         "languages": [
           "Turkmen"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3393,7 +3594,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3409,7 +3611,8 @@
         "languages": [
           "English",
           "Tuvaluan"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3425,7 +3628,8 @@
         "languages": [
           "English",
           "Swahili"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3440,7 +3644,8 @@
         "healthcare": "good",
         "languages": [
           "Ukrainian"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3464,7 +3669,8 @@
         "languages": [
           "Arabic",
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Aucune imposition sur le revenu, très sûr, été très chaud.",
       "summary_en": "No income tax, very safe, extremely hot summers.",
@@ -3487,7 +3693,8 @@
         "internet": "fast",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "strong"
       },
       "summary_fr": "Anglophone, hors UE depuis le Brexit, visas plus stricts.",
       "summary_en": "English-speaking, outside the EU since Brexit, stricter visas.",
@@ -3510,7 +3717,8 @@
         "internet": "fast",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Opportunités vastes, mais santé coûteuse et visas difficiles.",
       "summary_en": "Vast opportunity, but costly healthcare and hard visas.",
@@ -3533,7 +3741,8 @@
         "internet": "ok",
         "languages": [
           "Spanish"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": "Démocratie très stable d'Amérique du Sud, espagnol requis.",
       "summary_en": "Notably stable South American democracy; Spanish required.",
@@ -3556,7 +3765,8 @@
         "healthcare": "basic",
         "languages": [
           "Uzbek"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3573,7 +3783,8 @@
           "French",
           "English",
           "Bislama"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3587,7 +3798,8 @@
         "languages": [
           "Spanish",
           "Venezuelan Sign Language"
-        ]
+        ],
+        "education": "good"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3602,7 +3814,8 @@
         "healthcare": "basic",
         "languages": [
           "Vietnamese"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3614,7 +3827,8 @@
       "attributes": {
         "climate": "tropical",
         "cost_of_living": "high",
-        "healthcare": "strong"
+        "healthcare": "strong",
+        "education": "strong"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3629,7 +3843,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3644,7 +3859,8 @@
         "healthcare": "basic",
         "languages": [
           "Arabic"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3659,7 +3875,8 @@
         "healthcare": "basic",
         "languages": [
           "English"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,
@@ -3677,7 +3894,8 @@
           "Tswana",
           "Sesotho",
           "Tsonga"
-        ]
+        ],
+        "education": "basic"
       },
       "summary_fr": null,
       "summary_en": null,

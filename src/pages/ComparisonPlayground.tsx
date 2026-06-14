@@ -13,9 +13,9 @@ import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
 
-const DEFAULT_ROWS = ['cost_of_living', 'climate', 'language_ease', 'healthcare', 'political_stability']
+const DEFAULT_ROWS = ['cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'political_stability']
 const ALL_CRITERIA = [
-  'cost_of_living', 'climate', 'language_ease', 'healthcare', 'safety',
+  'cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'safety',
   'political_stability', 'tax', 'visa', 'expat_community', 'nature', 'internet',
 ] as const
 
@@ -46,6 +46,7 @@ export function ComparisonPlayground() {
 
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
+  const [why, setWhy] = useState<{ placeId: number; name: string; key: string; text: string } | null>(null)
 
   // Re-read candidates from the server (the source of truth) and keep only the ones
   // the user selected for the comparison board.
@@ -76,11 +77,46 @@ export function ComparisonPlayground() {
 
   // Colour a cell by how good the criterion is for this user: green good, amber weak,
   // red no-go. Light tints that complement the turquoise palette.
+  // Build the localized justification sentence from the backend reason code + tokens.
+  function reasonText(key: string, r: any): string {
+    if (!r?.code) return ''
+    const tpl = (t.reasons as Record<string, string>)[r.code] ?? ''
+    const v = r.v != null ? attrValue(t, r.v) : ''
+    const langName = (l: string) => (t.langNames as Record<string, string>)[l] ?? l
+    return tpl
+      .replace('{v}', v)
+      .replace('{lang}', r.lang ? langName(r.lang) : '')
+      .replace('{langs}', Array.isArray(r.langs) ? r.langs.map(langName).join(', ') : '')
+      .replace('{label}', (t.criteria as Record<string, string>)[key] ?? key)
+  }
+
+  function openWhy(c: any, key: string) {
+    setWhy({
+      placeId: c.place_id,
+      name: placeName(places[c.place_id], lang),
+      key,
+      text: reasonText(key, c.reasons?.[key]),
+    })
+  }
+
   function qualityClass(tier?: string) {
     if (tier === 'good') return 'bg-emerald-50 text-emerald-800'
     if (tier === 'ok') return 'bg-amber-50 text-amber-900'
     if (tier === 'bad') return 'bg-red-50 text-red-800'
     return ''
+  }
+
+  // Visa is shown relative to the user (citizenship), so the label matches the colour —
+  // "Difficile" for a US passport into the EU, not the country's generic "Facile".
+  function visaCell(tier: string | undefined, attrs: any) {
+    const byTier: Record<string, string> = { good: 'easy', ok: 'medium', bad: 'hard' }
+    return attrValue(t, byTier[tier ?? ''] ?? attrs?.visa)
+  }
+
+  function cellValue(key: string, attrs: any, tier?: string) {
+    if (key === 'language_ease') return languageCell(t, attrs)
+    if (key === 'visa') return visaCell(tier, attrs)
+    return attrValue(t, attrs?.[key])
   }
 
   async function send(message: string) {
@@ -238,19 +274,22 @@ export function ComparisonPlayground() {
               <tr key={key} className="border-t border-turquoise-100">
                 <td className="p-3 text-turquoise-800/70">{t.criteria[key as CritKey] ?? key}</td>
                 {baseline && (
-                  <td className="p-3 text-center bg-turquoise-50">
-                    {key === 'language_ease'
-                      ? languageCell(t, baseline.attributes)
-                      : attrValue(t, baseline.attributes?.[key])}
+                  <td className="p-0 text-center bg-turquoise-50">
+                    <Link to={`/drilldown/${baseline.id}#criterion-${key}`} className="block p-3 hover:underline">
+                      {key === 'language_ease'
+                        ? languageCell(t, baseline.attributes)
+                        : attrValue(t, baseline.attributes?.[key])}
+                    </Link>
                   </td>
                 )}
                 {candidates.map((c) => (
                   // Value and colour both read from the live place attributes (the same
-                  // source the backend scores from) so they never disagree.
-                  <td key={c.id} className={`p-3 text-center ${qualityClass(c.quality?.[key])}`}>
-                    {key === 'language_ease'
-                      ? languageCell(t, places[c.place_id]?.attributes)
-                      : attrValue(t, places[c.place_id]?.attributes?.[key])}
+                  // source the backend scores from). Tapping shows a justification popover
+                  // (mobile-friendly), which links on to the full drill-down section.
+                  <td key={c.id} className={`p-0 text-center ${qualityClass(c.quality?.[key])}`}>
+                    <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
+                      {cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}
+                    </button>
                   </td>
                 ))}
               </tr>
@@ -362,6 +401,28 @@ export function ComparisonPlayground() {
           <button onClick={() => send(chat)} disabled={chatBusy} className="text-turquoise-600 disabled:opacity-40">→</button>
         </div>
       </div>
+
+      {/* Criterion justification popover (tap a cell) */}
+      {why && (
+        <div onClick={() => setWhy(null)}
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-4 z-50">
+          <div onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-xl max-w-sm w-full p-5">
+            <div className="flex items-start gap-3 mb-1">
+              <p className="font-medium text-turquoise-900">
+                {why.name} — {(t.criteria as Record<string, string>)[why.key] ?? why.key}
+              </p>
+              <button onClick={() => setWhy(null)} className="ml-auto text-turquoise-800/50 hover:text-turquoise-900"
+                aria-label={t.comparison.close}>×</button>
+            </div>
+            <p className="text-sm text-turquoise-800/80 mb-4">{why.text || '—'}</p>
+            <Link to={`/drilldown/${why.placeId}#criterion-${why.key}`}
+              className="text-sm text-turquoise-600 hover:underline">
+              {t.reasons.details} →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Score explanation modal */}
       {explain && (

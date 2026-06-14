@@ -36,6 +36,7 @@ interface Answers {
   current_country: string
   citizenships: string[]
   household_type: string | null
+  intends_children: boolean | null
   reasons_leaving: string[]
   budget_monthly: number | null
   tenure: 'rent' | 'buy' | null
@@ -49,6 +50,7 @@ const EMPTY: Answers = {
   current_country: '',
   citizenships: [],
   household_type: null,
+  intends_children: null,
   reasons_leaving: [],
   budget_monthly: null,
   tenure: null,
@@ -103,6 +105,7 @@ export function Onboarding() {
       await refreshAuth()
       await api.updateProfile({
         household_type: a.household_type,
+        intends_children: a.intends_children,
         reasons_leaving: a.reasons_leaving,
         budget_monthly: a.budget_monthly,
         tenure: a.tenure,
@@ -173,6 +176,21 @@ export function Onboarding() {
                   </Chip>
                 ))}
               </div>
+              {a.household_type === 'couple' && (
+                <div className="mt-5">
+                  <p className="text-sm font-medium text-turquoise-900 mb-2">{t.onboarding.household.intendsQ}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Chip active={a.intends_children === true}
+                      onClick={() => setA({ ...a, intends_children: true })}>
+                      {t.onboarding.household.intendsYes}
+                    </Chip>
+                    <Chip active={a.intends_children === false}
+                      onClick={() => setA({ ...a, intends_children: false })}>
+                      {t.onboarding.household.intendsNo}
+                    </Chip>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

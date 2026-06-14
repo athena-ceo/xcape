@@ -8,6 +8,61 @@ affected. Ship items independently.
 
 ## Open
 
+### Tool-calling in the AI chatbot
+
+**Done looks like:** the chat assistant can take actions in the app via OpenAI
+tool/function calling — e.g. refine the search, change criteria weights/filters, add or
+remove a candidate country, select/unselect for comparison, drill down, and answer "why"
+about a score. The model decides when to call a tool; the backend executes it (reusing
+the existing services) and the UI reflects the change.
+
+**Approach:** define tools mapping to existing endpoints/services (update_profile/filters,
+add_candidate, set_selected, build/rescore, discriminate, get explanation). Thread tool
+definitions into `ai_client.converse(_stream)`; handle tool-call events, execute
+server-side, feed results back, and surface UI updates (re-read candidates).
+
+**Files:** `services/ai_client.py`, `services/chat.py`, `api/v1/chat.py`, frontend chat +
+state refresh.
+
+### International schools in the education research
+
+**Done looks like:** when education matters (family / couple-with-kids), the research
+surfaces international / bilingual schools appropriate for the family's **languages and
+nationality** (e.g. French schools abroad — AEFE network, IB schools, American schools),
+with locations. This is **user-specific** (depends on their languages/citizenship), so it
+can't live in the shared per-place cache as-is — likely a per-user/per-search detail or a
+chat-driven lookup. School availability also feeds the region/city stage and the detailed
+cost of living (tuition).
+
+**Why:** for families, access to the right school often decides the city, not just the
+country.
+
+**Files:** `services/place_research.py` (education detail), a per-user detail path,
+region stage, cost breakdown.
+
+### Detailed, editable cost-of-living breakdown (own section)
+
+**Now:** cost of living is one symbolic level scored against a budget band (coarse). The
+seed value for auto-generated countries is derived from World Bank income tier, which is
+often wrong (e.g. Slovenia is "high income" but ~30% cheaper than France, yet shows
+"high"). AI research should reconcile/replace these coarse buckets per country.
+
+**Done looks like:** a dedicated cost section that itemises components (housing, food,
+transport, healthcare, schooling/tuition, taxes…) with real estimates, shown and
+**editable by the user** (adjust assumptions, household size), feeding the affordability
+score. Ties into the "precise cost-of-living data" item below and tuition from schools.
+
+**Files:** new cost model/section on `Place` + per-search overrides, `shortlist._cost_value`,
+drill-down UI, `docs/xcape-design-and-criteria.md`.
+
+### Social / professional ties criterion (friends, family, employer offices)
+
+**Idea:** a criterion for whether a destination has the user's friends/family, or offices
+of their current employer (esp. international companies) — a strong real-world pull.
+**Needs design** to avoid complexity: how to capture ties (manual list? employer name →
+office locations via search?), privacy, and how it weights/filters. Keep as a thinking
+item for now; do not build until scoped.
+
 ### Region / city-level secondary search within a country
 
 **Now:** the search and scoring operate at the country level. `Place` already supports

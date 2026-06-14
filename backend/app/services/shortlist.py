@@ -32,6 +32,7 @@ MAX_COMPARE = 5  # how many candidates can sit in the comparison board at once
 _SCALES: dict[str, dict[str, float]] = {
     "cost_of_living": {"low": 1.0, "medium": 0.55, "high": 0.2},
     "healthcare": {"strong": 1.0, "good": 0.7, "basic": 0.3},
+    "education": {"strong": 1.0, "good": 0.7, "basic": 0.3},
     "safety": {"high": 1.0, "medium": 0.55, "low": 0.15},
     "political_stability": {"high": 1.0, "medium": 0.55, "low": 0.15},
     "tax": {"low": 1.0, "medium": 0.6, "high": 0.3},
@@ -44,7 +45,7 @@ _SCALES: dict[str, dict[str, float]] = {
 
 # All criteria the UI can show / weight / filter on.
 CRITERIA_KEYS = [
-    "cost_of_living", "climate", "language_ease", "healthcare", "safety",
+    "cost_of_living", "climate", "language_ease", "healthcare", "education", "safety",
     "political_stability", "tax", "visa", "expat_community", "nature", "internet",
 ]
 
@@ -96,6 +97,12 @@ def _effective_weights(profile: Profile | None) -> dict[str, float]:
     if profile.household_type == "family":
         weights["healthcare"] = weights.get("healthcare", 0) + 0.5
         weights["safety"] = weights.get("safety", 0) + 0.5
+    # Education only matters for families, or couples planning children. It is not in the
+    # baseline weights, so singles / childless couples don't score on it at all.
+    if profile.household_type == "family" or (
+        profile.household_type == "couple" and getattr(profile, "intends_children", False)
+    ):
+        weights["education"] = weights.get("education", 0) + 1.5
     if profile.criteria_weights:
         for key, value in profile.criteria_weights.items():
             weights[key] = float(value)
@@ -111,8 +118,21 @@ _EU_FOM = {
 }
 
 
+def _single_citizenship_visa(citizenship: str, dest: str, base: float) -> float:
+    """Ease of settling for ONE citizenship."""
+    if dest and citizenship == dest:
+        return 1.0  # citizen of the destination
+    if dest in _EU_FOM:
+        return 1.0 if citizenship in _EU_FOM else 0.3  # EU free movement, else hard
+    return base
+
+
 def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> float:
-    """Ease of moving there given the household's citizenships (not residence)."""
+    """Ease of moving the whole household there, given its citizenships (not residence).
+
+    Uses the MOST RESTRICTIVE citizenship — everyone must be able to settle, so a French
+    + American household is judged by the American passport, not the French one.
+    """
     citz = (
         {str(c).upper() for c in (profile.user.citizenships or [])}
         if (profile and profile.user and profile.user.citizenships)
@@ -122,13 +142,7 @@ def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> fl
     if not citz:
         return base  # citizenship unknown — fall back to general accessibility
     dest = (place.iso_code or "").upper() if place else ""
-    if dest and dest in citz:
-        return 1.0  # already a citizen of the destination
-    if dest in _EU_FOM:
-        # Free movement only if someone in the household is an EU/EEA/CH citizen;
-        # otherwise (e.g. a US citizen residing in France) it is genuinely hard.
-        return 1.0 if (citz & _EU_FOM) else 0.3
-    return base
+    return min(_single_citizenship_visa(c, dest, base) for c in citz)
 
 
 # Coarse monthly cost of living for one person (EUR), by symbolic level — a proxy used
@@ -171,9 +185,10 @@ def _criterion_value(key: str, attrs: dict, profile: Profile | None, place: Plac
         # You already speak a language used there — best possible fit.
         if known and country_langs and (known & country_langs):
             return 1.0
-        # Otherwise fall back to how learnable the language is (static proxy), softened
-        # if the user is willing to learn.
-        base = _SCALES["language_ease"].get(str(attrs.get(key, "")).lower(), 0.5)
+        # You don't speak any local language. Fall back to how learnable it is, softened
+        # if willing to learn. Default to "hard" (0.3) when the difficulty is unknown —
+        # an unknown language you don't speak shouldn't be treated as middling.
+        base = _SCALES["language_ease"].get(str(attrs.get(key, "")).lower(), 0.3)
         if willing:
             return min(1.0, base + 0.2)
         return round(base * 0.7, 3)

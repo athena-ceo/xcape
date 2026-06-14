@@ -10,11 +10,27 @@ search + structured output (see services.ai_client).
 
 from __future__ import annotations
 
+from urllib.parse import urlparse, urlunparse
+
 from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset
 from app.models.place import Place
 from app.services import ai_client
+
+
+def normalize_url(url: str) -> str:
+    """Canonical form for de-duplication: scheme+host lowercased, no utm_* params, no
+    trailing slash. Only the URL identifies a resource — the title doesn't matter."""
+    try:
+        p = urlparse(str(url).strip())
+        query = "&".join(
+            q for q in p.query.split("&") if q and not q.lower().startswith("utm_")
+        )
+        path = p.path.rstrip("/")
+        return urlunparse((p.scheme.lower(), p.netloc.lower(), path, "", query, ""))
+    except Exception:
+        return str(url).strip().rstrip("/")
 
 # The attribute vocabulary the seed data uses — keep AI output on the same scale.
 _ENUMS: dict[str, list[str]] = {
@@ -22,6 +38,7 @@ _ENUMS: dict[str, list[str]] = {
     "climate": ["cold", "temperate", "mild", "warm", "tropical"],
     "language_ease": ["french", "english", "easy", "medium", "hard"],
     "healthcare": ["strong", "good", "basic"],
+    "education": ["strong", "good", "basic"],
     "safety": ["high", "medium", "low"],
     "political_stability": ["high", "medium", "low"],
     "tax": ["low", "medium", "high"],
@@ -126,7 +143,7 @@ def fill_criterion(db: Session, place: Place, key: str, *, user_id: int | None =
 
 
 _DETAIL_CRITERIA = [
-    "cost_of_living", "climate", "language_ease", "healthcare",
+    "cost_of_living", "climate", "language_ease", "healthcare", "education",
     "safety", "political_stability", "tax", "visa",
 ]
 
@@ -141,10 +158,11 @@ def _detail_schema() -> dict:
                     "type": "object",
                     "properties": {
                         "key": {"type": "string", "enum": _DETAIL_CRITERIA},
-                        "summary": {"type": "string"},
+                        "summary_fr": {"type": "string"},
+                        "summary_en": {"type": "string"},
                         "sources": {"type": "array", "items": {"type": "string"}},
                     },
-                    "required": ["key", "summary", "sources"],
+                    "required": ["key", "summary_fr", "summary_en", "sources"],
                     "additionalProperties": False,
                 },
             }
@@ -157,31 +175,35 @@ def _detail_schema() -> dict:
 def fetch_criteria_detail(
     db: Session, place: Place, *, lang: str = "fr", user_id: int | None = None
 ) -> dict:
-    """Per-criterion detailed summary with source URLs, cached per language."""
+    """Per-criterion detail with sources, generated in BOTH languages in one call and
+    cached, so switching language is instant (no re-fetch / dynamic translation).
+    Returns the requested language projected to a {key, summary, sources} list.
+    """
     cache = place.criteria_detail or {}
-    if lang in cache:
-        return cache[lang]
+    if "criteria" not in cache:  # not yet cached in the bilingual format
+        cache = ai_client.respond_json(
+            f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
+            f"explanation for each of these criteria: {', '.join(_DETAIL_CRITERIA)}. Provide "
+            f"BOTH a French version (summary_fr) and an English version (summary_en). Use web "
+            f"search for current facts. Put sources ONLY in the sources array, each a plain bare "
+            f"URL (https://… , no Markdown, no link text, no tracking params like utm_source). "
+            f"Do NOT put any URL or 'Sources:' note inside the summaries.",
+            _detail_schema(),
+            schema_name="criteria_detail",
+            web_search=True,
+            system=_SYSTEM,
+            kind="research",
+            db=db,
+            user_id=user_id,
+        )
+        place.criteria_detail = cache
+        db.commit()
 
-    language = "French" if lang == "fr" else "English"
-    data = ai_client.respond_json(
-        f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
-        f"explanation IN {language} for each of these criteria: {', '.join(_DETAIL_CRITERIA)}. "
-        f"Use web search for current facts. Put sources ONLY in the sources array, each as "
-        f"a plain bare URL (https://… with no Markdown, no link text, and no tracking "
-        f"query parameters such as utm_source). Do NOT include any URLs or a 'Sources:' "
-        f"note inside the summary text.",
-        _detail_schema(),
-        schema_name="criteria_detail",
-        web_search=True,
-        system=_SYSTEM,
-        kind="research",
-        db=db,
-        user_id=user_id,
-    )
-    cache = {**cache, lang: data}
-    place.criteria_detail = cache
-    db.commit()
-    return data
+    out = []
+    for item in cache.get("criteria", []):
+        summary = item.get(f"summary_{lang}") or item.get("summary_en") or item.get("summary_fr", "")
+        out.append({"key": item["key"], "summary": summary, "sources": item.get("sources", [])})
+    return {"criteria": out}
 
 
 def fetch_media(db: Session, place: Place, *, user_id: int | None = None) -> list[MediaAsset]:
@@ -218,12 +240,23 @@ def fetch_media(db: Session, place: Place, *, user_id: int | None = None) -> lis
         db=db,
         user_id=user_id,
     )
+    seen = {
+        normalize_url(m.url)
+        for m in db.query(MediaAsset).filter(MediaAsset.place_id == place.id)
+    }
     assets: list[MediaAsset] = []
     for item in data.get("items", []):
+        url = item.get("url")
+        if not url:
+            continue
+        nu = normalize_url(url)
+        if nu in seen:  # same resource (ignore differing titles)
+            continue
+        seen.add(nu)
         asset = MediaAsset(
             place_id=place.id,
             type=item.get("type", "link"),
-            url=item["url"],
+            url=url,
             caption=item.get("caption"),
             source=item.get("source"),
         )

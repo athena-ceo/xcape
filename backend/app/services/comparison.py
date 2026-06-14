@@ -14,6 +14,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.models.place import Place
+from app.models.profile import Profile
 from app.models.user import User
 from app.services.shortlist import _SCALES  # ordinal scales: higher = better for the user
 
@@ -43,6 +44,55 @@ def compute_deltas(cand_attrs: dict | None, base_attrs: dict | None) -> dict[str
         if delta:
             out[key] = delta
     return out
+
+
+def criterion_reason(place: Place, profile: Profile | None, key: str) -> dict:
+    """A structured, user-relative justification for a criterion cell. Returns a code +
+    tokens; the frontend renders the localized sentence (keeps wording in i18n)."""
+    from app.services import shortlist  # avoid circular import at module load
+
+    attrs = place.attributes or {}
+    val = attrs.get(key)
+
+    if key == "language_ease":
+        skills = (profile.language_skills or {}) if profile else {}
+        known = {str(x).lower() for x in (skills.get("known") or [])}
+        langs = [str(x) for x in (attrs.get("languages") or [])]
+        matched = [l for l in langs if l.lower() in known]
+        if matched:
+            return {"code": "lang_known", "lang": matched[0]}
+        if skills.get("willing_to_learn"):
+            return {"code": "lang_willing", "langs": langs}
+        return {"code": "lang_none", "langs": langs}
+
+    if key == "visa":
+        citz = {str(c).upper() for c in (profile.user.citizenships or [])} if (
+            profile and profile.user and profile.user.citizenships) else set()
+        dest = (place.iso_code or "").upper()
+        if not citz:
+            return {"code": "visa_level", "v": val}
+        if dest and dest in citz:
+            return {"code": "visa_citizen"}
+        if dest in shortlist._EU_FOM:
+            return {"code": "visa_free"} if all(c in shortlist._EU_FOM for c in citz) \
+                else {"code": "visa_restricted"}
+        return {"code": "visa_level", "v": val}
+
+    if key == "cost_of_living":
+        budget = getattr(profile, "budget_monthly", None) if profile else None
+        band = shortlist._COST_BAND.get(str(val).lower())
+        if budget and band:
+            factor = shortlist._HOUSEHOLD_FACTOR.get(getattr(profile, "household_type", None), 1.3)
+            ratio = budget / (band * factor)
+            code = "cost_within" if ratio >= 1.0 else "cost_tight" if ratio >= 0.8 else "cost_over"
+            return {"code": code, "v": val}
+        return {"code": "cost_level", "v": val}
+
+    if key == "climate":
+        pref = profile.climate_pref if profile else None
+        return {"code": "climate_match" if (pref and val == pref) else "climate_diff", "v": val}
+
+    return {"code": "level", "v": val}
 
 
 def get_current_country_place(
