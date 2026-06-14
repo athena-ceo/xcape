@@ -50,6 +50,8 @@ case "$CMD" in
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
   evaluate-all)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_all "$@" ;;
+  export-evals)
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.export_evals ;;
   make-admin)
     EMAIL="${1:-}"
     [[ -z "$EMAIL" ]] && { echo "usage: ./xcape.sh make-admin <dev|prod> <email>"; exit 1; }

@@ -45,6 +45,42 @@ def seed_criteria(db: Session) -> bool:
     return True
 
 
+_EVALS_FILE = Path(__file__).resolve().parent.parent / "data" / "criteria_evals_seed.json"
+
+
+def seed_evals(db: Session) -> int:
+    """Load committed per-(country, criterion) AI evaluations into place_custom_evals
+    (idempotent upsert by place+key), so a fresh DB gets them without paying for AI."""
+    from app.models.custom_eval import PlaceCustomEval
+
+    if not _EVALS_FILE.exists():
+        return 0
+    rows = json.loads(_EVALS_FILE.read_text(encoding="utf-8")).get("evals", [])
+    n = 0
+    for r in rows:
+        place = None
+        if r.get("iso"):
+            place = db.query(Place).filter(Place.iso_code == r["iso"]).first()
+        if place is None:
+            place = db.query(Place).filter(Place.name == r.get("country")).first()
+        if place is None:
+            continue
+        ev = (db.query(PlaceCustomEval)
+              .filter(PlaceCustomEval.place_id == place.id, PlaceCustomEval.key == r["key"]).first())
+        if ev is None:
+            ev = PlaceCustomEval(place_id=place.id, key=r["key"])
+            db.add(ev)
+        ev.label = r.get("label") or r["key"]
+        ev.score = r.get("score")
+        ev.level = r.get("level") or "ok"
+        ev.summary_fr = r.get("summary_fr")
+        ev.summary_en = r.get("summary_en")
+        ev.sources = r.get("sources") or []
+        n += 1
+    db.commit()
+    return n
+
+
 def seed(db: Session) -> int:
     seed_criteria(db)
     data = json.loads(SEED_FILE.read_text(encoding="utf-8"))
@@ -72,6 +108,9 @@ def seed(db: Session) -> int:
             )
             count += 1
     db.commit()
+    evals = seed_evals(db)  # load committed AI evaluations, if any
+    if evals:
+        print(f"Loaded {evals} cached criterion evaluations.")
     return count
 
 
