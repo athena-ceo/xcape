@@ -8,9 +8,10 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.media import MediaAsset
 from app.models.place import Place
+from app.models.search import Search
 from app.models.user import User
 from app.schemas.place import MediaOut, PlaceOut
-from app.services import ai_client, country_facts, place_research
+from app.services import ai_client, board, country_facts, place_research
 
 router = APIRouter()
 
@@ -48,17 +49,27 @@ def get_facts(place_id: int, user: User = Depends(get_current_user), db: Session
 def get_detail(
     place_id: int,
     lang: str = "fr",
+    search: int | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """AI per-criterion detailed summary with sources (cached per language)."""
+    """Uniform per-criterion detail for the drill-down: every criterion (built-in and the
+    search's custom ones) carries a 0-100 score, a justification and sources, from a single
+    code path. `lang` selects the justification language; `search` adds the custom criteria."""
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     try:
-        return place_research.fetch_criteria_detail(db, place, lang=lang, user_id=user.id)
+        legacy = place_research.fetch_criteria_detail(db, place, lang=lang, user_id=user.id)
     except ai_client.AIUnavailable:
-        return {"criteria": []}
+        legacy = {"criteria": []}
+
+    custom_defs: list = []
+    if search is not None:
+        s = db.get(Search, search)
+        if s is not None and s.user_id == user.id:
+            custom_defs = s.custom_criteria or []
+    return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang, legacy)}
 
 
 @router.get("/{place_id}/media", response_model=list[MediaOut])

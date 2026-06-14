@@ -8,9 +8,8 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.search import Search
 from app.models.user import User
-from app.schemas.place import PlaceOut
 from app.schemas.search import CandidateOut, SearchCreate, SearchOut, SearchUpdate
-from app.services import ai_client, comparison, discriminate
+from app.services import ai_client, board, comparison, discriminate
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
@@ -71,16 +70,30 @@ def build_shortlist(
     return shortlist_service.build_instant_shortlist(db, user, search)
 
 
-@router.get("/{search_id}/baseline", response_model=PlaceOut | None)
+@router.get("/{search_id}/baseline")
 def baseline(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """The user's current country as a Place — the comparison baseline.
-
-    Researches it via AI on a cache miss (so non-seeded origins still get a baseline).
-    """
-    _owned(db, user, search_id)
-    return comparison.get_current_country_place(db, user, research=True)
+    """The user's current country (the comparison baseline), enriched with the same
+    per-criterion quality / justification / pending view as the candidate columns so the
+    France column shows real values instead of blanks. Researches on a cache miss."""
+    search = _owned(db, user, search_id)
+    place = comparison.get_current_country_place(db, user, research=True)
+    if place is None:
+        return None
+    profile = user.profile
+    locale = profile.user.locale if (profile and profile.user) else "fr"
+    view = board.criteria_view(db, place, profile, search.custom_criteria or [], locale)
+    return {
+        "id": place.id,
+        "name": place.name,
+        "iso_code": place.iso_code,
+        "attributes": place.attributes or {},
+        "quality": view["quality"],
+        "reasons": view["reasons"],
+        "per_criterion": place.attributes or {},
+        "pending": view["pending"],
+    }
 
 
 @router.post("/{search_id}/discriminate")

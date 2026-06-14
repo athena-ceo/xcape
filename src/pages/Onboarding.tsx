@@ -84,8 +84,18 @@ export function Onboarding() {
     })
     api.getProfile().then((p: any) => {
       const known: string[] | undefined = p?.language_skills?.known
+      // Pre-fill every answer from the saved profile so "New request" lets the user tweak
+      // and re-run rather than re-entering everything from scratch.
       setA((cur) => ({
         ...cur,
+        household_type: p?.household_type ?? cur.household_type,
+        intends_children: p?.intends_children ?? cur.intends_children,
+        reasons_leaving: p?.reasons_leaving ?? cur.reasons_leaving,
+        minority_groups: p?.minority_groups ?? cur.minority_groups,
+        budget_monthly: p?.budget_monthly ?? cur.budget_monthly,
+        tenure: p?.tenure ?? cur.tenure,
+        climate_pref: p?.climate_pref ?? cur.climate_pref,
+        priorities: Object.keys(p?.criteria_weights ?? {}),
         known_languages: known?.length ? known : [LOCALE_LANGUAGE[lang] ?? 'English'],
         willing_to_learn: p?.language_skills?.willing_to_learn ?? cur.willing_to_learn,
       }))

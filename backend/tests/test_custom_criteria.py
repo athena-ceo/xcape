@@ -3,7 +3,7 @@
 
 from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
-from app.services.custom_criteria import level_from_score, slugify, value_of
+from app.services.criterion_eval import level_from_score, slugify, value_of
 from app.services.shortlist import _criterion_value, _score_place
 
 

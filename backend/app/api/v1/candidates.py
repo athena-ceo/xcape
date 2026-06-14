@@ -1,7 +1,7 @@
 # Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -17,12 +17,9 @@ from app.schemas.search import (
     CandidateOut,
     SetSelectedRequest,
 )
-from app.services import ai_client, comparison, custom_criteria, place_research
+from app.services import ai_client, board, comparison, criteria, criterion_eval, place_research
 from app.services import shortlist as shortlist_service
 from app.services.shortlist import MAX_COMPARE
-
-# A custom-criterion level (good/ok/bad) maps directly to the colour tier.
-_CUSTOM_TIER = {"good": "good", "ok": "ok", "bad": "bad"}
 
 router = APIRouter()
 
@@ -70,30 +67,16 @@ def list_candidates(
     }
     base_langs = {str(lang).lower() for lang in ((base_attrs or {}).get("languages") or [])}
 
-    # User-defined criteria for this search, evaluated per country (cached).
     custom_defs = search.custom_criteria or []
-    custom_keys = [c["key"] for c in custom_defs if c.get("key")]
+    locale = profile.user.locale if (profile and profile.user) else "fr"
 
     for cand in candidates:
         cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
         if cand.place:
-            cand.quality = shortlist_service.candidate_quality(cand.place, profile)
-            cand.reasons = {
-                k: comparison.criterion_reason(cand.place, profile, k)
-                for k in shortlist_service.CRITERIA_KEYS
-            }
-        # Merge custom-criterion levels into the same per_criterion / quality / reasons
-        # maps the frontend already renders, so custom columns "just work".
-        if custom_keys:
-            levels = custom_criteria.levels_for_place(db, cand.place_id, custom_keys)
-            per = dict(cand.per_criterion or {})
-            for key in custom_keys:
-                level = levels.get(key)
-                per[key] = level  # may be None while still evaluating
-                if level:
-                    cand.quality[key] = _CUSTOM_TIER.get(level, "ok")
-                cand.reasons[key] = custom_criteria.reason_for_place(db, cand.place_id, key, profile.user.locale if profile and profile.user else "fr")
-            cand.per_criterion = per
+            view = board.criteria_view(db, cand.place, profile, custom_defs, locale)
+            cand.quality = view["quality"]
+            cand.reasons = view["reasons"]
+            cand.pending = view["pending"]
         if known:
             # Read languages from the live place so existing searches benefit without
             # needing the shortlist rebuilt.
@@ -150,11 +133,8 @@ def add_candidate(
     )
     db.add(candidate)
     db.commit()
-    # Evaluate any user-defined criteria for the newcomer so its custom columns fill in.
-    for c in (search.custom_criteria or []):
-        if c.get("key"):
-            custom_criteria.evaluate(db, place, c["key"], c["label"], c.get("description"), user_id=user.id)
-    # Score the new candidate so it ranks and shows a match score like the others.
+    # Score now from whatever evals/buckets exist; missing cells fill in progressively via
+    # /evaluate-pending (optimistic UI) rather than blocking this request on AI calls.
     shortlist_service.rescore_candidates(db, user, search)
     db.refresh(candidate)
     return candidate
@@ -172,7 +152,7 @@ def explain(
     candidate = db.get(Candidate, candidate_id)
     if candidate is None or candidate.search_id != search_id:
         raise HTTPException(status_code=404, detail="Candidate not found")
-    return shortlist_service.explain_candidate(user, candidate)
+    return shortlist_service.explain_candidate(db, user, candidate)
 
 
 @router.patch("/{search_id}/candidates/{candidate_id}", response_model=CandidateOut)
@@ -221,36 +201,30 @@ def add_criterion(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add a new criterion column; it fans out to every active candidate.
-
-    Values present in seed attributes are copied immediately; missing ones are left
-    null and filled later by AI research (see services.place_research).
-    """
+    """Add a built-in criterion column to the search. Objective criteria with no seed value
+    are filled progressively via /evaluate-pending (optimistic UI), not synchronously here."""
     search = _owned(db, user, search_id)
     if body.key not in (search.criteria_set or []):
         search.criteria_set = [*(search.criteria_set or []), body.key]
+        db.commit()
+    return list_candidates(search_id, user=user, db=db)
 
-    candidates = (
-        db.query(Candidate)
-        .filter(Candidate.search_id == search_id, Candidate.status == "active")
-        .all()
+
+@router.get("/{search_id}/report.pdf")
+def report_pdf(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """A PDF report of the current search: summary table + per-country details + profile."""
+    from app.services import report
+
+    search = _owned(db, user, search_id)
+    pdf = report.build_report(db, user, search)
+    name = f"xcape-report-{search_id}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )
-    for cand in candidates:
-        attrs = cand.place.attributes or {}
-        value = attrs.get(body.key)
-        if value is None:
-            # Not in seed data — research this single attribute via AI (best-effort).
-            try:
-                value = place_research.fill_criterion(db, cand.place, body.key, user_id=user.id)
-            except ai_client.AIUnavailable:
-                value = None
-        per = dict(cand.per_criterion or {})
-        per[body.key] = value
-        cand.per_criterion = per
-    db.commit()
-    for cand in candidates:
-        db.refresh(cand)
-    return candidates
 
 
 @router.get("/{search_id}/custom-criteria")
@@ -269,10 +243,11 @@ def add_custom_criterion(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add a user-defined criterion: the AI evaluates each candidate country on it and the
-    column joins the comparison, scored like any other criterion."""
+    """Register a user-defined criterion. Returns immediately with the column showing as
+    pending; the per-country evaluations fill in progressively via /evaluate-pending
+    (optimistic UI — no long blocking wait)."""
     search = _owned(db, user, search_id)
-    key = custom_criteria.slugify(body.label)
+    key = criterion_eval.slugify(body.label)
     defs = list(search.custom_criteria or [])
     if not any(c.get("key") == key for c in defs):
         defs.append({"key": key, "label": body.label, "description": body.description,
@@ -281,8 +256,51 @@ def add_custom_criterion(
     if key not in (search.criteria_set or []):
         search.criteria_set = [*(search.criteria_set or []), key]
     db.commit()
+    return list_candidates(search_id, user=user, db=db)
 
-    # Evaluate the on-board countries now (cache-first), then re-rank with the new column.
-    custom_criteria.evaluate_for_search(db, search, key, body.label, body.description, user_id=user.id)
-    shortlist_service.rescore_candidates(db, user, search)
+
+@router.post("/{search_id}/evaluate-pending", response_model=list[CandidateOut])
+def evaluate_pending(
+    search_id: int,
+    limit: int = 4,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Evaluate up to `limit` not-yet-cached (country × criterion) cells for this search's
+    board, then re-rank and return the candidates. The frontend calls this repeatedly until
+    nothing is pending, so cells fill in with a visible animation instead of one long wait."""
+    search = _owned(db, user, search_id)
+    # One definition map for built-in + custom criteria — evaluated through one path.
+    defs = criteria.definitions(search.custom_criteria or [])
+    eval_keys = list(defs.keys())
+
+    # Selected (on-board) candidates first, then the rest; the baseline (current country)
+    # last so its cells fill too — no blanks in any column.
+    cands = (
+        db.query(Candidate)
+        .filter(Candidate.search_id == search_id, Candidate.status == "active")
+        .order_by(Candidate.selected.desc())
+        .all()
+    )
+    places = [c.place for c in cands if c.place]
+    base = comparison.get_current_country_place(db, user, research=False)
+    if base is not None and base.id not in {p.id for p in places}:
+        places.append(base)
+
+    made = 0
+    for place in places:
+        if made >= limit:
+            break
+        have = set(criterion_eval.evals_for_place(db, place.id, eval_keys).keys())
+        attrs = place.attributes or {}
+        for key, d in defs.items():
+            if made >= limit:
+                break
+            if key in have or attrs.get(key):
+                continue  # already evaluated, or has a usable seed bucket — no AI call
+            ev = criterion_eval.evaluate(db, place, key, d["label"], d.get("description"), user_id=user.id)
+            if ev is not None:
+                made += 1
+    if made:
+        shortlist_service.rescore_candidates(db, user, search)
     return list_candidates(search_id, user=user, db=db)

@@ -208,10 +208,12 @@ def _inclusion_value(attrs: dict, profile: Profile | None) -> float:
 
 def _criterion_value(
     key: str, attrs: dict, profile: Profile | None, place: Place | None = None,
-    custom: dict[str, str] | None = None,
+    evals: dict[str, float] | None = None,
 ) -> float:
-    if custom is not None and key in custom:
-        return float(custom[key])  # already a resolved 0-1 value (custom_criteria.value_of)
+    # Objective + custom criteria: prefer the cached AI eval (0-1) when we have one; this is
+    # how the ~190 seed-sparse countries get real values. Computed criteria fall through.
+    if evals is not None and key in evals:
+        return float(evals[key])
     if key == "visa":
         return _visa_value(attrs, profile, place)
     if key == "cost_of_living":
@@ -245,10 +247,12 @@ def quality_tier(value: float) -> str:
     return "good" if value >= 0.7 else ("ok" if value >= 0.45 else "bad")
 
 
-def candidate_quality(place: Place, profile: Profile | None) -> dict[str, str]:
+def candidate_quality(
+    place: Place, profile: Profile | None, evals: dict[str, float] | None = None,
+) -> dict[str, str]:
     """Per-criterion colour tier for a place, from the user's perspective."""
     attrs = place.attributes or {}
-    return {k: quality_tier(_criterion_value(k, attrs, profile, place)) for k in CRITERIA_KEYS}
+    return {k: quality_tier(_criterion_value(k, attrs, profile, place, evals)) for k in CRITERIA_KEYS}
 
 
 def passes_filters(place: Place, profile: Profile | None) -> bool:
@@ -284,7 +288,7 @@ def passes_filters(place: Place, profile: Profile | None) -> bool:
 
 def _score_place(
     place: Place, weights: dict[str, float], profile: Profile | None,
-    custom: dict[str, str] | None = None,
+    evals: dict[str, float] | None = None,
 ):
     attrs = place.attributes or {}
     total = wsum = 0.0
@@ -292,7 +296,7 @@ def _score_place(
     for key, weight in weights.items():
         if weight <= 0:
             continue
-        val = _criterion_value(key, attrs, profile, place, custom)
+        val = _criterion_value(key, attrs, profile, place, evals)
         total += val * weight
         wsum += weight
         contributions.append((key, val * weight))
@@ -304,7 +308,7 @@ def _score_place(
     reasons = [
         _REASON_LABELS[k][locale]
         for k, v in top
-        if k in _REASON_LABELS and _criterion_value(k, attrs, profile) >= 0.7
+        if k in _REASON_LABELS and _criterion_value(k, attrs, profile, place, evals) >= 0.7
     ]
     return score, reasons
 
@@ -315,15 +319,16 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     """
     profile = user.profile
     weights = _effective_weights(profile)
-    # Fold in any user-defined criteria for this search (each has its own weight); their
-    # per-country level comes from the cached AI evaluation.
-    from app.services import custom_criteria  # avoid circular import at module load
+    # Fold in any user-defined criteria for this search (each has its own weight).
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
 
     custom_defs = search.custom_criteria or []
     for c in custom_defs:
         if c.get("key"):
             weights[c["key"]] = float(c.get("weight", 1.0))
     custom_keys = [c["key"] for c in custom_defs if c.get("key")]
+    # Cached AI evals cover objective built-ins (safety, tax, …) + the custom criteria.
+    eval_keys = criteria.OBJECTIVE_KEYS + custom_keys
 
     candidates = (
         db.query(Candidate)
@@ -332,8 +337,8 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     )
     scorable = [c for c in candidates if c.place]
     for cand in scorable:
-        custom = custom_criteria.values_for_place(db, cand.place_id, custom_keys) if custom_keys else None
-        score, reasons = _score_place(cand.place, weights, profile, custom)
+        evals = criterion_eval.values_for_place(db, cand.place_id, eval_keys)
+        score, reasons = _score_place(cand.place, weights, profile, evals)
         cand.match_score = score
         cand.match_reasons = reasons
     for rank, cand in enumerate(
@@ -346,22 +351,33 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     return candidates
 
 
-def explain_candidate(user: User, candidate: Candidate) -> dict:
+def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:
     """Break down how a candidate's score was derived: each weighted criterion's
     quality (0-100), its weight, and the contribution it adds to the final score.
     Contributions sum to the score.
     """
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
+
     profile = user.profile
     weights = _effective_weights(profile)
     place = candidate.place
     attrs = (place.attributes or {}) if place else {}
     prioritized = set((profile.criteria_weights or {}).keys()) if profile else set()
 
+    # Include the search's custom criteria weights + cached evals, matching rescore.
+    search = db.get(Search, candidate.search_id)
+    custom_defs = (search.custom_criteria or []) if search else []
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    eval_keys = criteria.OBJECTIVE_KEYS + [c["key"] for c in custom_defs if c.get("key")]
+    evals = criterion_eval.values_for_place(db, candidate.place_id, eval_keys) if place else {}
+
     active = {k: w for k, w in weights.items() if w > 0}
     wsum = sum(active.values())
     rows = []
     for key, weight in active.items():
-        quality = _criterion_value(key, attrs, profile, place)
+        quality = _criterion_value(key, attrs, profile, place, evals)
         rows.append({
             "key": key,
             "quality": round(quality * 100),       # how good this country is on this criterion
@@ -375,6 +391,8 @@ def explain_candidate(user: User, candidate: Candidate) -> dict:
 
 
 def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Candidate]:
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
+
     profile = user.profile
     weights = _effective_weights(profile)
 
@@ -383,8 +401,13 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
     # everything, fall back to the unfiltered pool so the user still sees options.
     qualified = [p for p in countries if passes_filters(p, profile)]
     pool = qualified or countries
+    # Batch-load the cached AI evals for the whole pool so the seed-sparse countries score
+    # on real values (one query, not one per country).
+    evals_by_place = criterion_eval.values_for_places(
+        db, [p.id for p in pool], criteria.OBJECTIVE_KEYS
+    )
     scored = sorted(
-        ((p, *_score_place(p, weights, profile)) for p in pool),
+        ((p, *_score_place(p, weights, profile, evals_by_place.get(p.id))) for p in pool),
         key=lambda t: t[1],
         reverse=True,
     )[:SHORTLIST_SIZE]

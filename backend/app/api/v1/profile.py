@@ -9,9 +9,16 @@ from app.db.session import get_db
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
+from app.services import account
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
+
+
+@router.post("/reset", status_code=204)
+def reset_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Start over: delete the user's profile and all their searches (keeps the account)."""
+    account.reset_user_data(db, user)
 
 
 def _get_or_create(db: Session, user: User) -> Profile:

@@ -43,6 +43,7 @@ class CandidateOut(BaseModel):
     vs_current: dict[str, str] = {}  # criterion -> better/worse/same vs current country
     quality: dict[str, str] = {}     # criterion -> good/ok/bad (colour tier)
     reasons: dict[str, dict] = {}    # criterion -> {code, ...tokens} justification
+    pending: list[str] = []          # criteria still being AI-evaluated (show a spinner)
     rank: int | None = None
 
 

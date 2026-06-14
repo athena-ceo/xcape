@@ -35,6 +35,12 @@ export function AdminDashboard() {
     window.alert(t.admin.resetDone)
   }
 
+  async function resetUser(u: any) {
+    if (!window.confirm(`${t.admin.resetDataConfirm} ${u.email}`)) return
+    await api.adminResetUser(u.id)
+    window.alert(t.admin.resetDataDone)
+  }
+
   function toggleSort(key: string) {
     setSort((s) => (s.key === key ? { key, dir: (s.dir === 1 ? -1 : 1) as 1 | -1 } : { key, dir: 1 }))
   }
@@ -128,9 +134,12 @@ export function AdminDashboard() {
                     <td key={key} className="p-3">{render ? render(r) : String(r[key] ?? '')}</td>
                   ))}
                   {tab === 'users' && (
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right whitespace-nowrap">
                       <button onClick={() => resetPassword(r)} className="text-turquoise-600 hover:underline">
                         {t.admin.resetPassword}
+                      </button>
+                      <button onClick={() => resetUser(r)} className="ml-3 text-red-600 hover:underline">
+                        {t.admin.resetData}
                       </button>
                     </td>
                   )}

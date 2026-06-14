@@ -50,6 +50,8 @@ export const api = {
   getProfile: () => request('/profile'),
   updateProfile: (data: unknown) =>
     request('/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  // Start over: wipe the user's profile + searches (keeps the account).
+  resetAccount: () => request<void>('/profile/reset', { method: 'POST' }),
 
   listSearches: () => request<any[]>('/searches'),
   createSearch: (title: string) =>
@@ -81,6 +83,25 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ label, description }),
     }),
+  evaluatePending: (id: number, limit = 4) =>
+    request<any[]>(`/searches/${id}/evaluate-pending?limit=${limit}`, { method: 'POST' }),
+  // Fetch the PDF report as a blob (auth header) and trigger a browser download.
+  downloadReport: async (id: number) => {
+    const t = token()
+    const res = await fetch(`${API_URL}/api/v1/searches/${id}/report.pdf`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    })
+    if (!res.ok) throw new Error(`Report failed: ${res.status}`)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `xcape-report-${id}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
   discriminate: (id: number) =>
     request<{ questions: any[] }>(`/searches/${id}/discriminate`, { method: 'POST' }),
   getBaseline: (id: number) => request<any | null>(`/searches/${id}/baseline`),
@@ -89,8 +110,10 @@ export const api = {
     request<any[]>(`/places${kind ? `?kind=${kind}` : ''}`),
   getPlace: (id: number) => request<any>(`/places/${id}`),
   getFacts: (id: number) => request<any>(`/places/${id}/facts`),
-  getDetail: (id: number, lang: string) =>
-    request<{ criteria: any[] }>(`/places/${id}/detail?lang=${lang}`),
+  getDetail: (id: number, lang: string, search?: number) =>
+    request<{ criteria: any[] }>(
+      `/places/${id}/detail?lang=${lang}${search != null ? `&search=${search}` : ''}`,
+    ),
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getAdminUsers: () => request<any[]>('/admin/users'),
@@ -102,6 +125,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ password }),
     }),
+  adminResetUser: (userId: number) =>
+    request<void>(`/admin/users/${userId}/reset`, { method: 'POST' }),
 
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
   // Tool-enabled chat: returns the assistant reply and whether it changed the search.

@@ -16,8 +16,9 @@ export function Drilldown() {
   const { t, lang } = useT()
   const { placeId } = useParams()
   const navigate = useNavigate()
-  const { hash } = useLocation()
+  const { hash, search } = useLocation()
   const id = Number(placeId)
+  const searchId = new URLSearchParams(search).get('search')
 
   const [place, setPlace] = useState<any>(null)
   const [facts, setFacts] = useState<any>(null)
@@ -29,10 +30,11 @@ export function Drilldown() {
   useEffect(() => {
     api.getPlace(id).then(setPlace)
     api.getFacts(id).then(setFacts).catch(() => {})
-    api.getDetail(id, lang).then((d) => setDetail(d.criteria ?? [])).catch(() => setDetail([]))
+    api.getDetail(id, lang, searchId ? Number(searchId) : undefined)
+      .then((d) => setDetail(d.criteria ?? [])).catch(() => setDetail([]))
       .finally(() => setLoadingDetail(false))
     api.getMedia(id).then(setMedia).catch(() => {}).finally(() => setLoadingMedia(false))
-  }, [id, lang])
+  }, [id, lang, searchId])
 
   // After the criterion detail renders, scroll to the section the user clicked (the URL
   // hash, e.g. #criterion-healthcare), with a brief highlight.
@@ -148,7 +150,8 @@ export function Drilldown() {
           <div key={d.key} id={`criterion-${d.key}`}
             className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
             <p className="text-sm font-medium text-turquoise-900 mb-1">
-              {(t.criteria as Record<string, string>)[d.key] ?? d.key}
+              {d.label ?? (t.criteria as Record<string, string>)[d.key] ?? d.key}
+              {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
             </p>
             <p className="text-sm text-turquoise-800/80">{cleanSummary(d.summary)}</p>
             {Array.isArray(d.sources) && d.sources.length > 0 && (

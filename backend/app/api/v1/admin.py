@@ -32,6 +32,17 @@ def reset_password(
     db.commit()
 
 
+@router.post("/users/{user_id}/reset", status_code=204)
+def reset_user(user_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Admin: wipe a user's profile + searches so they start over (keeps the account)."""
+    from app.services import account
+
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    account.reset_user_data(db, target)
+
+
 @router.get("/users", response_model=list[UserOut])
 def list_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     return db.query(User).order_by(User.created_at.desc()).all()
@@ -72,6 +83,20 @@ def list_places(_: User = Depends(require_admin), db: Session = Depends(get_db))
         }
         for p in rows
     ]
+
+
+@router.post("/places/{place_id}/refresh-evals")
+def refresh_evals(
+    place_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    """Force a fresh AI evaluation of all objective criteria for one country (admin)."""
+    from app.services import criteria, criterion_eval
+
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    made = criterion_eval.populate(db, [place], criteria.OBJECTIVE_KEYS, force=True)
+    return {"ok": True, "place": place.name, "evaluated": made}
 
 
 @router.get("/ai-log")

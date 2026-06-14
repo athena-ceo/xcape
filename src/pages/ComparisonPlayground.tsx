@@ -7,8 +7,8 @@ import { Link, useParams } from 'react-router-dom'
 import { CriteriaSettings } from '../components/CriteriaSettings'
 import { Markdown } from '../components/Markdown'
 import { Spinner } from '../components/Spinner'
+import { Waiting } from '../components/Waiting'
 import { VoiceButton } from '../components/VoiceButton'
-import { VoiceField } from '../components/VoiceField'
 import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
@@ -31,6 +31,8 @@ export function ComparisonPlayground() {
   const sid = Number(searchId)
   const [candidates, setCandidates] = useState<any[]>([])
   const [suggestions, setSuggestions] = useState<any[]>([])
+  const [evaluating, setEvaluating] = useState(false)
+  const evaluatingRef = useRef(false)
   const [places, setPlaces] = useState<Record<number, any>>({})
   const [rows, setRows] = useState<string[]>(DEFAULT_ROWS)
 
@@ -51,11 +53,12 @@ export function ComparisonPlayground() {
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [filters, setFilters] = useState<Record<string, any>>({})
   const [showSettings, setShowSettings] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [applying, setApplying] = useState(false)
 
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
-  const [why, setWhy] = useState<{ placeId: number; name: string; key: string; text: string; score?: number | null } | null>(null)
+  const [why, setWhy] = useState<{ placeId: number; name: string; key: string; value: any; text: string; score?: number | null } | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const lastReplyRef = useRef<HTMLDivElement | null>(null)
 
@@ -73,12 +76,40 @@ export function ComparisonPlayground() {
     }
   }, [messages, chatBusy])
 
-  // Re-read candidates from the server (the source of truth): the selected ones populate
-  // the board; the rest of the ranked pool becomes one-click "suggested matches".
-  async function reloadCandidates() {
-    const cands = await api.listCandidates(sid)
+  // Split a candidate list into the board (selected) and the suggestion pool, and kick off
+  // progressive evaluation if any cells are still pending.
+  function applyCandidates(cands: any[]) {
     setCandidates(cands.filter((c) => c.selected))
     setSuggestions(cands.filter((c) => !c.selected))
+    if (cands.some((c) => (c.pending || []).length)) void drainPending()
+  }
+
+  // Re-read candidates from the server (the source of truth).
+  async function reloadCandidates() {
+    applyCandidates(await api.listCandidates(sid))
+  }
+
+  // Fill not-yet-evaluated (country × criterion) cells a few at a time, re-rendering after
+  // each batch (candidates AND the baseline column), until nothing is pending. Guarded so
+  // only one drain runs at a time.
+  async function drainPending() {
+    if (evaluatingRef.current) return
+    evaluatingRef.current = true
+    setEvaluating(true)
+    try {
+      for (let i = 0; i < 200; i++) {
+        const cands = await api.evaluatePending(sid, 2)
+        setCandidates(cands.filter((c) => c.selected))
+        setSuggestions(cands.filter((c) => !c.selected))
+        const b: any = await api.getBaseline(sid).catch(() => null)
+        if (b) setBaseline(b)
+        const anyPending = cands.some((c) => (c.pending || []).length) || !!(b?.pending?.length)
+        if (!anyPending) break
+      }
+    } finally {
+      evaluatingRef.current = false
+      setEvaluating(false)
+    }
   }
 
   async function reload() {
@@ -98,9 +129,10 @@ export function ComparisonPlayground() {
 
   async function loadBaseline() {
     // May research the current country on first call (cache-first thereafter).
-    const b = await api.getBaseline(sid)
+    const b: any = await api.getBaseline(sid)
     setBaseline(b)
     if (b) await reloadCandidates() // deltas need the baseline; re-read from server
+    if (b?.pending?.length) void drainPending() // fill the baseline column too
   }
 
   useEffect(() => { reload(); loadBaseline() }, [sid]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -130,6 +162,7 @@ export function ComparisonPlayground() {
       placeId: c.place_id,
       name: placeName(places[c.place_id], lang),
       key,
+      value: cellValue(key, places[c.place_id]?.attributes, c.quality?.[key]),
       text: reasonText(key, c.reasons?.[key]),
       score: c.reasons?.[key]?.score,
     })
@@ -156,28 +189,31 @@ export function ComparisonPlayground() {
     return attrValue(t, byTier[tier ?? ''] ?? 'mixed')
   }
 
-  // User-defined criteria are rated good/ok/bad by AI; show the quality word (or a
-  // placeholder while the evaluation is still running).
-  function customCell(tier: string | undefined) {
-    if (!tier) return '…'
-    return attrValue(t, { good: 'good', ok: 'ok', bad: 'poor' }[tier] ?? 'ok')
-  }
-
-  function isCustom(key: string) {
-    return key.startsWith('custom_')
-  }
-
+  // Label for any criterion — built-in (i18n) or custom (its user-given name). Pure label
+  // resolution, not behaviour: custom and built-in criteria are handled the same elsewhere.
   function critLabel(key: string) {
-    if (isCustom(key)) return customCrit.find((c) => c.key === key)?.label ?? key
-    return (t.criteria as Record<string, string>)[key] ?? key
+    return (t.criteria as Record<string, string>)[key]
+      ?? customCrit.find((c) => c.key === key)?.label
+      ?? key
+  }
+
+  // Generic quality word from a tier — used when an objective criterion has an AI score but
+  // no coarse seed bucket to name (the ~190 seed-sparse countries).
+  function tierWord(tier?: string) {
+    if (tier === 'good') return t.comparison.legendGood
+    if (tier === 'ok') return t.comparison.legendWeak
+    if (tier === 'bad') return t.comparison.legendNogo
+    return '—'
   }
 
   function cellValue(key: string, attrs: any, tier?: string) {
+    // User-relative criteria have bespoke labels; every other criterion (built-in objective
+    // or custom) shows its seed bucket word, falling back to the score-derived tier word.
     if (key === 'language_ease') return languageCell(t, attrs)
     if (key === 'visa') return visaCell(tier, attrs)
     if (key === 'inclusion') return inclusionCell(tier)
-    if (isCustom(key)) return customCell(tier)
-    return attrValue(t, attrs?.[key])
+    const raw = attrs?.[key]
+    return raw ? attrValue(t, raw) : tierWord(tier)
   }
 
   async function send(message: string) {
@@ -196,8 +232,32 @@ export function ComparisonPlayground() {
     }
   }
 
+  async function downloadReport() {
+    if (downloading) return
+    setDownloading(true)
+    try {
+      await api.downloadReport(sid)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  // Add a known country straight from the picker (no AI research needed).
+  async function addPlace(place: any) {
+    if (candidates.length >= 5 || researching) return
+    setResearching(true)
+    try {
+      await api.addCandidate(sid, { place_id: place.id })
+      setNewCountry('')
+      await reload()
+    } finally {
+      setResearching(false)
+    }
+  }
+
+  // Fallback: a name not in our list → research it via AI.
   async function addCountry() {
-    if (!newCountry.trim() || researching) return
+    if (!newCountry.trim() || researching || candidates.length >= 5) return
     setResearching(true)
     try {
       await api.addCandidate(sid, { place_name: newCountry.trim() })
@@ -294,6 +354,17 @@ export function ComparisonPlayground() {
 
   const availableCriteria = ALL_CRITERIA.filter((k) => !rows.includes(k))
 
+  // Known countries matching the picker text (localized name substring), excluding ones
+  // already on the board. Resolves French names → the canonical place.
+  const onBoard = new Set(candidates.map((c) => c.place_id))
+  const q = newCountry.trim().toLowerCase()
+  const countryMatches = q
+    ? Object.values(places)
+        .filter((p: any) => !onBoard.has(p.id) && placeName(p, lang).toLowerCase().includes(q))
+        .sort((a: any, b: any) => placeName(a, lang).localeCompare(placeName(b, lang), lang))
+        .slice(0, 8)
+    : []
+
   return (
     <main className="max-w-4xl mx-auto px-5 py-8">
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -302,6 +373,11 @@ export function ComparisonPlayground() {
           <button onClick={() => setShowSettings((s) => !s)}
             className="border border-turquoise-100 rounded-md px-3 py-1.5">
             {t.comparison.settings}
+          </button>
+          <button onClick={downloadReport} disabled={downloading || !candidates.length}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
+            {downloading && <Spinner />}
+            {t.comparison.downloadReport}
           </button>
           <button onClick={narrow} disabled={narrowing}
             className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
@@ -341,7 +417,7 @@ export function ComparisonPlayground() {
               )}
               {candidates.map((c) => (
                 <th key={c.id} className="p-3 font-medium text-center whitespace-nowrap">
-                  <Link to={`/drilldown/${c.place_id}`} className="text-turquoise-600 hover:underline">
+                  <Link to={`/drilldown/${c.place_id}?search=${sid}`} className="text-turquoise-600 hover:underline">
                     {placeName(places[c.place_id], lang)}
                   </Link>
                   <button onClick={() => removeCountry(c.id)}
@@ -355,25 +431,35 @@ export function ComparisonPlayground() {
             {rows.map((key) => (
               <tr key={key} className="border-t border-turquoise-100">
                 <td className="p-3 text-turquoise-800/70">{critLabel(key)}</td>
-                {baseline && (
-                  <td className="p-0 text-center bg-turquoise-50">
-                    <Link to={`/drilldown/${baseline.id}#criterion-${key}`} className="block p-3 hover:underline">
-                      {key === 'language_ease'
-                        ? languageCell(t, baseline.attributes)
-                        : attrValue(t, baseline.attributes?.[key])}
-                    </Link>
-                  </td>
-                )}
-                {candidates.map((c) => (
-                  // Value and colour both read from the live place attributes (the same
-                  // source the backend scores from). Tapping shows a justification popover
-                  // (mobile-friendly), which links on to the full drill-down section.
-                  <td key={c.id} className={`p-0 text-center ${qualityClass(c.quality?.[key])}`}>
-                    <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
-                      {cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}
-                    </button>
-                  </td>
-                ))}
+                {baseline && (() => {
+                  // The current-country column is computed + evaluated like the candidates,
+                  // so it shows real values (and a justification popover) — no blanks.
+                  const bpending = (baseline.pending || []).includes(key)
+                  const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
+                  return (
+                    <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
+                      <button onClick={() => openWhy(bcol, key)} className="block w-full p-3 hover:underline cursor-pointer">
+                        {bpending
+                          ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
+                          : cellValue(key, baseline.attributes, baseline.quality?.[key])}
+                      </button>
+                    </td>
+                  )
+                })()}
+                {candidates.map((c) => {
+                  // A cell still being AI-evaluated shows a spinner; otherwise the value +
+                  // colour. Tapping shows the score + justification popover.
+                  const pending = (c.pending || []).includes(key)
+                  return (
+                    <td key={c.id} className={`p-0 text-center ${pending ? '' : qualityClass(c.quality?.[key])}`}>
+                      <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
+                        {pending
+                          ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
+                          : cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}
+                      </button>
+                    </td>
+                  )
+                })}
               </tr>
             ))}
             <tr className="border-t border-turquoise-200 bg-turquoise-50">
@@ -393,6 +479,8 @@ export function ComparisonPlayground() {
           </tbody>
         </table>
       </div>
+
+      {evaluating && <div className="mb-4"><Waiting /></div>}
 
       {/* Suggested matches — the ranked pool not yet on the board; one click adds them. */}
       {suggestions.length > 0 && candidates.length < 5 && (
@@ -415,18 +503,34 @@ export function ComparisonPlayground() {
 
       {/* Add country / add criterion */}
       <div className="flex flex-wrap gap-3 mb-5">
+        {candidates.length >= 5 ? (
+          <p className="text-sm text-turquoise-800/60 self-center">{t.comparison.boardFull}</p>
+        ) : (
         <div className="flex items-center gap-2">
-          <div className="w-56">
-            <VoiceField value={newCountry} onChange={setNewCountry} onEnter={addCountry}
+          <div className="relative w-56">
+            <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') (countryMatches[0] ? addPlace(countryMatches[0]) : addCountry()) }}
               placeholder={t.comparison.addCountryPrompt}
-              className="w-full border border-turquoise-100 rounded-md pl-3 pr-10 py-1.5 text-sm" />
+              className="w-full border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
+            {newCountry.trim() && countryMatches.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-turquoise-100 rounded-md shadow-lg max-h-56 overflow-y-auto">
+                {countryMatches.map((p) => (
+                  <button key={p.id} onClick={() => addPlace(p)}
+                    className="block w-full text-left px-3 py-1.5 text-sm hover:bg-turquoise-50">
+                    {placeName(p, lang)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button onClick={addCountry} disabled={researching}
+          <button onClick={() => (countryMatches[0] ? addPlace(countryMatches[0]) : addCountry())}
+            disabled={researching || !newCountry.trim()}
             className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
             {researching && <Spinner className="border-turquoise-100 border-t-white" />}
             {researching ? t.comparison.researching : `+ ${t.comparison.addCountry}`}
           </button>
         </div>
+        )}
         {availableCriteria.length > 0 && (
           <div className="flex items-center gap-2">
             <select value={newCriterion} onChange={(e) => setNewCriterion(e.target.value as CritKey)}
@@ -534,11 +638,11 @@ export function ComparisonPlayground() {
               <button onClick={() => setWhy(null)} className="ml-auto text-turquoise-800/50 hover:text-turquoise-900"
                 aria-label={t.comparison.close}>×</button>
             </div>
-            {why.score != null && (
-              <p className="text-sm font-medium text-turquoise-600 mb-1">{t.comparison.scoreLabel}: {why.score}/100</p>
-            )}
+            <p className="text-sm font-medium text-turquoise-700 mb-1">
+              {why.value}{why.score != null ? ` · ${t.comparison.scoreLabel} ${why.score}/100` : ''}
+            </p>
             <p className="text-sm text-turquoise-800/80 mb-4">{why.text || '—'}</p>
-            <Link to={`/drilldown/${why.placeId}#criterion-${why.key}`}
+            <Link to={`/drilldown/${why.placeId}?search=${sid}#criterion-${why.key}`}
               className="text-sm text-turquoise-600 hover:underline">
               {t.reasons.details} →
             </Link>

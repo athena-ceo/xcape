@@ -17,7 +17,7 @@ from app.models.place import Place
 from app.models.profile import Profile
 from app.models.search import Search
 from app.models.user import User
-from app.services import ai_client, custom_criteria, place_research
+from app.services import ai_client, criterion_eval, place_research
 from app.services import shortlist as sl
 
 _CRITERIA = ", ".join(sl.CRITERIA_KEYS)
@@ -195,12 +195,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
             )
             db.add(cand)
         db.commit()
-        # Evaluate any user-defined criteria for the newcomer so its custom columns fill in.
-        for c in (search.custom_criteria or []):
-            if c.get("key"):
-                custom_criteria.evaluate(db, place, c["key"], c["label"], c.get("description"), user_id=user.id)
-        # Score the new candidate against the profile so it ranks and shows a match score
-        # like every other row (a bare insert leaves match_score null → blank, bottom row).
+        # Score now; any missing cells fill in progressively via /evaluate-pending.
         sl.rescore_candidates(db, user, search)
         return {"ok": True, "added": place.name, "selected": cand.selected}, True
 
@@ -224,7 +219,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         label = (args.get("label") or "").strip()
         if not label:
             return {"ok": False, "error": "missing label"}, False
-        key = custom_criteria.slugify(label)
+        key = criterion_eval.slugify(label)
         defs = list(search.custom_criteria or [])
         if not any(c.get("key") == key for c in defs):
             defs.append({"key": key, "label": label,
@@ -233,8 +228,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         if key not in (search.criteria_set or []):
             search.criteria_set = [*(search.criteria_set or []), key]
         db.commit()
-        custom_criteria.evaluate_for_search(db, search, key, label, args.get("description"), user_id=user.id)
-        sl.rescore_candidates(db, user, search)
+        # Per-country evaluation fills in progressively via /evaluate-pending (non-blocking).
         return {"ok": True, "added_criterion": label}, True
 
     if name == "set_comparison":
@@ -274,12 +268,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         ):
             c.selected = c.place_id in target_ids
         db.commit()
-        # Fill any user-defined criteria for the (possibly new) countries.
-        for cc in (search.custom_criteria or []):
-            if cc.get("key"):
-                for pid in target_ids:
-                    place = db.get(Place, pid)
-                    custom_criteria.evaluate(db, place, cc["key"], cc["label"], cc.get("description"), user_id=user.id)
+        # Score now; missing cells fill in progressively via /evaluate-pending.
         sl.rescore_candidates(db, user, search)
         return {"ok": True, "countries": applied}, True
 

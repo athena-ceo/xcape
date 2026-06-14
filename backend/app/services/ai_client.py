@@ -111,16 +111,18 @@ def respond_json(
     system: str | None = None,
     kind: str = "research",
     reasoning_effort: str | None = "low",
+    model: str | None = None,
     db: Session | None = None,
     user_id: int | None = None,
 ) -> dict:
     """Call requesting a JSON object matching `schema` (strict). Returns the parsed dict.
 
     These are factual extraction tasks, so `reasoning_effort` defaults to "low" to keep
-    latency reasonable (gpt-5 + web search is otherwise very slow).
+    latency reasonable (gpt-5 + web search is otherwise very slow). `model` lets latency-
+    sensitive callers pick a faster model (e.g. gpt-5-mini for per-criterion evals).
     """
     kwargs: dict = {
-        "model": settings.openai_model,
+        "model": model or settings.openai_model,
         "input": prompt,
         "text": {
             "format": {

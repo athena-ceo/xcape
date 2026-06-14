@@ -5,6 +5,42 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — New request (reset) + PDF report
+
+- **New request / start over**: a header action that truly resets — it wipes the user's
+  profile and all their searches (account kept) and reopens a blank questionnaire. Backend
+  `POST /profile/reset` + admin `POST /admin/users/{id}/reset` (a "Reset data" button on the
+  admin users table) for an admin-level reset of any user. The shared cross-user evaluation
+  cache is untouched. (Onboarding still pre-fills from the saved profile when editing via
+  the Profile page — the reset path starts blank.)
+- **PDF report**: a "PDF report" button on the comparison page downloads a server-built
+  report (ReportLab) of the current search — profile summary, the comparison table (0-100
+  per criterion + match scores), and per-country details with each criterion's score,
+  justification and sources. Endpoint `GET /searches/{id}/report.pdf`.
+
+### 2026-06-14 — Unified per-criterion AI eval cache + data completeness (feedback P1)
+
+Addresses the root cause behind much of the 2026-06-14 feedback: ~190 of 217 countries had
+no values for 8 core criteria, so they clustered at neutral and a handful dominated.
+
+- **Unified evaluation cache**: every objective criterion (safety, taxation, healthcare,
+  …) and every custom criterion is AI-scored 0-100 per country with a bilingual
+  justification + sources, cached cross-user in `place_custom_evals` and shared. New
+  `services/criteria.py` registry (objective vs computed leaves) + generalized
+  `services/criterion_eval.py` (was `custom_criteria.py`). Scoring prefers the numeric eval
+  and falls back to the coarse seed bucket; this is how the seed-sparse countries get real
+  values and the shortlist diversifies. Evals run on the faster `gpt-5-mini` (~11s/cell).
+- **Progressive population**: `./xcape.sh evaluate-all [--force] [--stale-days N]` fills the
+  whole grid (cache-first, resumable); admin `POST /admin/places/{id}/refresh-evals`; and
+  on-demand `POST /searches/{id}/evaluate-pending` fills a few board cells per call.
+- **Optimistic UI**: adding a country / custom criterion returns immediately with cells
+  shown as **pending** (spinner); the board polls `evaluate-pending` and fills cells live,
+  with a reassuring waiting line (rotating messages + elapsed timer, `Waiting.tsx`). The
+  pop-up shows the cached score + justification instantly for all criteria.
+- **Add-country picker**: searchable list with substring filter (resolves French names like
+  "Espagne" → Spain); clear "board is full" feedback at 5 countries (fixes the silent
+  no-op).
+
 ### 2026-06-14 — Chat can replace the comparison set
 
 - Fix: asking the assistant to "propose a new set of countries" updated its message but not

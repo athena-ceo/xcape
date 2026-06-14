@@ -48,6 +48,8 @@ case "$CMD" in
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
   backfill-social)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
+  evaluate-all)
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_all "$@" ;;
   make-admin)
     EMAIL="${1:-}"
     [[ -z "$EMAIL" ]] && { echo "usage: ./xcape.sh make-admin <dev|prod> <email>"; exit 1; }
@@ -117,6 +119,8 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   makemigration "msg"     autogenerate a migration
   seed                    load the bundled place database
   backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
+  evaluate-all [--force] [--stale-days N] [--limit N]
+                          AI-evaluate every objective criterion for every country (cross-user cache)
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
   purge-test-users <env>    (dev) delete @example.com / @xcape.test test users
