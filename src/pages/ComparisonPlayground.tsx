@@ -142,8 +142,8 @@ export function ComparisonPlayground() {
   // Build the localized justification sentence from the backend reason code + tokens.
   function reasonText(key: string, r: any): string {
     if (!r?.code) return ''
-    // User-defined criteria carry a ready-made bilingual sentence from the AI.
-    if (r.code === 'custom') return r.text ?? ''
+    // AI evaluations carry a ready-made sentence in BOTH languages; pick the current UI one.
+    if (r.code === 'custom') return (lang === 'fr' ? r.text_fr : r.text_en) || r.text_en || r.text_fr || ''
     if (r.code === 'custom_pending') return t.comparison.customPending
     const tpl = (t.reasons as Record<string, string>)[r.code] ?? ''
     const v = r.v != null ? attrValue(t, r.v) : ''

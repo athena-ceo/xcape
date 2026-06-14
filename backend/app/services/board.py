@@ -17,7 +17,7 @@ from app.services import shortlist as sl
 
 
 def criteria_view(
-    db: Session, place: Place, profile: Profile | None, custom_defs: list | None, locale: str,
+    db: Session, place: Place, profile: Profile | None, custom_defs: list | None,
 ) -> dict:
     custom_keys = [c["key"] for c in (custom_defs or []) if c.get("key")]
     eval_keys = criteria.OBJECTIVE_KEYS + custom_keys
@@ -36,7 +36,7 @@ def criteria_view(
     for key in eval_keys:
         ev = rows.get(key)
         if ev is not None:
-            reasons[key] = criterion_eval.reason_from_eval(ev, locale)
+            reasons[key] = criterion_eval.reason_from_eval(ev)
         elif not attrs.get(key):  # no eval and no seed bucket → still being evaluated
             reasons[key] = {"code": "custom_pending"}
             pending.append(key)

@@ -59,7 +59,7 @@ def test_criteria_view_puts_custom_tier_in_quality(db_session):
     db_session.add(PlaceCustomEval(place_id=place.id, key="custom_vegan", label="Vegan",
                                    score=88, level="good", summary_en="ok", summary_fr="ok"))
     db_session.commit()
-    view = board.criteria_view(db_session, place, None, [{"key": "custom_vegan", "label": "Vegan"}], "en")
+    view = board.criteria_view(db_session, place, None, [{"key": "custom_vegan", "label": "Vegan"}])
     assert view["quality"]["custom_vegan"] == "good"
     assert "custom_vegan" not in view["pending"]
 

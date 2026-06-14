@@ -82,8 +82,7 @@ def baseline(
     if place is None:
         return None
     profile = user.profile
-    locale = profile.user.locale if (profile and profile.user) else "fr"
-    view = board.criteria_view(db, place, profile, search.custom_criteria or [], locale)
+    view = board.criteria_view(db, place, profile, search.custom_criteria or [])
     return {
         "id": place.id,
         "name": place.name,

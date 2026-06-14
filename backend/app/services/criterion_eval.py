@@ -208,21 +208,13 @@ def evals_for_place(db: Session, place_id: int, keys: list[str]) -> dict[str, Pl
     return _rows_for_place(db, place_id, keys)
 
 
-def reason_from_eval(ev: PlaceCustomEval, lang: str = "fr") -> dict:
-    """Pop-up justification (score + text + sources) from an already-loaded eval row."""
-    summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr
-    return {"code": "custom", "text": summary, "score": ev.score, "sources": ev.sources or []}
-
-
-def reason_for_place(db: Session, place_id: int, key: str, lang: str = "fr") -> dict:
-    """Structured justification for a criterion cell (mirrors comparison.criterion_reason).
-    Carries the AI score + justification shown in the explanation pop-up."""
-    ev = (
-        db.query(PlaceCustomEval)
-        .filter(PlaceCustomEval.place_id == place_id, PlaceCustomEval.key == key)
-        .first()
-    )
-    if not ev:
-        return {"code": "custom_pending"}
-    summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr
-    return {"code": "custom", "text": summary, "score": ev.score, "sources": ev.sources or []}
+def reason_from_eval(ev: PlaceCustomEval) -> dict:
+    """Pop-up justification from an eval row. Carries BOTH languages so the frontend can
+    show the right one for the current UI language without re-fetching the board."""
+    return {
+        "code": "custom",
+        "text_fr": ev.summary_fr or ev.summary_en or "",
+        "text_en": ev.summary_en or ev.summary_fr or "",
+        "score": ev.score,
+        "sources": ev.sources or [],
+    }

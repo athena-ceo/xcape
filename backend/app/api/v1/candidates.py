@@ -68,12 +68,11 @@ def list_candidates(
     base_langs = {str(lang).lower() for lang in ((base_attrs or {}).get("languages") or [])}
 
     custom_defs = search.custom_criteria or []
-    locale = profile.user.locale if (profile and profile.user) else "fr"
 
     for cand in candidates:
         cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
         if cand.place:
-            view = board.criteria_view(db, cand.place, profile, custom_defs, locale)
+            view = board.criteria_view(db, cand.place, profile, custom_defs)
             cand.quality = view["quality"]
             cand.reasons = view["reasons"]
             cand.pending = view["pending"]
