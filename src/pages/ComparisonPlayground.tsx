@@ -1,7 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { CriteriaSettings } from '../components/CriteriaSettings'
@@ -47,6 +47,13 @@ export function ComparisonPlayground() {
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
   const [why, setWhy] = useState<{ placeId: number; name: string; key: string; text: string } | null>(null)
+  const chatScrollRef = useRef<HTMLDivElement | null>(null)
+
+  // Keep the chat pinned to the latest message (also follows streamed tokens).
+  useEffect(() => {
+    const el = chatScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages, chatBusy])
 
   // Re-read candidates from the server (the source of truth) and keep only the ones
   // the user selected for the comparison board.
@@ -374,7 +381,7 @@ export function ComparisonPlayground() {
       {/* Chat */}
       <div className="bg-turquoise-50 border border-turquoise-100 rounded-lg p-3">
         <p className="text-sm font-medium text-turquoise-600 mb-2">{t.comparison.askAssistant}</p>
-        <div className="space-y-2 mb-3 max-h-72 overflow-y-auto">
+        <div ref={chatScrollRef} className="space-y-2 mb-3 max-h-72 overflow-y-auto">
           {messages.length === 0 && (
             <p className="text-sm text-turquoise-800/50">{t.comparison.chatEmpty}</p>
           )}
