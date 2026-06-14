@@ -5,6 +5,38 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Faster chatbot
+
+- The chat assistant now runs on a faster configuration: `gpt-5-mini` (new
+  `openai_chat_model` setting) with `reasoning_effort=low` and **web search off** for chat
+  turns — the tools and the injected briefing already carry the data it needs (`gpt-5`
+  stays for research/scoring). `create_with_tools` gained `model`/`reasoning_effort`
+  params; `AIQueryLog` now records the actual model per call. Measured: plain reply
+  ~18s→~9s, tool-action turn ~40-55s→~12s.
+
+### 2026-06-14 — Social criteria, onboarding-to-table, user-defined criteria
+
+First user feedback, top priority. Three workstreams:
+
+- **Tolerance & inclusion, gender equality, cultural life, food culture** are now scored
+  criteria. Onboarding asks (optionally, privately) which communities' acceptance matters
+  to the user (LGBTQ+, Jewish, Muslim/Arab, Black & ethnic minorities, immigrants); a
+  country's inclusion score is the **worst-accepted** of those communities (a place hostile
+  to even one doesn't look safe), falling back to general openness when none are named.
+  New leaving-reason "discrimination" up-weights inclusion. New "Only welcoming places"
+  filter. Per-country social data is AI-assessed (anchored on ILGA, Global Gender Gap
+  Index, discrimination/integration reports) — schema in `place_research`, backfilled onto
+  the seeded set via `./xcape.sh backfill-social`. Profile field `minority_groups`
+  (migration 0010), scored in `shortlist` (worst-group rule, neutral when data missing).
+- **Onboarding goes straight to the comparison table** (pre-filled with the top 5 matches);
+  the old country-checklist step is gone (`/shortlist` redirects to `/compare`). A
+  "Suggested matches" strip one-click-adds the rest of the ranked pool.
+- **User-defined criteria**: add any criterion (panel or chat, e.g. "vegan-friendly") and
+  the AI rates each country good/ok/bad with a justification; it joins the ranking like a
+  built-in. Shared per-(country, criterion) cache `place_custom_evals` +
+  `searches.custom_criteria` (migration 0011); new `services/custom_criteria.py`, endpoint
+  `POST /searches/{id}/custom-criteria`, and chat tool `add_custom_criterion`.
+
 ### 2026-06-14 — Comparison hints, chat scroll, added-country scoring
 
 - Comparison table shows an interaction hint (click a country to explore, a value for its

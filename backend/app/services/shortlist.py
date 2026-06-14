@@ -41,12 +41,25 @@ _SCALES: dict[str, dict[str, float]] = {
     "expat_community": {"large": 1.0, "medium": 0.6, "small": 0.3},
     "nature": {"high": 1.0, "medium": 0.6, "low": 0.3},
     "internet": {"fast": 1.0, "ok": 0.6, "slow": 0.3},
+    "gender_equality": {"high": 1.0, "medium": 0.6, "low": 0.3},
+    "culture": {"high": 1.0, "medium": 0.6, "low": 0.3},
+    "food": {"high": 1.0, "medium": 0.6, "low": 0.3},
 }
+
+# Social-acceptance levels per community (used by the inclusion criterion) and the
+# general-openness fallback when the user named no specific community.
+_GROUP_SCALE = {"high": 1.0, "mixed": 0.5, "low": 0.15}
+_OPENNESS_SCALE = {"high": 1.0, "medium": 0.55, "low": 0.15}
+# Communities a user can say matter to them (acceptance judged per the worst of these).
+MINORITY_GROUPS = ["lgbtq", "jewish", "muslim", "ethnic_minorities", "immigrants"]
+# User-defined criteria are rated good/ok/bad by AI; map to the same 0-1 scale.
+_CUSTOM_SCALE = {"good": 1.0, "ok": 0.6, "bad": 0.3}
 
 # All criteria the UI can show / weight / filter on.
 CRITERIA_KEYS = [
     "cost_of_living", "climate", "language_ease", "healthcare", "education", "safety",
-    "political_stability", "tax", "visa", "expat_community", "nature", "internet",
+    "political_stability", "inclusion", "gender_equality", "tax", "visa",
+    "expat_community", "culture", "food", "nature", "internet",
 ]
 
 _DEFAULT_WEIGHTS: dict[str, float] = {
@@ -56,6 +69,8 @@ _DEFAULT_WEIGHTS: dict[str, float] = {
     "political_stability": 1.0,
     "language_ease": 0.8,
     "climate": 0.8,
+    "inclusion": 0.6,
+    "gender_equality": 0.4,
     "tax": 0.5,
     "visa": 0.7,
 }
@@ -70,6 +85,7 @@ _REASON_BOOST: dict[str, dict[str, float]] = {
     "healthcare": {"healthcare": 1.5},
     "career": {"internet": 0.3},
     "lifestyle": {"nature": 0.6, "climate": 0.4},
+    "discrimination": {"inclusion": 1.5, "gender_equality": 0.5},
 }
 
 # Human-readable reason labels (FR/EN) for the criteria that drove a high score.
@@ -82,6 +98,10 @@ _REASON_LABELS: dict[str, dict[str, str]] = {
     "visa": {"fr": "visa accessible", "en": "accessible visa"},
     "language_ease": {"fr": "langue accessible", "en": "manageable language"},
     "climate": {"fr": "climat qui vous convient", "en": "climate that suits you"},
+    "inclusion": {"fr": "tolérance et accueil", "en": "tolerance and acceptance"},
+    "gender_equality": {"fr": "égalité femmes-hommes", "en": "gender equality"},
+    "culture": {"fr": "vie culturelle riche", "en": "rich cultural life"},
+    "food": {"fr": "culture culinaire", "en": "food culture"},
     "expat_community": {"fr": "communauté d'expatriés", "en": "expat community"},
     "nature": {"fr": "nature et paysages", "en": "nature and landscapes"},
 }
@@ -103,6 +123,10 @@ def _effective_weights(profile: Profile | None) -> dict[str, float]:
         profile.household_type == "couple" and getattr(profile, "intends_children", False)
     ):
         weights["education"] = weights.get("education", 0) + 1.5
+    # If the user named communities whose acceptance matters to them, inclusion becomes
+    # a strong factor (they care about feeling welcome, not just averages).
+    if getattr(profile, "minority_groups", None):
+        weights["inclusion"] = weights.get("inclusion", 0) + 1.5
     if profile.criteria_weights:
         for key, value in profile.criteria_weights.items():
             weights[key] = float(value)
@@ -169,11 +193,33 @@ def _cost_value(attrs: dict, profile: Profile | None) -> float:
     return _SCALES["cost_of_living"].get(level, 0.5)
 
 
-def _criterion_value(key: str, attrs: dict, profile: Profile | None, place: Place | None = None) -> float:
+def _inclusion_value(attrs: dict, profile: Profile | None) -> float:
+    """How welcome the user would feel. Judged by the WORST-accepting of the communities
+    they said matter to them (a place hostile to even one shouldn't look safe); when they
+    named none, fall back to the country's general societal openness.
+    """
+    groups = (getattr(profile, "minority_groups", None) or []) if profile else []
+    acceptance = attrs.get("social_acceptance") or {}
+    openness = _OPENNESS_SCALE.get(str(attrs.get("openness", "")).lower(), 0.5)
+    if groups:
+        # Preset communities use their specific acceptance level; free-text or
+        # not-yet-assessed ones fall back to the country's general openness.
+        return min(_GROUP_SCALE.get(str(acceptance.get(g, "")).lower(), openness) for g in groups)
+    return openness
+
+
+def _criterion_value(
+    key: str, attrs: dict, profile: Profile | None, place: Place | None = None,
+    custom: dict[str, str] | None = None,
+) -> float:
+    if custom is not None and key in custom:
+        return _CUSTOM_SCALE.get(str(custom[key]).lower(), 0.5)
     if key == "visa":
         return _visa_value(attrs, profile, place)
     if key == "cost_of_living":
         return _cost_value(attrs, profile)
+    if key == "inclusion":
+        return _inclusion_value(attrs, profile)
     if key == "climate":
         pref = profile.climate_pref if profile else None
         return 1.0 if (pref and attrs.get("climate") == pref) else 0.5
@@ -225,6 +271,10 @@ def passes_filters(place: Place, profile: Profile | None) -> bool:
         elif key == "visa":
             if _visa_value(attrs, profile, place) < 0.9:
                 return False
+        elif key == "inclusion":
+            # "Only welcoming places" — exclude where the user's communities aren't accepted.
+            if _inclusion_value(attrs, profile) < 0.5:
+                return False
         elif key in _SCALES:
             scale = _SCALES[key]
             pv = scale.get(str(attrs.get(key, "")).lower())
@@ -234,14 +284,17 @@ def passes_filters(place: Place, profile: Profile | None) -> bool:
     return True
 
 
-def _score_place(place: Place, weights: dict[str, float], profile: Profile | None):
+def _score_place(
+    place: Place, weights: dict[str, float], profile: Profile | None,
+    custom: dict[str, str] | None = None,
+):
     attrs = place.attributes or {}
     total = wsum = 0.0
     contributions: list[tuple[str, float]] = []
     for key, weight in weights.items():
         if weight <= 0:
             continue
-        val = _criterion_value(key, attrs, profile, place)
+        val = _criterion_value(key, attrs, profile, place, custom)
         total += val * weight
         wsum += weight
         contributions.append((key, val * weight))
@@ -264,6 +317,16 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     """
     profile = user.profile
     weights = _effective_weights(profile)
+    # Fold in any user-defined criteria for this search (each has its own weight); their
+    # per-country level comes from the cached AI evaluation.
+    from app.services import custom_criteria  # avoid circular import at module load
+
+    custom_defs = search.custom_criteria or []
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    custom_keys = [c["key"] for c in custom_defs if c.get("key")]
+
     candidates = (
         db.query(Candidate)
         .filter(Candidate.search_id == search.id, Candidate.status == "active")
@@ -271,7 +334,8 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     )
     scorable = [c for c in candidates if c.place]
     for cand in scorable:
-        score, reasons = _score_place(cand.place, weights, profile)
+        custom = custom_criteria.levels_for_place(db, cand.place_id, custom_keys) if custom_keys else None
+        score, reasons = _score_place(cand.place, weights, profile, custom)
         cand.match_score = score
         cand.match_reasons = reasons
     for rank, cand in enumerate(

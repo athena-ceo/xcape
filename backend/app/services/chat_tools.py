@@ -17,7 +17,7 @@ from app.models.place import Place
 from app.models.profile import Profile
 from app.models.search import Search
 from app.models.user import User
-from app.services import ai_client, place_research
+from app.services import ai_client, custom_criteria, place_research
 from app.services import shortlist as sl
 
 _CRITERIA = ", ".join(sl.CRITERIA_KEYS)
@@ -76,6 +76,24 @@ TOOLS = [
             "type": "object",
             "properties": {"name": {"type": "string"}, "selected": {"type": "boolean"}},
             "required": ["name", "selected"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "add_custom_criterion",
+        "description": (
+            "Add a user-defined criterion the built-in list doesn't cover (e.g. "
+            "'vegan-friendly', 'good surfing', 'startup ecosystem'). The AI rates each "
+            "country on it and it joins the comparison and ranking."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "label": {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["label"],
             "additionalProperties": False,
         },
     },
@@ -161,6 +179,10 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
             )
             db.add(cand)
         db.commit()
+        # Evaluate any user-defined criteria for the newcomer so its custom columns fill in.
+        for c in (search.custom_criteria or []):
+            if c.get("key"):
+                custom_criteria.evaluate(db, place, c["key"], c["label"], c.get("description"), user_id=user.id)
         # Score the new candidate against the profile so it ranks and shows a match score
         # like every other row (a bare insert leaves match_score null → blank, bottom row).
         sl.rescore_candidates(db, user, search)
@@ -181,6 +203,23 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         cand.selected = want
         db.commit()
         return {"ok": True, "name": place.name, "selected": want}, True
+
+    if name == "add_custom_criterion":
+        label = (args.get("label") or "").strip()
+        if not label:
+            return {"ok": False, "error": "missing label"}, False
+        key = custom_criteria.slugify(label)
+        defs = list(search.custom_criteria or [])
+        if not any(c.get("key") == key for c in defs):
+            defs.append({"key": key, "label": label,
+                         "description": args.get("description"), "weight": 1.0})
+            search.custom_criteria = defs
+        if key not in (search.criteria_set or []):
+            search.criteria_set = [*(search.criteria_set or []), key]
+        db.commit()
+        custom_criteria.evaluate_for_search(db, search, key, label, args.get("description"), user_id=user.id)
+        sl.rescore_candidates(db, user, search)
+        return {"ok": True, "added_criterion": label}, True
 
     if name == "rebuild_shortlist":
         sl.build_instant_shortlist(db, user, search)

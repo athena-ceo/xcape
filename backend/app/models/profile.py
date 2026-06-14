@@ -30,6 +30,9 @@ class Profile(Base):
     # Hard constraints applied to the candidate pool, e.g. {"language_ease": true,
     # "climate": "warm", "safety": "high"} — see services.shortlist._passes_filters.
     filters: Mapped[dict | None] = mapped_column(JSON, default=dict)
+    # Communities whose acceptance matters to the user (optional, private) — drives the
+    # inclusion criterion, scored by the worst-accepted of these. See shortlist.MINORITY_GROUPS.
+    minority_groups: Mapped[list | None] = mapped_column(JSON, default=list)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

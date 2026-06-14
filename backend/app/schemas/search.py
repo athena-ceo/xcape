@@ -57,5 +57,11 @@ class AddCriterionRequest(BaseModel):
     label_en: str | None = None
 
 
+class AddCustomCriterionRequest(BaseModel):
+    label: str
+    description: str | None = None
+    weight: float = 1.0
+
+
 class SetSelectedRequest(BaseModel):
     selected: bool

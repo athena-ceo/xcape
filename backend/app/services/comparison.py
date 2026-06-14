@@ -92,6 +92,22 @@ def criterion_reason(place: Place, profile: Profile | None, key: str) -> dict:
         pref = profile.climate_pref if profile else None
         return {"code": "climate_match" if (pref and val == pref) else "climate_diff", "v": val}
 
+    if key == "inclusion":
+        groups = (getattr(profile, "minority_groups", None) or []) if profile else []
+        acceptance = attrs.get("social_acceptance") or {}
+        openness = attrs.get("openness")
+        if groups:
+            openness_v = shortlist._OPENNESS_SCALE.get(str(openness).lower(), 0.5)
+            # Name the limiting (worst-accepted) community so the user sees what drove it.
+            worst = min(
+                groups,
+                key=lambda g: shortlist._GROUP_SCALE.get(str(acceptance.get(g, "")).lower(), openness_v),
+            )
+            # Free-text / not-yet-assessed communities have no specific level → use openness.
+            return {"code": "inclusion_groups", "group": worst,
+                    "v": acceptance.get(worst) or openness}
+        return {"code": "inclusion_general", "v": openness}
+
     return {"code": "level", "v": val}
 
 

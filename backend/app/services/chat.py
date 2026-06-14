@@ -16,6 +16,7 @@ import json
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.candidate import Candidate
 from app.models.chat import ChatMessage
 from app.models.search import Search
@@ -110,7 +111,10 @@ def reply(db: Session, user: User, search: Search, message: str) -> tuple[ChatMe
         for _ in range(_MAX_TOOL_ROUNDS):
             resp = ai_client.create_with_tools(
                 input_items, system=instructions, tools=chat_tools.TOOLS,
-                web_search=True, kind="chat", db=db, user_id=user.id,
+                # Speed: a faster model, low reasoning, and no live web search — the tools
+                # and the injected briefing already carry the data the assistant needs.
+                web_search=False, model=settings.openai_chat_model, reasoning_effort="low",
+                kind="chat", db=db, user_id=user.id,
             )
             calls = [o for o in resp.output if getattr(o, "type", None) == "function_call"]
             if not calls:

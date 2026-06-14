@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Chip } from '../components/Chip'
+import { CommunitySelect } from '../components/CommunitySelect'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
-  MAX_PRIORITIES, PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
+  CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE, MAX_PRIORITIES,
+  PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
@@ -21,6 +22,7 @@ type StepId =
   | 'citizenship'
   | 'household'
   | 'reasons'
+  | 'communities'
   | 'budget'
   | 'tenure'
   | 'climate'
@@ -28,8 +30,8 @@ type StepId =
   | 'priorities'
 
 const STEPS: StepId[] = [
-  'currentCountry', 'citizenship', 'household', 'reasons', 'budget', 'tenure',
-  'climate', 'language', 'priorities',
+  'currentCountry', 'citizenship', 'household', 'reasons', 'communities', 'budget',
+  'tenure', 'climate', 'language', 'priorities',
 ]
 
 interface Answers {
@@ -38,6 +40,7 @@ interface Answers {
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
+  minority_groups: string[]
   budget_monthly: number | null
   tenure: 'rent' | 'buy' | null
   climate_pref: string | null
@@ -52,6 +55,7 @@ const EMPTY: Answers = {
   household_type: null,
   intends_children: null,
   reasons_leaving: [],
+  minority_groups: [],
   budget_monthly: null,
   tenure: null,
   climate_pref: null,
@@ -112,10 +116,13 @@ export function Onboarding() {
         climate_pref: a.climate_pref,
         language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
         criteria_weights: Object.fromEntries(a.priorities.map((k) => [k, PRIORITY_WEIGHT])),
+        minority_groups: a.minority_groups,
       })
       const search = await api.createSearch(t.shortlist.title)
       await api.buildShortlist(search.id)
-      navigate(`/shortlist/${search.id}`)
+      // Straight to the comparison table (pre-filled with the top matches) — the old
+      // checklist step added friction without value.
+      navigate(`/compare/${search.id}`)
     } finally {
       setBusy(false)
     }
@@ -206,6 +213,17 @@ export function Onboarding() {
                   </Chip>
                 ))}
               </div>
+            </>
+          )}
+
+          {step === 'communities' && (
+            <>
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.communities.q}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.communities.hint}</p>
+              <CommunitySelect
+                value={a.minority_groups}
+                onChange={(v) => setA({ ...a, minority_groups: v })}
+              />
             </>
           )}
 

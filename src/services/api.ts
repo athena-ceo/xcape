@@ -72,6 +72,15 @@ export const api = {
     ),
   addCriterion: (id: number, key: string) =>
     request<any[]>(`/searches/${id}/criteria`, { method: 'POST', body: JSON.stringify({ key }) }),
+  listCustomCriteria: (id: number) =>
+    request<{ key: string; label: string; description?: string; weight?: number }[]>(
+      `/searches/${id}/custom-criteria`,
+    ),
+  addCustomCriterion: (id: number, label: string, description?: string) =>
+    request<any[]>(`/searches/${id}/custom-criteria`, {
+      method: 'POST',
+      body: JSON.stringify({ label, description }),
+    }),
   discriminate: (id: number) =>
     request<{ questions: any[] }>(`/searches/${id}/discriminate`, { method: 'POST' }),
   getBaseline: (id: number) => request<any | null>(`/searches/${id}/baseline`),

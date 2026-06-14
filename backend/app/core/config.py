@@ -32,7 +32,10 @@ class Settings(BaseSettings):
 
     # AI
     openai_api_key: str = ""
-    openai_model: str = "gpt-5"
+    openai_model: str = "gpt-5"  # research / scoring — accuracy matters
+    # Chat assistant: a faster, cheaper model. It mostly calls tools and summarizes the
+    # data we already hold, so the smaller model keeps replies snappy.
+    openai_chat_model: str = "gpt-5-mini"
     openai_transcribe_model: str = "gpt-4o-mini-transcribe"
 
     @property

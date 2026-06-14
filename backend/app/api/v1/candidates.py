@@ -13,12 +13,16 @@ from app.models.user import User
 from app.schemas.search import (
     AddCandidateRequest,
     AddCriterionRequest,
+    AddCustomCriterionRequest,
     CandidateOut,
     SetSelectedRequest,
 )
-from app.services import ai_client, comparison, place_research
+from app.services import ai_client, comparison, custom_criteria, place_research
 from app.services import shortlist as shortlist_service
 from app.services.shortlist import MAX_COMPARE
+
+# A custom-criterion level (good/ok/bad) maps directly to the colour tier.
+_CUSTOM_TIER = {"good": "good", "ok": "ok", "bad": "bad"}
 
 router = APIRouter()
 
@@ -45,7 +49,7 @@ def _selected_count(db: Session, search_id: int, exclude_id: int | None = None) 
 def list_candidates(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    _owned(db, user, search_id)
+    search = _owned(db, user, search_id)
     candidates = (
         db.query(Candidate)
         .filter(Candidate.search_id == search_id, Candidate.status == "active")
@@ -66,6 +70,10 @@ def list_candidates(
     }
     base_langs = {str(lang).lower() for lang in ((base_attrs or {}).get("languages") or [])}
 
+    # User-defined criteria for this search, evaluated per country (cached).
+    custom_defs = search.custom_criteria or []
+    custom_keys = [c["key"] for c in custom_defs if c.get("key")]
+
     for cand in candidates:
         cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
         if cand.place:
@@ -74,6 +82,18 @@ def list_candidates(
                 k: comparison.criterion_reason(cand.place, profile, k)
                 for k in shortlist_service.CRITERIA_KEYS
             }
+        # Merge custom-criterion levels into the same per_criterion / quality / reasons
+        # maps the frontend already renders, so custom columns "just work".
+        if custom_keys:
+            levels = custom_criteria.levels_for_place(db, cand.place_id, custom_keys)
+            per = dict(cand.per_criterion or {})
+            for key in custom_keys:
+                level = levels.get(key)
+                per[key] = level  # may be None while still evaluating
+                if level:
+                    cand.quality[key] = _CUSTOM_TIER.get(level, "ok")
+                cand.reasons[key] = custom_criteria.reason_for_place(db, cand.place_id, key, profile.user.locale if profile and profile.user else "fr")
+            cand.per_criterion = per
         if known:
             # Read languages from the live place so existing searches benefit without
             # needing the shortlist rebuilt.
@@ -130,6 +150,10 @@ def add_candidate(
     )
     db.add(candidate)
     db.commit()
+    # Evaluate any user-defined criteria for the newcomer so its custom columns fill in.
+    for c in (search.custom_criteria or []):
+        if c.get("key"):
+            custom_criteria.evaluate(db, place, c["key"], c["label"], c.get("description"), user_id=user.id)
     # Score the new candidate so it ranks and shows a match score like the others.
     shortlist_service.rescore_candidates(db, user, search)
     db.refresh(candidate)
@@ -227,3 +251,38 @@ def add_criterion(
     for cand in candidates:
         db.refresh(cand)
     return candidates
+
+
+@router.get("/{search_id}/custom-criteria")
+def list_custom_criteria(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """The search's user-defined criteria: [{key, label, description, weight}]."""
+    search = _owned(db, user, search_id)
+    return search.custom_criteria or []
+
+
+@router.post("/{search_id}/custom-criteria", response_model=list[CandidateOut])
+def add_custom_criterion(
+    search_id: int,
+    body: AddCustomCriterionRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a user-defined criterion: the AI evaluates each candidate country on it and the
+    column joins the comparison, scored like any other criterion."""
+    search = _owned(db, user, search_id)
+    key = custom_criteria.slugify(body.label)
+    defs = list(search.custom_criteria or [])
+    if not any(c.get("key") == key for c in defs):
+        defs.append({"key": key, "label": body.label, "description": body.description,
+                     "weight": body.weight})
+        search.custom_criteria = defs
+    if key not in (search.criteria_set or []):
+        search.criteria_set = [*(search.criteria_set or []), key]
+    db.commit()
+
+    # Evaluate the on-board countries now (cache-first), then re-rank with the new column.
+    custom_criteria.evaluate_for_search(db, search, key, body.label, body.description, user_id=user.id)
+    shortlist_service.rescore_candidates(db, user, search)
+    return list_candidates(search_id, user=user, db=db)

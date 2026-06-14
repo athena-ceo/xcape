@@ -75,7 +75,7 @@ def _create(kwargs: dict, *, db, user_id, kind, summary):
         db,
         user_id=user_id,
         kind=kind,
-        model=settings.openai_model,
+        model=kwargs.get("model", settings.openai_model),
         summary=summary,
         usage=getattr(resp, "usage", None),
         latency_ms=latency,
@@ -202,18 +202,23 @@ def create_with_tools(
     system: str | None = None,
     tools: list | None = None,
     web_search: bool = False,
+    model: str | None = None,
+    reasoning_effort: str | None = None,
     db: Session | None = None,
     user_id: int | None = None,
     kind: str = "chat",
 ):
     """One Responses API turn with function tools. Returns the raw response so the caller
-    can inspect function_call items and continue the tool loop."""
+    can inspect function_call items and continue the tool loop. `model` and
+    `reasoning_effort` let latency-sensitive callers (chat) pick a faster configuration."""
     all_tools = list(tools or [])
     if web_search:
         all_tools.append({"type": "web_search"})
-    kwargs: dict = {"model": settings.openai_model, "input": input_items}
+    kwargs: dict = {"model": model or settings.openai_model, "input": input_items}
     if all_tools:
         kwargs["tools"] = all_tools
+    if reasoning_effort:
+        kwargs["reasoning"] = {"effort": reasoning_effort}
     if system:
         kwargs["instructions"] = system
     summary = next(

@@ -17,6 +17,7 @@ class ProfileUpdate(BaseModel):
     nice_to_haves: list[str] | None = None
     criteria_weights: dict | None = None
     filters: dict | None = None
+    minority_groups: list[str] | None = None
 
 
 class ProfileOut(ProfileUpdate):

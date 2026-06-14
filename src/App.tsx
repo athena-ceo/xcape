@@ -2,7 +2,7 @@
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 import { useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 
 import { Header } from './components/Header'
 import { AdminDashboard } from './pages/AdminDashboard'
@@ -14,12 +14,18 @@ import { Onboarding } from './pages/Onboarding'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SearchRedirect } from './pages/SearchRedirect'
-import { Shortlist } from './pages/Shortlist'
 import { useAuth } from './store/auth'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const token = useAuth((s) => s.token)
   return token ? children : <Navigate to="/login" replace />
+}
+
+// The old country-checklist step was dropped; send any lingering /shortlist links to the
+// comparison table (now the single entry point, pre-filled with the top matches).
+function ShortlistRedirect() {
+  const { searchId } = useParams()
+  return <Navigate to={`/compare/${searchId}`} replace />
 }
 
 export default function App() {
@@ -41,7 +47,7 @@ export default function App() {
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><SearchRedirect /></RequireAuth>} />
-        <Route path="/shortlist/:searchId" element={<RequireAuth><Shortlist /></RequireAuth>} />
+        <Route path="/shortlist/:searchId" element={<RequireAuth><ShortlistRedirect /></RequireAuth>} />
         <Route path="/compare/:searchId" element={<RequireAuth><ComparisonPlayground /></RequireAuth>} />
         <Route path="/drilldown/:placeId" element={<RequireAuth><Drilldown /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />

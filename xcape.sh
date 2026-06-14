@@ -46,6 +46,8 @@ case "$CMD" in
     MSG="${1:-change}"
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
+  backfill-social)
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
   make-admin)
     EMAIL="${1:-}"
     [[ -z "$EMAIL" ]] && { echo "usage: ./xcape.sh make-admin <dev|prod> <email>"; exit 1; }
@@ -114,6 +116,7 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   migrate                 apply Alembic migrations
   makemigration "msg"     autogenerate a migration
   seed                    load the bundled place database
+  backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
   purge-test-users <env>    (dev) delete @example.com / @xcape.test test users

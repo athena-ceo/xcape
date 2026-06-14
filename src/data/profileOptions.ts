@@ -6,12 +6,18 @@
 
 export const HOUSEHOLDS = ['single', 'couple', 'family'] as const
 export const REASON_KEYS = [
-  'politics', 'economy', 'safety', 'climate', 'cost', 'healthcare', 'lifestyle', 'career',
+  'politics', 'economy', 'safety', 'discrimination', 'climate', 'cost', 'healthcare',
+  'lifestyle', 'career',
 ] as const
 export const CLIMATE_KEYS = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
 export const PRIORITY_KEYS = [
-  'cost_of_living', 'healthcare', 'safety', 'political_stability',
-  'climate', 'language_ease', 'tax', 'visa', 'nature',
+  'cost_of_living', 'healthcare', 'safety', 'political_stability', 'inclusion',
+  'gender_equality', 'climate', 'language_ease', 'culture', 'food', 'tax', 'visa', 'nature',
+] as const
+// Communities a user can flag as mattering to them (optional, private) — drives the
+// inclusion criterion. Must match backend shortlist.MINORITY_GROUPS.
+export const MINORITY_GROUPS = [
+  'lgbtq', 'jewish', 'muslim', 'ethnic_minorities', 'immigrants',
 ] as const
 // Canonical (English) language names — must match the country `languages` data.
 export const LANG_OPTIONS = [

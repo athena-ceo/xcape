@@ -41,17 +41,31 @@ _ENUMS: dict[str, list[str]] = {
     "education": ["strong", "good", "basic"],
     "safety": ["high", "medium", "low"],
     "political_stability": ["high", "medium", "low"],
+    "openness": ["high", "medium", "low"],
+    "gender_equality": ["high", "medium", "low"],
     "tax": ["low", "medium", "high"],
     "visa": ["easy", "medium", "hard"],
     "expat_community": ["large", "medium", "small"],
+    "culture": ["high", "medium", "low"],
+    "food": ["high", "medium", "low"],
     "nature": ["high", "medium", "low"],
     "internet": ["fast", "ok", "slow"],
 }
 
+# Acceptance of specific communities (the inclusion criterion scores the worst of the
+# ones the user cares about). high = welcoming, mixed = uneven, low = hostile.
+_GROUP_KEYS = ["lgbtq", "jewish", "muslim", "ethnic_minorities", "immigrants"]
+_GROUP_LEVELS = ["high", "mixed", "low"]
+
 _SYSTEM = (
     "You assess countries for someone relocating from France. Use web search for "
     "current facts. Rate each attribute on the given scale; language_ease and visa "
-    "are judged from the perspective of a French/EU citizen."
+    "are judged from the perspective of a French/EU citizen. For social_acceptance, "
+    "rate how welcome each community is in daily life, anchored on evidence (e.g. ILGA "
+    "for LGBTQ+ rights, antisemitism / Islamophobia monitoring reports, discrimination "
+    "and integration indices) rather than impressions. For gender_equality use signals "
+    "like the Global Gender Gap Index (legal rights, equal pay, safety). openness is the "
+    "society's general tolerance toward minorities overall."
 )
 
 
@@ -59,6 +73,13 @@ def _place_schema() -> dict:
     attr_props: dict = {k: {"type": "string", "enum": v} for k, v in _ENUMS.items()}
     # Languages a resident actually uses (official + widely-spoken English where usable).
     attr_props["languages"] = {"type": "array", "items": {"type": "string"}}
+    # Per-community acceptance, judged from evidence (see _SYSTEM).
+    attr_props["social_acceptance"] = {
+        "type": "object",
+        "properties": {g: {"type": "string", "enum": _GROUP_LEVELS} for g in _GROUP_KEYS},
+        "required": list(_GROUP_KEYS),
+        "additionalProperties": False,
+    }
     return {
         "type": "object",
         "properties": {
@@ -67,7 +88,7 @@ def _place_schema() -> dict:
             "attributes": {
                 "type": "object",
                 "properties": attr_props,
-                "required": [*_ENUMS.keys(), "languages"],
+                "required": [*_ENUMS.keys(), "languages", "social_acceptance"],
                 "additionalProperties": False,
             },
             "summary_fr": {"type": "string"},
@@ -111,8 +132,15 @@ def research_place(db: Session, name: str, *, user_id: int | None = None) -> Pla
     return place
 
 
+# Criteria with no single scalar attribute — derived from other fields, so they can't be
+# back-filled as one value (inclusion is computed from social_acceptance / openness).
+_DERIVED_CRITERIA = {"inclusion"}
+
+
 def fill_criterion(db: Session, place: Place, key: str, *, user_id: int | None = None) -> str | None:
     """Research a single missing attribute for a place and cache it on the Place."""
+    if key in _DERIVED_CRITERIA:
+        return None  # not a scalar attribute; filled via full research / backfill
     if key in (place.attributes or {}):
         return place.attributes[key]
     enum = _ENUMS.get(key)
@@ -144,7 +172,8 @@ def fill_criterion(db: Session, place: Place, key: str, *, user_id: int | None =
 
 _DETAIL_CRITERIA = [
     "cost_of_living", "climate", "language_ease", "healthcare", "education",
-    "safety", "political_stability", "tax", "visa",
+    "safety", "political_stability", "inclusion", "gender_equality", "tax", "visa",
+    "culture", "food",
 ]
 
 

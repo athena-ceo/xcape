@@ -17,6 +17,9 @@ class Search(Base):
     title: Mapped[str] = mapped_column(String(160), default="My search")
     status: Mapped[str] = mapped_column(String(20), default="active")  # active/narrowing/decided
     criteria_set: Mapped[list | None] = mapped_column(JSON, default=list)  # ordered criterion keys
+    # User-defined criteria for this search: [{key, label, description, weight}]. Evaluated
+    # per country by AI and cached in place_custom_evals.
+    custom_criteria: Mapped[list | None] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

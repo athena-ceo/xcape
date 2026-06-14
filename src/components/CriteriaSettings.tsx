@@ -7,7 +7,8 @@ import { useT } from '../i18n'
 
 const CRITERIA = [
   'cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'safety',
-  'political_stability', 'tax', 'visa', 'expat_community', 'nature', 'internet',
+  'political_stability', 'inclusion', 'gender_equality', 'tax', 'visa',
+  'expat_community', 'culture', 'food', 'nature', 'internet',
 ] as const
 const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
 
@@ -90,6 +91,14 @@ export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
                       onChange={(e) => setF({ ...f, visa: e.target.checked })}
                       className="accent-turquoise-600" />
                     {t.comparison.filterVisaOnly}
+                  </label>
+                )}
+                {k === 'inclusion' && (
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={!!f.inclusion}
+                      onChange={(e) => setF({ ...f, inclusion: e.target.checked })}
+                      className="accent-turquoise-600" />
+                    {t.comparison.filterWelcomingOnly}
                   </label>
                 )}
                 {k === 'climate' && (

@@ -13,6 +13,7 @@ from app.models import (  # noqa: E402,F401
     ai_log,
     candidate,
     chat,
+    custom_eval,
     media,
     place,
     profile,

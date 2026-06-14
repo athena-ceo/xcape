@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { Chip } from '../components/Chip'
+import { CommunitySelect } from '../components/CommunitySelect'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
@@ -24,6 +25,7 @@ interface Form {
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
+  minority_groups: string[]
   budget_monthly: number | null
   tenure: 'rent' | 'buy' | null
   climate_pref: string | null
@@ -60,6 +62,7 @@ export function ProfilePage() {
         household_type: p?.household_type ?? null,
         intends_children: p?.intends_children ?? null,
         reasons_leaving: p?.reasons_leaving ?? [],
+        minority_groups: p?.minority_groups ?? [],
         budget_monthly: p?.budget_monthly ?? null,
         tenure: p?.tenure ?? null,
         climate_pref: p?.climate_pref ?? null,
@@ -89,6 +92,7 @@ export function ProfilePage() {
         household_type: f.household_type,
         intends_children: f.intends_children,
         reasons_leaving: f.reasons_leaving,
+        minority_groups: f.minority_groups,
         budget_monthly: f.budget_monthly,
         tenure: f.tenure,
         climate_pref: f.climate_pref,
@@ -167,6 +171,14 @@ export function ProfilePage() {
               </Chip>
             ))}
           </div>
+        </Section>
+
+        <Section title={t.onboarding.communities.q}>
+          <p className="text-sm text-turquoise-800/60 mb-3">{t.onboarding.communities.hint}</p>
+          <CommunitySelect
+            value={f.minority_groups}
+            onChange={(v) => set('minority_groups', v)}
+          />
         </Section>
 
         <Section title={t.onboarding.budget.q}>

@@ -13,10 +13,14 @@ import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
 
-const DEFAULT_ROWS = ['cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'political_stability']
+const DEFAULT_ROWS = [
+  'cost_of_living', 'inclusion', 'gender_equality', 'climate', 'language_ease',
+  'healthcare', 'education', 'political_stability',
+]
 const ALL_CRITERIA = [
   'cost_of_living', 'climate', 'language_ease', 'healthcare', 'education', 'safety',
-  'political_stability', 'tax', 'visa', 'expat_community', 'nature', 'internet',
+  'political_stability', 'inclusion', 'gender_equality', 'tax', 'visa',
+  'expat_community', 'culture', 'food', 'nature', 'internet',
 ] as const
 
 type CritKey = (typeof ALL_CRITERIA)[number]
@@ -26,6 +30,7 @@ export function ComparisonPlayground() {
   const { searchId } = useParams()
   const sid = Number(searchId)
   const [candidates, setCandidates] = useState<any[]>([])
+  const [suggestions, setSuggestions] = useState<any[]>([])
   const [places, setPlaces] = useState<Record<number, any>>({})
   const [rows, setRows] = useState<string[]>(DEFAULT_ROWS)
 
@@ -36,6 +41,9 @@ export function ComparisonPlayground() {
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
   const [newCriterion, setNewCriterion] = useState<CritKey | ''>('')
+  const [customCrit, setCustomCrit] = useState<{ key: string; label: string }[]>([])
+  const [newCustom, setNewCustom] = useState('')
+  const [addingCustom, setAddingCustom] = useState(false)
 
   const [questions, setQuestions] = useState<any[]>([])
   const [narrowing, setNarrowing] = useState(false)
@@ -64,21 +72,26 @@ export function ComparisonPlayground() {
     }
   }, [messages, chatBusy])
 
-  // Re-read candidates from the server (the source of truth) and keep only the ones
-  // the user selected for the comparison board.
+  // Re-read candidates from the server (the source of truth): the selected ones populate
+  // the board; the rest of the ranked pool becomes one-click "suggested matches".
   async function reloadCandidates() {
     const cands = await api.listCandidates(sid)
     setCandidates(cands.filter((c) => c.selected))
+    setSuggestions(cands.filter((c) => !c.selected))
   }
 
   async function reload() {
-    const [pls, hist, profile] = await Promise.all([
+    const [pls, hist, profile, custom] = await Promise.all([
       api.listPlaces('country'), api.getChat(sid), api.getProfile() as Promise<any>,
+      api.listCustomCriteria(sid).catch(() => []),
     ])
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
     setMessages(hist)
     setWeights(profile?.criteria_weights ?? {})
     setFilters(profile?.filters ?? {})
+    setCustomCrit(custom.map((c) => ({ key: c.key, label: c.label })))
+    // Make sure user-defined criteria appear as rows on the board.
+    setRows((r) => [...r, ...custom.map((c) => c.key).filter((k) => !r.includes(k))])
     await reloadCandidates()
   }
 
@@ -96,14 +109,19 @@ export function ComparisonPlayground() {
   // Build the localized justification sentence from the backend reason code + tokens.
   function reasonText(key: string, r: any): string {
     if (!r?.code) return ''
+    // User-defined criteria carry a ready-made bilingual sentence from the AI.
+    if (r.code === 'custom') return r.text ?? ''
+    if (r.code === 'custom_pending') return t.comparison.customPending
     const tpl = (t.reasons as Record<string, string>)[r.code] ?? ''
     const v = r.v != null ? attrValue(t, r.v) : ''
     const langName = (l: string) => (t.langNames as Record<string, string>)[l] ?? l
+    const groupName = (g: string) => (t.groups as Record<string, string>)[g] ?? g
     return tpl
       .replace('{v}', v)
       .replace('{lang}', r.lang ? langName(r.lang) : '')
       .replace('{langs}', Array.isArray(r.langs) ? r.langs.map(langName).join(', ') : '')
-      .replace('{label}', (t.criteria as Record<string, string>)[key] ?? key)
+      .replace('{group}', r.group ? groupName(r.group) : '')
+      .replace('{label}', critLabel(key))
   }
 
   function openWhy(c: any, key: string) {
@@ -129,9 +147,34 @@ export function ComparisonPlayground() {
     return attrValue(t, byTier[tier ?? ''] ?? attrs?.visa)
   }
 
+  // Inclusion is user-relative (it depends on the communities they flagged), so the cell
+  // reflects the computed quality tier rather than a single raw attribute.
+  function inclusionCell(tier: string | undefined) {
+    const byTier: Record<string, string> = { good: 'welcoming', ok: 'mixed', bad: 'guarded' }
+    return attrValue(t, byTier[tier ?? ''] ?? 'mixed')
+  }
+
+  // User-defined criteria are rated good/ok/bad by AI; show the quality word (or a
+  // placeholder while the evaluation is still running).
+  function customCell(tier: string | undefined) {
+    if (!tier) return '…'
+    return attrValue(t, { good: 'good', ok: 'ok', bad: 'poor' }[tier] ?? 'ok')
+  }
+
+  function isCustom(key: string) {
+    return key.startsWith('custom_')
+  }
+
+  function critLabel(key: string) {
+    if (isCustom(key)) return customCrit.find((c) => c.key === key)?.label ?? key
+    return (t.criteria as Record<string, string>)[key] ?? key
+  }
+
   function cellValue(key: string, attrs: any, tier?: string) {
     if (key === 'language_ease') return languageCell(t, attrs)
     if (key === 'visa') return visaCell(tier, attrs)
+    if (key === 'inclusion') return inclusionCell(tier)
+    if (isCustom(key)) return customCell(tier)
     return attrValue(t, attrs?.[key])
   }
 
@@ -172,10 +215,31 @@ export function ComparisonPlayground() {
     await reloadCandidates() // re-read from server rather than trusting the response
   }
 
+  // Add a user-defined criterion: the AI rates every country, then it joins the board.
+  async function addCustom() {
+    const label = newCustom.trim()
+    if (!label || addingCustom) return
+    setAddingCustom(true)
+    try {
+      await api.addCustomCriterion(sid, label)
+      setNewCustom('')
+      await reload() // picks up the new column, labels and re-scored candidates
+    } finally {
+      setAddingCustom(false)
+    }
+  }
+
   // "×" removes a country from the comparison board by unselecting it — it stays in the
   // shortlist for reselection.
   async function removeCountry(candidateId: number) {
     await api.setSelected(sid, candidateId, false)
+    await reloadCandidates()
+  }
+
+  // One-click add a suggested (ranked but unselected) country to the board.
+  async function addSuggestion(candidateId: number) {
+    if (candidates.length >= 5) return
+    await api.setSelected(sid, candidateId, true)
     await reloadCandidates()
   }
 
@@ -286,7 +350,7 @@ export function ComparisonPlayground() {
           <tbody>
             {rows.map((key) => (
               <tr key={key} className="border-t border-turquoise-100">
-                <td className="p-3 text-turquoise-800/70">{t.criteria[key as CritKey] ?? key}</td>
+                <td className="p-3 text-turquoise-800/70">{critLabel(key)}</td>
                 {baseline && (
                   <td className="p-0 text-center bg-turquoise-50">
                     <Link to={`/drilldown/${baseline.id}#criterion-${key}`} className="block p-3 hover:underline">
@@ -326,6 +390,25 @@ export function ComparisonPlayground() {
         </table>
       </div>
 
+      {/* Suggested matches — the ranked pool not yet on the board; one click adds them. */}
+      {suggestions.length > 0 && candidates.length < 5 && (
+        <div className="mb-4">
+          <p className="text-xs text-turquoise-800/60 mb-1.5">{t.comparison.suggested}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.slice(0, 12).map((c) => (
+              <button key={c.id} onClick={() => addSuggestion(c.id)}
+                className="text-xs rounded-full border border-turquoise-100 px-2.5 py-1 hover:bg-turquoise-50 inline-flex items-center gap-1.5">
+                <span>{placeName(places[c.place_id], lang)}</span>
+                {c.match_score != null && (
+                  <span className="text-turquoise-600/70">{Math.round(c.match_score)}%</span>
+                )}
+                <span className="text-turquoise-600">+</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Add country / add criterion */}
       <div className="flex flex-wrap gap-3 mb-5">
         <div className="flex items-center gap-2">
@@ -353,6 +436,18 @@ export function ComparisonPlayground() {
             </button>
           </div>
         )}
+        {/* User-defined criterion: AI evaluates each country on it. */}
+        <div className="flex items-center gap-2">
+          <input value={newCustom} onChange={(e) => setNewCustom(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+            placeholder={t.comparison.customPrompt}
+            className="w-56 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
+          <button onClick={addCustom} disabled={!newCustom.trim() || addingCustom}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+            {addingCustom && <Spinner />}
+            {addingCustom ? t.comparison.customAdding : `+ ${t.comparison.customCriterion}`}
+          </button>
+        </div>
       </div>
 
       {/* Discriminator questions — clicking an answer re-weights and re-ranks. */}

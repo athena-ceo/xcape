@@ -49,15 +49,25 @@ user unless noted.
 | healthcare | strong / good / basic | |
 | safety | high / medium / low | |
 | political_stability | high / medium / low | |
+| inclusion | (derived) | tolerance / acceptance, scored against the **communities the user cares about** (see below) |
+| gender_equality | high / medium / low | legal rights, equal pay, fair treatment |
 | tax | low / medium / high | **low is best** (lighter burden) |
 | visa | easy / medium / hard | scored from **citizenship**, not residence (see below) |
 | expat_community | large / medium / small | |
+| culture | high / medium / low | cultural activities, arts, events |
+| food | high / medium / low | food culture / cuisine |
 | nature | high / medium / low | |
 | internet | fast / ok / slow | |
 
-Plus `languages` (list a resident actually uses) and, for the drill-down, cached `facts`
-(capital, population, region, flag, coords, photo) and `criteria_detail` (sourced AI
-explanations).
+Plus `languages` (list a resident actually uses), `social_acceptance` (per-community
+acceptance: lgbtq / jewish / muslim / ethnic_minorities / immigrants, each high/mixed/low)
+and `openness` (general societal openness) feeding the inclusion criterion, and — for the
+drill-down — cached `facts` (capital, population, region, flag, coords, photo) and
+`criteria_detail` (sourced AI explanations).
+
+**User-defined criteria** can be added per search (a phrase like "vegan-friendly"); the AI
+rates each country good/ok/bad with a justification, cached in `place_custom_evals` and
+scored alongside the built-ins.
 
 ## Scoring
 
@@ -84,6 +94,12 @@ the score (see the click-through explainer on any score).
   destination or an EU/EEA/CH citizen moving within that zone → free movement; a non-EU
   citizen (even if resident in the EU) → hard for EU destinations.
 - **Climate** — full marks when it matches the user's preference.
+- **Inclusion** — the user optionally flags communities whose acceptance matters to them
+  (`profile.minority_groups`, private). The score is the **worst-accepted** of those
+  communities in `social_acceptance` (a place hostile to even one shouldn't look safe);
+  missing data for a community is neutral. With no communities flagged it falls back to the
+  country's general `openness`. Selecting communities (or the "discrimination"
+  reason-for-leaving) up-weights inclusion.
 
 **Quality tiers** for colour coding: ≥0.70 good · ≥0.45 ok · else bad.
 
@@ -96,6 +112,8 @@ settings":
   languages).
 - **climate** — only a chosen climate.
 - **visa** — only places with easy mobility (citizen / EU-FOM / easy visa).
+- **inclusion** — "only welcoming places" excludes countries where the user's flagged
+  communities aren't accepted.
 - ordinal criteria support a minimum-acceptable bucket.
 
 Applying settings rebuilds the shortlist from the full pool, so filters change which
