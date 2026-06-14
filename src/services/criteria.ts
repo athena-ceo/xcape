@@ -34,6 +34,12 @@ export function loadCriteria(): Promise<Registry> {
   return _promise
 }
 
+// Drop the cached catalog so the next read refetches (after an admin edit).
+export function refreshCriteria(): void {
+  _cache = null
+  _promise = null
+}
+
 export function useCriteria(): Registry | null {
   const [reg, setReg] = useState<Registry | null>(_cache)
   useEffect(() => { if (!reg) loadCriteria().then(setReg).catch(() => {}) }, [reg])

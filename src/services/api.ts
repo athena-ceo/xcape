@@ -133,6 +133,13 @@ export const api = {
     }),
   adminResetUser: (userId: number) =>
     request<void>(`/admin/users/${userId}/reset`, { method: 'POST' }),
+  getAdminCriteria: () => request<any>('/admin/criteria'),
+  putAdminCriteria: (registry: any) =>
+    request<{ ok: boolean }>('/admin/criteria', { method: 'PUT', body: JSON.stringify(registry) }),
+  createPlace: (body: any) =>
+    request<any>('/admin/places', { method: 'POST', body: JSON.stringify(body) }),
+  updatePlace: (id: number, body: any) =>
+    request<{ ok: boolean }>(`/admin/places/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
 
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
   // Tool-enabled chat: returns the assistant reply and whether it changed the search.

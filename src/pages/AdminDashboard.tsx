@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { useT } from '../i18n'
 import { api } from '../services/api'
+import { AdminCriteria } from './AdminCriteria'
 
-type Tab = 'users' | 'searches' | 'places' | 'ailog'
+type Tab = 'users' | 'searches' | 'places' | 'ailog' | 'criteria'
 
 export function AdminDashboard() {
   const { t, lang } = useT()
@@ -17,13 +18,14 @@ export function AdminDashboard() {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: '', dir: 1 })
 
   useEffect(() => {
-    setLoading(true)
     setQuery('')
     setSort({ key: '', dir: 1 })
+    if (tab === 'criteria') { setLoading(false); setRows([]); return }
+    setLoading(true)
     const fetcher = {
       users: api.getAdminUsers, searches: api.getAdminSearches,
       places: api.getAdminPlaces, ailog: api.getAdminAiLog,
-    }[tab]
+    }[tab] as () => Promise<any[]>
     fetcher().then(setRows).catch(() => setRows([])).finally(() => setLoading(false))
   }, [tab])
 
@@ -69,6 +71,7 @@ export function AdminDashboard() {
       ['latency_ms', t.admin.colLatency, (r: any) => (r.latency_ms ? `${Math.round(r.latency_ms / 1000)}s` : '')],
       ['created_at', t.admin.colWhen, (r: any) => fmt(r.created_at, lang)],
     ],
+    criteria: [],
   }[tab] as any), [tab, t, lang])
 
   const view = useMemo(() => {
@@ -88,7 +91,8 @@ export function AdminDashboard() {
 
   const tabs: [Tab, string][] = [
     ['users', t.admin.usersTitle], ['searches', t.admin.searchesTitle],
-    ['places', t.admin.placesTitle], ['ailog', t.admin.aiLogTitle],
+    ['places', t.admin.placesTitle], ['criteria', t.admin.criteriaTitle],
+    ['ailog', t.admin.aiLogTitle],
   ]
 
   return (
@@ -106,10 +110,14 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.admin.search}
-        className="w-full sm:w-72 border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
+      {tab !== 'criteria' && (
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.admin.search}
+          className="w-full sm:w-72 border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
+      )}
 
-      {loading ? (
+      {tab === 'criteria' ? (
+        <AdminCriteria />
+      ) : loading ? (
         <p className="text-turquoise-800/60">{t.common.loading}</p>
       ) : view.length === 0 ? (
         <p className="text-turquoise-800/60">{t.admin.none}</p>

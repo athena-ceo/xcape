@@ -186,6 +186,7 @@ export const fr = {
     usersTitle: 'Utilisateurs',
     searchesTitle: 'Recherches',
     placesTitle: 'Base de pays',
+    criteriaTitle: 'Critères',
     aiLogTitle: 'Journal IA',
     search: 'Rechercher…',
     none: 'Aucun élément.',
@@ -314,6 +315,19 @@ export const fr = {
     inclusion_groups: 'Acceptation des {group} : {v} — la communauté signalée la moins bien accueillie ici.',
     inclusion_general: 'Ouverture générale aux minorités : {v}.',
     level: '{label} : {v}.',
+  },
+  adminCriteria: {
+    hint: 'Modifiez le catalogue de critères. Désactivez (sans supprimer) ; les changements s’appliquent partout.',
+    key: 'Clé',
+    labels: 'Libellés (EN / FR)',
+    weight: 'Poids par défaut',
+    tags: 'Tags',
+    active: 'Actif',
+    addLeaf: 'Ajouter un critère',
+    addCategory: 'Ajouter une catégorie',
+    save: 'Enregistrer le catalogue',
+    saved: 'Enregistré.',
+    newKey: 'Clé du nouveau critère (ex. job_security) :',
   },
   waiting: {
     messages: [

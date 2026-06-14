@@ -188,6 +188,7 @@ export const en: Dict = {
     usersTitle: 'Users',
     searchesTitle: 'Searches',
     placesTitle: 'Place database',
+    criteriaTitle: 'Criteria',
     aiLogTitle: 'AI log',
     search: 'Search…',
     none: 'Nothing here.',
@@ -316,6 +317,19 @@ export const en: Dict = {
     inclusion_groups: 'Acceptance of {group}: {v} — the community you flagged that fares worst here.',
     inclusion_general: 'General openness to minorities: {v}.',
     level: '{label}: {v}.',
+  },
+  adminCriteria: {
+    hint: 'Edit the criteria catalog. Deactivate (don’t delete) members; changes apply across the app.',
+    key: 'Key',
+    labels: 'Labels (EN / FR)',
+    weight: 'Default weight',
+    tags: 'Tags',
+    active: 'Active',
+    addLeaf: 'Add criterion',
+    addCategory: 'Add category',
+    save: 'Save catalog',
+    saved: 'Saved.',
+    newKey: 'Key for the new criterion (e.g. job_security):',
   },
   waiting: {
     messages: [
