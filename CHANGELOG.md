@@ -5,6 +5,25 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Comparison hints, chat scroll, added-country scoring
+
+- Comparison table shows an interaction hint (click a country to explore, a value for its
+  rationale, a score for the calculation breakdown).
+- Chat now scrolls so the top of the latest assistant reply is at the top of the box
+  (read from the start of the answer), pinning to the bottom only while it's thinking.
+- Fix: a country added via chat tool-calling or the "add country" button is now scored
+  immediately (`rescore_candidates`), so it ranks and shows a match score instead of
+  landing unscored at the bottom with a blank cell.
+
+### 2026-06-14 — Chatbot tool-calling
+
+- The chat assistant can now act via OpenAI function calling: set criteria importance
+  (weights), apply/clear filters, add a country, select/unselect for comparison, and
+  rebuild the shortlist — reusing the existing services so it stays consistent
+  (`services/chat_tools.py`, `ai_client.create_with_tools`, tool loop in `chat.reply`).
+- `/chat` returns `{reply, changed}`; the board re-reads when the assistant changed it.
+  Replaced the streaming chat path with the tool loop.
+
 ### 2026-06-14 — Password reset (CLI + admin)
 
 - `./xcape.sh reset-password <env> <email> <newpassword>` (via `app.db.set_password`).

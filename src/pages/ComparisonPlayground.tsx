@@ -48,11 +48,20 @@ export function ComparisonPlayground() {
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
   const [why, setWhy] = useState<{ placeId: number; name: string; key: string; text: string } | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
+  const lastReplyRef = useRef<HTMLDivElement | null>(null)
 
-  // Keep the chat pinned to the latest message (also follows streamed tokens).
+  // When a new assistant reply arrives, scroll so the TOP of that reply is at the top of
+  // the chat box (the user reads from the start of the answer). While waiting, or after a
+  // user turn, fall back to pinning to the bottom so the spinner / new message is visible.
   useEffect(() => {
     const el = chatScrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (!el) return
+    const last = messages[messages.length - 1]
+    if (!chatBusy && last?.role === 'assistant' && lastReplyRef.current) {
+      el.scrollTop = lastReplyRef.current.offsetTop - el.offsetTop
+    } else {
+      el.scrollTop = el.scrollHeight
+    }
   }, [messages, chatBusy])
 
   // Re-read candidates from the server (the source of truth) and keep only the ones
@@ -129,21 +138,14 @@ export function ComparisonPlayground() {
   async function send(message: string) {
     if (!message.trim() || chatBusy) return
     setChat('')
-    const aid = `a-${Date.now()}`
-    setMessages((m) => [
-      ...m,
-      { id: `u-${Date.now()}`, role: 'user', content: message },
-      { id: aid, role: 'assistant', content: '' },
-    ])
+    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: 'user', content: message }])
     setChatBusy(true)
     try {
-      await api.streamChat(sid, message, (delta) =>
-        setMessages((m) => m.map((x) => (x.id === aid ? { ...x, content: x.content + delta } : x))),
-      )
-    } catch {
-      // Fall back to a single non-streamed reply, then re-read history.
-      await api.sendChat(sid, message).catch(() => {})
-      setMessages(await api.getChat(sid))
+      const res = await api.sendChat(sid, message)
+      // The assistant may have used tools to change the board — re-read everything so the
+      // table, weights and filters reflect it (also syncs the chat history).
+      if (res.changed) await reload()
+      else setMessages(await api.getChat(sid))
     } finally {
       setChatBusy(false)
     }
@@ -252,6 +254,11 @@ export function ComparisonPlayground() {
         <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900">{t.comparison.legendWeak}</span>
         <span className="px-2 py-0.5 rounded bg-red-50 text-red-800">{t.comparison.legendNogo}</span>
       </div>
+
+      {/* Interaction hint */}
+      <p className="flex items-center gap-1.5 text-xs text-turquoise-800/60 mb-2">
+        <span aria-hidden>👆</span>{t.comparison.tableHint}
+      </p>
 
       {/* Comparison table */}
       <div className="overflow-x-auto bg-white border border-turquoise-100 rounded-lg mb-4">
@@ -385,15 +392,16 @@ export function ComparisonPlayground() {
           {messages.length === 0 && (
             <p className="text-sm text-turquoise-800/50">{t.comparison.chatEmpty}</p>
           )}
-          {messages.map((m) => (
+          {messages.map((m, i) => (
             <div key={m.id}
+              ref={i === messages.length - 1 && m.role === 'assistant' ? lastReplyRef : undefined}
               className={`text-sm rounded-lg px-3 py-2 ${
                 m.role === 'user' ? 'bg-turquoise-600 text-turquoise-50 ml-8'
                                   : 'bg-white border border-turquoise-100 mr-8'}`}>
               {m.role === 'user' ? m.content : <Markdown>{m.content}</Markdown>}
             </div>
           ))}
-          {chatBusy && !messages[messages.length - 1]?.content && (
+          {chatBusy && (
             <p className="text-sm text-turquoise-800/50 flex items-center gap-2">
               <Spinner /> {t.comparison.thinking}
             </p>

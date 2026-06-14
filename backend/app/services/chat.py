@@ -12,16 +12,15 @@ in scope; unrelated requests are politely declined.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import json
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
 from app.models.candidate import Candidate
 from app.models.chat import ChatMessage
 from app.models.search import Search
 from app.models.user import User
-from app.services import ai_client
+from app.services import ai_client, chat_tools
 
 SYSTEM_PROMPT = (
     "You are xCape's relocation assistant. Help the user choose a country/region/city to "
@@ -92,65 +91,54 @@ def _build(db: Session, user: User, search: Search) -> tuple[str, list[dict]]:
     return instructions, messages
 
 
-def reply(db: Session, user: User, search: Search, message: str) -> ChatMessage:
-    """Non-streaming reply (used by tests / fallback)."""
+_MAX_TOOL_ROUNDS = 6
+
+
+def reply(db: Session, user: User, search: Search, message: str) -> tuple[ChatMessage, bool]:
+    """Reply with tool-calling. The model may call tools (set importance/filters, add or
+    select countries, rebuild) which act on the search; we then let it answer. Returns
+    (assistant message, changed) where `changed` means the board should be re-read.
+    """
     db.add(ChatMessage(search_id=search.id, role="user", content=message))
     db.commit()
     instructions, messages = _build(db, user, search)
+    input_items: list = list(messages)
+    changed = False
+    answer = ""
+
     try:
-        answer = ai_client.converse(
-            messages, system=instructions, web_search=True, kind="chat", db=db, user_id=user.id
-        )
+        for _ in range(_MAX_TOOL_ROUNDS):
+            resp = ai_client.create_with_tools(
+                input_items, system=instructions, tools=chat_tools.TOOLS,
+                web_search=True, kind="chat", db=db, user_id=user.id,
+            )
+            calls = [o for o in resp.output if getattr(o, "type", None) == "function_call"]
+            if not calls:
+                answer = getattr(resp, "output_text", "") or ""
+                break
+            for call in calls:
+                try:
+                    args = json.loads(call.arguments or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+                result, did = chat_tools.execute(db, user, search, call.name, args)
+                changed = changed or did
+                input_items.append(
+                    {"type": "function_call", "call_id": call.call_id,
+                     "name": call.name, "arguments": call.arguments})
+                input_items.append(
+                    {"type": "function_call_output", "call_id": call.call_id,
+                     "output": json.dumps(result)})
     except ai_client.AIUnavailable:
+        answer = _unavailable(user)
+
+    if not answer:
         answer = _unavailable(user)
     msg = ChatMessage(search_id=search.id, role="assistant", content=answer)
     db.add(msg)
     db.commit()
     db.refresh(msg)
-    return msg
-
-
-def reply_stream(db: Session, user: User, search: Search, message: str) -> Iterator[str]:
-    """Streaming reply: yields text deltas, persisting the full answer at the end.
-
-    All ORM reads (save the user turn, build context + history) happen up front while the
-    request session is valid. The streaming itself uses a dedicated session, because with
-    a StreamingResponse the request-scoped session is torn down before the generator runs.
-    """
-    db.add(ChatMessage(search_id=search.id, role="user", content=message))
-    db.commit()
-    instructions, messages = _build(db, user, search)
-    search_id, user_id, locale = search.id, user.id, user.locale
-
-    def gen() -> Iterator[str]:
-        session = SessionLocal()
-        chunks: list[str] = []
-        try:
-            for delta in ai_client.converse_stream(
-                messages, system=instructions, web_search=True, kind="chat",
-                db=session, user_id=user_id,
-            ):
-                chunks.append(delta)
-                yield delta
-        except ai_client.AIUnavailable:
-            fallback = (
-                "Le service IA n'est pas encore configuré (clé OpenAI manquante)."
-                if locale == "fr"
-                else "The AI service is not configured yet (missing OpenAI key)."
-            )
-            chunks.append(fallback)
-            yield fallback
-        finally:
-            content = "".join(chunks)
-            if content:
-                session.add(ChatMessage(search_id=search_id, role="assistant", content=content))
-                try:
-                    session.commit()
-                except Exception:
-                    session.rollback()
-            session.close()
-
-    return gen()
+    return msg, changed
 
 
 def _unavailable(user: User) -> str:

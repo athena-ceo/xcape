@@ -221,6 +221,7 @@ export const fr = {
     legendGood: 'Bon',
     legendWeak: 'Moyen',
     legendNogo: 'À éviter',
+    tableHint: 'Astuce : cliquez un pays pour l’explorer, une valeur pour sa justification, un score pour le détail du calcul.',
     askAssistant: "Demander à l'assistant",
     placeholder: 'Écrivez ou parlez…',
     send: 'Envoyer',

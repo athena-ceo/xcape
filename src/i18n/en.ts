@@ -223,6 +223,7 @@ export const en: Dict = {
     legendGood: 'Good',
     legendWeak: 'Weak',
     legendNogo: 'Avoid',
+    tableHint: 'Tip: click a country to explore it, a value for its rationale, a score for the calculation breakdown.',
     askAssistant: 'Ask the assistant',
     placeholder: 'Type or speak…',
     send: 'Send',

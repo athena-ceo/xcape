@@ -95,30 +95,12 @@ export const api = {
     }),
 
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
+  // Tool-enabled chat: returns the assistant reply and whether it changed the search.
   sendChat: (id: number, message: string) =>
-    request<any>(`/searches/${id}/chat`, {
+    request<{ reply: string; changed: boolean }>(`/searches/${id}/chat`, {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
-  // Streaming chat: invokes onDelta with each text chunk as it arrives.
-  streamChat: async (id: number, message: string, onDelta: (delta: string) => void) => {
-    const res = await fetch(`${API_URL}/api/v1/searches/${id}/chat/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
-      },
-      body: JSON.stringify({ message }),
-    })
-    if (!res.ok || !res.body) throw new Error(`Stream failed: ${res.status}`)
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      onDelta(decoder.decode(value, { stream: true }))
-    }
-  },
 }
 
 export { API_URL }

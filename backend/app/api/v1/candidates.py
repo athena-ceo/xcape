@@ -93,7 +93,7 @@ def add_candidate(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _owned(db, user, search_id)
+    search = _owned(db, user, search_id)
     place: Place | None = None
     if body.place_id is not None:
         place = db.get(Place, body.place_id)
@@ -130,6 +130,8 @@ def add_candidate(
     )
     db.add(candidate)
     db.commit()
+    # Score the new candidate so it ranks and shows a match score like the others.
+    shortlist_service.rescore_candidates(db, user, search)
     db.refresh(candidate)
     return candidate
 

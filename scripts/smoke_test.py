@@ -107,10 +107,10 @@ def main() -> int:
     check("candidates carry vs_current deltas",
           isinstance(cands2, list) and any(c.get("vs_current") for c in cands2))
 
-    # No OpenAI key in CI: the chat endpoint must still return 200 with a graceful message.
+    # No OpenAI key in CI: the chat endpoint must still return 200 with a graceful reply.
     st, msg = call("POST", f"/searches/{sid}/chat", token, {"message": "Test?"})
     check("chat degrades gracefully (200)",
-          st == 200 and isinstance(msg, dict) and bool(msg.get("content")), f"status={st}")
+          st == 200 and isinstance(msg, dict) and bool(msg.get("reply")), f"status={st}")
 
     return _finish()
 

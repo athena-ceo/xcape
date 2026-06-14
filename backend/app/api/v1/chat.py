@@ -2,7 +2,6 @@
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -34,27 +33,15 @@ def history(search_id: int, user: User = Depends(get_current_user), db: Session 
     )
 
 
-@router.post("/{search_id}/chat", response_model=ChatOut)
+@router.post("/{search_id}/chat")
 def send(
     search_id: int,
     body: ChatRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Chat with tool-calling. Returns the assistant reply and whether the assistant
+    changed the search (so the frontend can re-read the board)."""
     search = _owned(db, user, search_id)
-    return chat_service.reply(db, user, search, body.message)
-
-
-@router.post("/{search_id}/chat/stream")
-def send_stream(
-    search_id: int,
-    body: ChatRequest,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Streaming chat: plain-text chunks as the answer is generated."""
-    search = _owned(db, user, search_id)
-    return StreamingResponse(
-        chat_service.reply_stream(db, user, search, body.message),
-        media_type="text/plain; charset=utf-8",
-    )
+    msg, changed = chat_service.reply(db, user, search, body.message)
+    return {"reply": msg.content, "changed": changed}

@@ -8,21 +8,30 @@ affected. Ship items independently.
 
 ## Open
 
-### Tool-calling in the AI chatbot
+### Voice output for the chatbot (text-to-speech)
 
-**Done looks like:** the chat assistant can take actions in the app via OpenAI
-tool/function calling — e.g. refine the search, change criteria weights/filters, add or
-remove a candidate country, select/unselect for comparison, drill down, and answer "why"
-about a score. The model decides when to call a tool; the backend executes it (reusing
-the existing services) and the UI reflects the change.
+**Now:** voice **input** exists (`src/components/VoiceButton.tsx` records audio →
+`/voice/transcribe` → `ai_client.transcribe_audio`, `gpt-4o-mini-transcribe`), but the
+assistant only replies in text. The loop is one-way.
 
-**Approach:** define tools mapping to existing endpoints/services (update_profile/filters,
-add_candidate, set_selected, build/rescore, discriminate, get explanation). Thread tool
-definitions into `ai_client.converse(_stream)`; handle tool-call events, execute
-server-side, feed results back, and surface UI updates (re-read candidates).
+**Done looks like:** the chatbot's replies can be **spoken back** in the user's locale
+(FR default / EN), with a per-message play/stop control and an optional auto-speak toggle.
+Voice-in → voice-out makes the assistant usable hands-free / on mobile.
 
-**Files:** `services/ai_client.py`, `services/chat.py`, `api/v1/chat.py`, frontend chat +
-state refresh.
+**Approach options:**
+- OpenAI TTS (`gpt-4o-mini-tts` / `tts-1`) via a new `/voice/speak` endpoint that returns
+  audio for a given text + locale; play it client-side with an `<audio>` element. Cache by
+  text hash to avoid re-synthesising identical replies; log under `AIQueryLog` kind=`voice`.
+- Or the browser's built-in `speechSynthesis` (Web Speech API) — zero backend, zero cost,
+  but voice quality and FR support vary by browser/OS.
+- Stream the audio if latency is an issue; otherwise synthesise the whole reply.
+
+**Why:** symmetry with voice input; accessibility and a more natural, hands-free chat.
+
+**Files:** `services/ai_client.py` (a `synthesize_speech` helper) + `api/v1/voice.py`
+(`/speak`), a frontend speak control on chat bubbles in
+`src/pages/ComparisonPlayground.tsx` (reuse/extend `VoiceButton.tsx`), `src/services/api.ts`,
+i18n, `models/ai_log.py` kind already lists `voice`.
 
 ### International schools in the education research
 

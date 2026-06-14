@@ -196,6 +196,34 @@ def converse_stream(
     )
 
 
+def create_with_tools(
+    input_items: list,
+    *,
+    system: str | None = None,
+    tools: list | None = None,
+    web_search: bool = False,
+    db: Session | None = None,
+    user_id: int | None = None,
+    kind: str = "chat",
+):
+    """One Responses API turn with function tools. Returns the raw response so the caller
+    can inspect function_call items and continue the tool loop."""
+    all_tools = list(tools or [])
+    if web_search:
+        all_tools.append({"type": "web_search"})
+    kwargs: dict = {"model": settings.openai_model, "input": input_items}
+    if all_tools:
+        kwargs["tools"] = all_tools
+    if system:
+        kwargs["instructions"] = system
+    summary = next(
+        (m.get("content") for m in reversed(input_items)
+         if isinstance(m, dict) and m.get("role") == "user"),
+        "",
+    )
+    return _create(kwargs, db=db, user_id=user_id, kind=kind, summary=summary)
+
+
 def transcribe_audio(
     data: bytes,
     *,
