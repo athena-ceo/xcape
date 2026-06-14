@@ -24,67 +24,32 @@ from app.models.place import Place
 from app.models.profile import Profile
 from app.models.search import Search
 from app.models.user import User
+from app.services import criteria
+from app.services import geo
 
 SHORTLIST_SIZE = 15
 MAX_COMPARE = 5  # how many candidates can sit in the comparison board at once
 
-# Ordinal scales: 0..1, higher is better for the user.
-_SCALES: dict[str, dict[str, float]] = {
-    "cost_of_living": {"low": 1.0, "medium": 0.55, "high": 0.2},
-    "healthcare": {"strong": 1.0, "good": 0.7, "basic": 0.3},
-    "education": {"strong": 1.0, "good": 0.7, "basic": 0.3},
-    "safety": {"high": 1.0, "medium": 0.55, "low": 0.15},
-    "political_stability": {"high": 1.0, "medium": 0.55, "low": 0.15},
-    "tax": {"low": 1.0, "medium": 0.6, "high": 0.3},
-    "visa": {"easy": 1.0, "medium": 0.6, "hard": 0.25},
-    "language_ease": {"french": 1.0, "english": 0.9, "easy": 0.75, "medium": 0.55, "hard": 0.3},
-    "expat_community": {"large": 1.0, "medium": 0.6, "small": 0.3},
-    "nature": {"high": 1.0, "medium": 0.6, "low": 0.3},
-    "internet": {"fast": 1.0, "ok": 0.6, "slow": 0.3},
-    "gender_equality": {"high": 1.0, "medium": 0.6, "low": 0.3},
-    "culture": {"high": 1.0, "medium": 0.6, "low": 0.3},
-    "food": {"high": 1.0, "medium": 0.6, "low": 0.3},
-}
+# Ordinal scales, criteria keys and default weights now come from the registry
+# (app/data/criteria.json) so they live in one editable place.
+_SCALES: dict[str, dict[str, float]] = criteria.SCALES
+CRITERIA_KEYS = criteria.CRITERIA_KEYS
+_DEFAULT_WEIGHTS: dict[str, float] = criteria.DEFAULT_WEIGHTS
 
 # Social-acceptance levels per community (used by the inclusion criterion) and the
 # general-openness fallback when the user named no specific community.
 _GROUP_SCALE = {"high": 1.0, "mixed": 0.5, "low": 0.15}
 _OPENNESS_SCALE = {"high": 1.0, "medium": 0.55, "low": 0.15}
 # Communities a user can say matter to them (acceptance judged per the worst of these).
-MINORITY_GROUPS = ["lgbtq", "jewish", "muslim", "ethnic_minorities", "immigrants"]
+# Initial seed from the registry; free-text communities are first-class (scored via openness).
+MINORITY_GROUPS = criteria.COMMUNITY_KEYS
+# Proximity bands (great-circle distance from the user's current country, km).
+_PROXIMITY_NEAR_KM = 1500
+_PROXIMITY_FAR_KM = 6000
 
-# All criteria the UI can show / weight / filter on.
-CRITERIA_KEYS = [
-    "cost_of_living", "climate", "language_ease", "healthcare", "education", "safety",
-    "political_stability", "inclusion", "gender_equality", "tax", "visa",
-    "expat_community", "culture", "food", "nature", "internet",
-]
-
-_DEFAULT_WEIGHTS: dict[str, float] = {
-    "cost_of_living": 1.0,
-    "healthcare": 1.0,
-    "safety": 1.0,
-    "political_stability": 1.0,
-    "language_ease": 0.8,
-    "climate": 0.8,
-    "inclusion": 0.6,
-    "gender_equality": 0.4,
-    "tax": 0.5,
-    "visa": 0.7,
-}
-
-# "Leaving because of X" → up-weight the criterion that avoids the same problem.
-_REASON_BOOST: dict[str, dict[str, float]] = {
-    "politics": {"political_stability": 1.5},
-    "safety": {"safety": 1.5},
-    "economy": {"cost_of_living": 1.0, "tax": 0.5},
-    "cost": {"cost_of_living": 1.5},
-    "climate": {"climate": 1.0},
-    "healthcare": {"healthcare": 1.5},
-    "career": {"internet": 0.3},
-    "lifestyle": {"nature": 0.6, "climate": 0.4},
-    "discrimination": {"inclusion": 1.5, "gender_equality": 0.5},
-}
+# Picking a reason/priority that carries a tag up-weights every leaf carrying that tag —
+# so "fear" lifts the whole protection cluster, "financial" the money cluster, etc.
+_TAG_BOOST = 1.2
 
 # Human-readable reason labels (FR/EN) for the criteria that drove a high score.
 _REASON_LABELS: dict[str, dict[str, str]] = {
@@ -109,9 +74,14 @@ def _effective_weights(profile: Profile | None) -> dict[str, float]:
     weights = dict(_DEFAULT_WEIGHTS)
     if not profile:
         return weights
-    for reason in profile.reasons_leaving or []:
-        for key, boost in _REASON_BOOST.get(reason, {}).items():
-            weights[key] = weights.get(key, 0.0) + boost
+    # Tag-driven prioritisation: the user's reasons/priorities map to tags, and any leaf
+    # carrying a selected tag is up-weighted — so e.g. "fear" lifts the whole protection
+    # cluster and "financial" the money cluster.
+    selected_tags = criteria.tags_for_reasons(profile.reasons_leaving)
+    if selected_tags:
+        for key, tags in criteria.LEAF_TAGS.items():
+            if selected_tags.intersection(tags):
+                weights[key] = weights.get(key, 0.0) + _TAG_BOOST
     if profile.household_type == "family":
         weights["healthcare"] = weights.get("healthcare", 0) + 0.5
         weights["safety"] = weights.get("safety", 0) + 0.5
@@ -206,6 +176,22 @@ def _inclusion_value(attrs: dict, profile: Profile | None) -> float:
     return openness
 
 
+def _proximity_value(profile: Profile | None, place: Place | None) -> float:
+    """How close the candidate is to the user's current country (great-circle distance),
+    banded near→far. Neutral 0.5 when either centroid is unknown."""
+    origin = (profile.user.current_country if (profile and profile.user) else None)
+    dest_iso = (place.iso_code or "") if place else ""
+    d = geo.distance_between(origin, dest_iso)
+    if d is None:
+        return 0.5
+    if d <= _PROXIMITY_NEAR_KM:
+        return 1.0
+    if d >= _PROXIMITY_FAR_KM:
+        return 0.2
+    span = _PROXIMITY_FAR_KM - _PROXIMITY_NEAR_KM
+    return round(1.0 - 0.8 * (d - _PROXIMITY_NEAR_KM) / span, 3)
+
+
 def _criterion_value(
     key: str, attrs: dict, profile: Profile | None, place: Place | None = None,
     evals: dict[str, float] | None = None,
@@ -220,6 +206,8 @@ def _criterion_value(
         return _cost_value(attrs, profile)
     if key == "inclusion":
         return _inclusion_value(attrs, profile)
+    if key == "proximity":
+        return _proximity_value(profile, place)
     if key == "climate":
         pref = profile.climate_pref if profile else None
         return 1.0 if (pref and attrs.get("climate") == pref) else 0.5

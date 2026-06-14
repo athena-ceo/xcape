@@ -25,26 +25,6 @@ from app.models.user import User
 from app.services import comparison, criteria, criterion_eval
 from app.services import shortlist as sl
 
-# Bilingual labels for the report (kept here so the PDF doesn't depend on the frontend i18n).
-_CRIT_LABELS: dict[str, dict[str, str]] = {
-    "cost_of_living": {"fr": "Coût de la vie", "en": "Cost of living"},
-    "climate": {"fr": "Climat", "en": "Climate"},
-    "language_ease": {"fr": "Langue", "en": "Language"},
-    "healthcare": {"fr": "Santé", "en": "Healthcare"},
-    "education": {"fr": "Éducation", "en": "Education"},
-    "safety": {"fr": "Sécurité", "en": "Safety"},
-    "political_stability": {"fr": "Stabilité politique", "en": "Political stability"},
-    "inclusion": {"fr": "Tolérance et inclusion", "en": "Tolerance & inclusion"},
-    "gender_equality": {"fr": "Égalité femmes-hommes", "en": "Gender equality"},
-    "tax": {"fr": "Fiscalité", "en": "Taxation"},
-    "visa": {"fr": "Visa", "en": "Visa"},
-    "expat_community": {"fr": "Communauté d'expatriés", "en": "Expat community"},
-    "culture": {"fr": "Vie culturelle", "en": "Cultural life"},
-    "food": {"fr": "Culture culinaire", "en": "Food culture"},
-    "nature": {"fr": "Nature", "en": "Nature"},
-    "internet": {"fr": "Internet", "en": "Internet"},
-}
-
 _T = {
     "title": {"fr": "xCape — Rapport de relocalisation", "en": "xCape — Relocation report"},
     "generated": {"fr": "Généré le", "en": "Generated"},
@@ -69,7 +49,7 @@ _T = {
 def _label(key: str, lang: str, custom: dict[str, str]) -> str:
     if key in custom:
         return custom[key]
-    return _CRIT_LABELS.get(key, {}).get(lang, key.replace("_", " "))
+    return criteria.label(key, lang)  # built-in labels come from the registry (one source)
 
 
 def build_report(db: Session, user: User, search: Search) -> bytes:

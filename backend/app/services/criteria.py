@@ -1,99 +1,121 @@
 # Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-"""Criterion registry — the single source of truth for what criteria exist.
+"""Criterion registry — loaded from the single source `app/data/criteria.json`.
 
-Phase 1 keeps this fairly flat (a category tag per leaf) while introducing the key
-distinction the new scoring needs:
+The JSON holds a multi-level tree (categories → leaves), cross-cutting tags (personas +
+concerns), the reason→tags map, per-leaf value scales, default weights and persona-framed
+AI descriptions. Everything else (scoring, evaluation, the board, the report, the frontend
+via GET /criteria) reads from here, so built-in and custom criteria are handled the same
+way and the content lives in one editable place.
 
-- **objective** leaves get a cached 0-100 AI evaluation per country (see
-  `services.criterion_eval`): safety, taxation, healthcare quality, etc. Their
-  `ai_description` is what we ask the model to score. This is how we populate the ~190
-  countries that have no seed values for these.
-- **computed** leaves are user-relative and derived in code from the profile +
-  `place.attributes` (visa from citizenship, language from known languages, climate from
-  preference, cost from budget, inclusion from the communities the user flagged). These are
-  NOT objectively AI-scored.
+Open-set principle: every dimension here (criteria, tags, categories, personas, reasons,
+communities) is an **initial seed**, not a closed universe. New members are added as data
+(this JSON, or per-search custom criteria / free-text communities) and are treated as
+first-class everywhere — scoring, evaluation, display and filtering iterate the data, never
+a hard-coded enum. Code must not assume the set is fixed.
 
-Phase 2 will grow `category` into a real tree with sub-criteria.
+Leaf kinds:
+- **objective** — AI-scored 0-100 per country (`ai_description` is the prompt), cached.
+- **computed** — user-relative, derived in `shortlist` (cost vs budget, language vs known
+  languages, visa vs citizenship, climate vs preference, inclusion vs flagged communities,
+  proximity vs current country).
 """
 
 from __future__ import annotations
 
-# key -> {category, ai_description?}. A leaf is "objective" iff it has an ai_description.
-LEAVES: dict[str, dict] = {
-    # --- objective: AI-scored 0-100 per country, cached and progressively populated ---
-    "safety": {
-        "category": "safety",
-        "ai_description": "Personal safety and low crime for residents (higher = safer).",
-    },
-    "political_stability": {
-        "category": "safety",
-        "ai_description": "Political stability and quality of governance (higher = more stable).",
-    },
-    "tax": {
-        "category": "cost",
-        "ai_description": "Favourable taxation for residents — overall burden across income, "
-        "social and consumption taxes (higher = lighter / more favourable).",
-    },
-    "healthcare": {
-        "category": "health",
-        "ai_description": "Quality and accessibility of healthcare for residents.",
-    },
-    "education": {
-        "category": "practical",
-        "ai_description": "Quality and accessibility of schools and universities.",
-    },
-    "expat_community": {
-        "category": "society",
-        "ai_description": "Size and supportiveness of the international / expat community.",
-    },
-    "nature": {
-        "category": "lifestyle",
-        "ai_description": "Access to nature, landscapes and outdoor environment.",
-    },
-    "internet": {
-        "category": "practical",
-        "ai_description": "Internet speed and digital connectivity.",
-    },
-    "culture": {
-        "category": "lifestyle",
-        "ai_description": "Richness of cultural life — arts, events, heritage, things to do.",
-    },
-    "food": {
-        "category": "lifestyle",
-        "ai_description": "Food culture — quality, variety and availability of good food.",
-    },
-    "gender_equality": {
-        "category": "society",
-        "ai_description": "Gender equality — legal rights, equal pay, and fair social and "
-        "legal treatment and safety for women.",
-    },
-    # --- computed: user-relative, derived in shortlist (not objectively AI-scored) ---
-    "cost_of_living": {"category": "cost"},      # affordability vs the user's budget
-    "language_ease": {"category": "practical"},  # vs the user's known languages
-    "visa": {"category": "practical"},           # vs the user's citizenship(s)
-    "climate": {"category": "lifestyle"},        # vs the user's climate preference
-    "inclusion": {"category": "society"},        # vs the communities the user flagged
-}
+import json
+from functools import lru_cache
+from pathlib import Path
 
-# Objective leaves get an AI evaluation; computed ones never do.
-OBJECTIVE_KEYS = [k for k, v in LEAVES.items() if v.get("ai_description")]
-COMPUTED_KEYS = [k for k, v in LEAVES.items() if not v.get("ai_description")]
+_REGISTRY_FILE = Path(__file__).resolve().parent.parent / "data" / "criteria.json"
+
+
+@lru_cache(maxsize=1)
+def _registry() -> dict:
+    return json.loads(_REGISTRY_FILE.read_text(encoding="utf-8"))
+
+
+def raw() -> dict:
+    """The whole registry (served to the frontend by GET /criteria)."""
+    return _registry()
+
+
+def nodes() -> list[dict]:
+    return _registry()["nodes"]
+
+
+def _by_key() -> dict[str, dict]:
+    return {n["key"]: n for n in nodes()}
+
+
+def node(key: str) -> dict | None:
+    return _by_key().get(key)
+
+
+def leaves() -> list[dict]:
+    """Scored nodes (have a 'kind'), in registry order."""
+    return [n for n in nodes() if n.get("kind")]
+
+
+# --- Ordered key lists (replace the old hard-coded lists in shortlist) ----------------
+CRITERIA_KEYS: list[str] = [n["key"] for n in nodes() if n.get("kind")]
+OBJECTIVE_KEYS: list[str] = [n["key"] for n in nodes() if n.get("kind") == "objective"]
+COMPUTED_KEYS: list[str] = [n["key"] for n in nodes() if n.get("kind") == "computed"]
+
+# --- Lookups derived from the registry ------------------------------------------------
+SCALES: dict[str, dict[str, float]] = {
+    n["key"]: n["scale"] for n in nodes() if n.get("scale")
+}
+DEFAULT_WEIGHTS: dict[str, float] = {
+    n["key"]: float(n["default_weight"]) for n in nodes()
+    if n.get("kind") and n.get("default_weight")
+}
+LEAF_TAGS: dict[str, list[str]] = {
+    n["key"]: n.get("tags", []) for n in nodes() if n.get("kind")
+}
+REASON_TAGS: dict[str, list[str]] = _registry().get("reason_tags", {})
+TAGS: dict[str, dict] = _registry().get("tags", {})
+# Communities a user can flag (initial seed; free-text additions are first-class — they
+# score via the country's general openness, see shortlist._inclusion_value).
+COMMUNITIES: list[dict] = _registry().get("communities", [])
+COMMUNITY_KEYS: list[str] = [c["key"] for c in COMMUNITIES]
+# Reasons-for-leaving are open too: any key here is a selectable reason and maps to tags.
+REASONS: list[str] = list(REASON_TAGS.keys())
 
 
 def ai_description(key: str) -> str | None:
-    return LEAVES.get(key, {}).get("ai_description")
+    n = node(key)
+    return n.get("ai_description") if n else None
+
+
+def value_labels(key: str) -> dict | None:
+    n = node(key)
+    return n.get("value_labels") if n else None
+
+
+def label(key: str, lang: str = "fr") -> str:
+    n = node(key)
+    if not n:
+        return key
+    return n.get(f"label_{lang}") or n.get("label_en") or key
+
+
+def tags_for_reasons(reasons: list[str] | None) -> set[str]:
+    """The set of tags implied by the user's reasons-for-leaving / priorities."""
+    out: set[str] = set()
+    for r in (reasons or []):
+        out.update(REASON_TAGS.get(r, [r]))
+    return out
 
 
 def definitions(custom_defs: list | None = None) -> dict[str, dict]:
-    """The unified set of AI-evaluable criterion definitions for a search — built-in
-    objective leaves AND the search's custom criteria — each as {label, description}. This
-    is the single source the evaluation path iterates, so built-in and custom criteria are
-    evaluated through one code path (they differ only in where the definition comes from)."""
+    """The unified set of AI-evaluable criterion definitions for a search — objective
+    built-in leaves AND the search's custom criteria — each as {label, description}. The
+    single source the evaluation path iterates."""
     defs = {
-        k: {"label": k.replace("_", " "), "description": v["ai_description"]}
-        for k, v in LEAVES.items() if v.get("ai_description")
+        n["key"]: {"label": n.get("label_en") or n["key"], "description": n["ai_description"]}
+        for n in nodes() if n.get("kind") == "objective"
     }
     for c in (custom_defs or []):
         if c.get("key"):

@@ -12,10 +12,48 @@ Order of preference, per product spec:
 from __future__ import annotations
 
 import ipaddress
+import json
+from functools import lru_cache
+from math import asin, cos, radians, sin, sqrt
+from pathlib import Path
 
 import httpx
 
 DEFAULT_COUNTRY = "France"
+
+# --- Great-circle distance between countries (for the proximity criterion) -------------
+_CENTROIDS_FILE = Path(__file__).resolve().parent.parent / "data" / "country_centroids.json"
+
+
+@lru_cache(maxsize=1)
+def _centroids() -> dict[str, list]:
+    return json.loads(_CENTROIDS_FILE.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _centroid_by_name() -> dict[str, str]:
+    """Lowercased country name → ISO2 (to resolve the user's current_country text)."""
+    return {row[2].lower(): iso for iso, row in _centroids().items()}
+
+
+def _resolve_centroid(value: str | None) -> tuple[float, float] | None:
+    """Resolve an ISO2 code or a country name to (lat, lon)."""
+    if not value:
+        return None
+    v = str(value).strip()
+    row = _centroids().get(v.upper()) or _centroids().get(_centroid_by_name().get(v.lower(), ""))
+    return (row[0], row[1]) if row else None
+
+
+def distance_between(origin: str | None, dest: str | None) -> float | None:
+    """Distance in km between two countries (each an ISO2 code or name), or None if either
+    centroid is unknown (proximity then falls back to neutral)."""
+    a, b = _resolve_centroid(origin), _resolve_centroid(dest)
+    if a is None or b is None:
+        return None
+    lat1, lon1, lat2, lon2 = map(radians, [a[0], a[1], b[0], b[1]])
+    h = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
+    return 2 * 6371.0 * asin(sqrt(h))  # km
 
 # Locale (or locale_region) -> country name. Keys are matched lower-cased with
 # both '-' and '_' separators normalised to '_'.

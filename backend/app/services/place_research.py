@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset
 from app.models.place import Place
-from app.services import ai_client
+from app.services import ai_client, criteria
 
 
 def normalize_url(url: str) -> str:
@@ -54,7 +54,7 @@ _ENUMS: dict[str, list[str]] = {
 
 # Acceptance of specific communities (the inclusion criterion scores the worst of the
 # ones the user cares about). high = welcoming, mixed = uneven, low = hostile.
-_GROUP_KEYS = ["lgbtq", "jewish", "muslim", "ethnic_minorities", "immigrants"]
+_GROUP_KEYS = criteria.COMMUNITY_KEYS  # initial seed from the registry (open set)
 _GROUP_LEVELS = ["high", "mixed", "low"]
 
 _SYSTEM = (

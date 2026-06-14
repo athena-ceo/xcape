@@ -8,6 +8,36 @@ affected. Ship items independently.
 
 ## Open
 
+### Admin management of all reference data (open-set defaults)
+
+**Principle:** every enumerable dimension is an *initial seed*, not a closed set — admins
+must be able to **add / remove / modify** the defaults of each class at runtime, and the
+additions are first-class everywhere (scoring, evaluation, display, filtering). Classes:
+criteria (nodes/leaves), categories, tags, personas, reasons-for-leaving, communities — and
+the **places** themselves (countries / regions / cities) with their attributes.
+
+**Done looks like:** an admin section to CRUD each class, persisted so changes take effect
+without a deploy.
+
+**Approach:** the registry already reads through one loader (`services/criteria.py
+_registry()`) and places are already in Postgres, so:
+- Move the criteria registry from the bundled `app/data/criteria.json` into **DB tables**,
+  **seeded idempotently from the JSON** (mirror `app/db/seed.py`); point the loader at the
+  DB (JSON becomes the seed, not the source). Add admin endpoints + UI to CRUD them, and
+  invalidate the loader cache on edit.
+- Add admin CRUD for **places/regions/cities** + their attributes (places are already a DB
+  table; the admin list is currently read-only — make it editable, support regions/cities
+  via the existing `kind`/`parent_id`).
+- Guard with `require_admin`; validate (e.g. don't delete an in-use criterion without
+  reassigning).
+
+**Why:** the sponsor wants to shape the catalog (persona criteria, tags, country data)
+without code changes; natural home for the persona/criteria content work.
+
+**Files:** `services/criteria.py` (loader → DB), new models + migration + seeder,
+`api/v1/admin.py` (+ criteria/places admin routers), `src/pages/AdminDashboard.tsx`, i18n.
+The frontend reads the catalog via `GET /criteria` (P2b), so it reflects admin edits.
+
 ### Employment, retirement & cross-border taxation criteria
 
 **Idea:** a whole category of work/money-mobility criteria that strongly drive relocation
