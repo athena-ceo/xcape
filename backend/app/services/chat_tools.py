@@ -17,10 +17,10 @@ from app.models.place import Place
 from app.models.profile import Profile
 from app.models.search import Search
 from app.models.user import User
-from app.services import ai_client, criterion_eval, place_research
+from app.services import ai_client, criteria, criterion_eval, place_research
 from app.services import shortlist as sl
 
-_CRITERIA = ", ".join(sl.CRITERIA_KEYS)
+_CRITERIA = ", ".join(criteria.criteria_keys())
 
 TOOLS = [
     {
@@ -150,7 +150,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         p = _profile(db, user)
         weights = dict(p.criteria_weights or {})
         for k, v in (args.get("weights") or {}).items():
-            if k in sl.CRITERIA_KEYS:
+            if k in criteria.criteria_keys():
                 weights[k] = float(v)
         p.criteria_weights = weights
         db.commit()

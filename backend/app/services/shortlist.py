@@ -30,19 +30,14 @@ from app.services import geo
 SHORTLIST_SIZE = 15
 MAX_COMPARE = 5  # how many candidates can sit in the comparison board at once
 
-# Ordinal scales, criteria keys and default weights now come from the registry
-# (app/data/criteria.json) so they live in one editable place.
-_SCALES: dict[str, dict[str, float]] = criteria.SCALES
-CRITERIA_KEYS = criteria.CRITERIA_KEYS
-_DEFAULT_WEIGHTS: dict[str, float] = criteria.DEFAULT_WEIGHTS
+# Ordinal scales, criteria keys and default weights all come from the registry
+# (criteria.scales()/criteria_keys()/default_weights()) — read live so admin edits and
+# deactivations take effect without a restart.
 
 # Social-acceptance levels per community (used by the inclusion criterion) and the
 # general-openness fallback when the user named no specific community.
 _GROUP_SCALE = {"high": 1.0, "mixed": 0.5, "low": 0.15}
 _OPENNESS_SCALE = {"high": 1.0, "medium": 0.55, "low": 0.15}
-# Communities a user can say matter to them (acceptance judged per the worst of these).
-# Initial seed from the registry; free-text communities are first-class (scored via openness).
-MINORITY_GROUPS = criteria.COMMUNITY_KEYS
 # Proximity bands (great-circle distance from the user's current country, km).
 _PROXIMITY_NEAR_KM = 1500
 _PROXIMITY_FAR_KM = 6000
@@ -71,7 +66,7 @@ _REASON_LABELS: dict[str, dict[str, str]] = {
 
 
 def _effective_weights(profile: Profile | None) -> dict[str, float]:
-    weights = dict(_DEFAULT_WEIGHTS)
+    weights = dict(criteria.default_weights())
     if not profile:
         return weights
     # Tag-driven prioritisation: the user's reasons/priorities map to tags, and any leaf
@@ -79,7 +74,7 @@ def _effective_weights(profile: Profile | None) -> dict[str, float]:
     # cluster and "financial" the money cluster.
     selected_tags = criteria.tags_for_reasons(profile.reasons_leaving)
     if selected_tags:
-        for key, tags in criteria.LEAF_TAGS.items():
+        for key, tags in criteria.leaf_tags().items():
             if selected_tags.intersection(tags):
                 weights[key] = weights.get(key, 0.0) + _TAG_BOOST
     if profile.household_type == "family":
@@ -130,7 +125,7 @@ def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> fl
         if (profile and profile.user and profile.user.citizenships)
         else set()
     )
-    base = _SCALES["visa"].get(str(attrs.get("visa", "")).lower(), 0.5)
+    base = criteria.scales().get("visa", {}).get(str(attrs.get("visa", "")).lower(), 0.5)
     if not citz:
         return base  # citizenship unknown — fall back to general accessibility
     dest = (place.iso_code or "").upper() if place else ""
@@ -158,7 +153,7 @@ def _cost_value(attrs: dict, profile: Profile | None) -> float:
         ratio = budget / estimate
         # ratio 0.5 (budget half the cost) -> 0; ratio 1.2 (comfortable surplus) -> 1.
         return max(0.0, min(1.0, (ratio - 0.5) / 0.7))
-    return _SCALES["cost_of_living"].get(level, 0.5)
+    return criteria.scales().get("cost_of_living", {}).get(level, 0.5)
 
 
 def _inclusion_value(attrs: dict, profile: Profile | None) -> float:
@@ -222,11 +217,11 @@ def _criterion_value(
         # You don't speak any local language. Fall back to how learnable it is, softened
         # if willing to learn. Default to "hard" (0.3) when the difficulty is unknown —
         # an unknown language you don't speak shouldn't be treated as middling.
-        base = _SCALES["language_ease"].get(str(attrs.get(key, "")).lower(), 0.3)
+        base = criteria.scales().get("language_ease", {}).get(str(attrs.get(key, "")).lower(), 0.3)
         if willing:
             return min(1.0, base + 0.2)
         return round(base * 0.7, 3)
-    scale = _SCALES.get(key, {})
+    scale = criteria.scales().get(key, {})
     return scale.get(str(attrs.get(key, "")).lower(), 0.5)
 
 
@@ -240,7 +235,7 @@ def candidate_quality(
 ) -> dict[str, str]:
     """Per-criterion colour tier for a place, from the user's perspective."""
     attrs = place.attributes or {}
-    return {k: quality_tier(_criterion_value(k, attrs, profile, place, evals)) for k in CRITERIA_KEYS}
+    return {k: quality_tier(_criterion_value(k, attrs, profile, place, evals)) for k in criteria.criteria_keys()}
 
 
 def passes_filters(place: Place, profile: Profile | None) -> bool:
@@ -267,8 +262,8 @@ def passes_filters(place: Place, profile: Profile | None) -> bool:
             # "Only welcoming places" — exclude where the user's communities aren't accepted.
             if _inclusion_value(attrs, profile) < 0.5:
                 return False
-        elif key in _SCALES:
-            scale = _SCALES[key]
+        elif key in criteria.scales():
+            scale = criteria.scales()[key]
             pv = scale.get(str(attrs.get(key, "")).lower())
             fv = scale.get(str(fval).lower())
             if pv is None or fv is None or pv < fv:
@@ -318,7 +313,7 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
             weights[c["key"]] = float(c.get("weight", 1.0))
     custom_keys = [c["key"] for c in custom_defs if c.get("key")]
     # Cached AI evals cover objective built-ins (safety, tax, …) + the custom criteria.
-    eval_keys = criteria.OBJECTIVE_KEYS + custom_keys
+    eval_keys = criteria.objective_keys() + custom_keys
 
     candidates = (
         db.query(Candidate)
@@ -360,7 +355,7 @@ def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:
     for c in custom_defs:
         if c.get("key"):
             weights[c["key"]] = float(c.get("weight", 1.0))
-    eval_keys = criteria.OBJECTIVE_KEYS + [c["key"] for c in custom_defs if c.get("key")]
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
     evals = criterion_eval.values_for_place(db, candidate.place_id, eval_keys) if place else {}
 
     active = {k: w for k, w in weights.items() if w > 0}
@@ -386,7 +381,7 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
     profile = user.profile
     weights = _effective_weights(profile)
 
-    countries = db.query(Place).filter(Place.kind == "country").all()
+    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
     # Apply hard filters (e.g. "must speak a language I know"); if filters exclude
     # everything, fall back to the unfiltered pool so the user still sees options.
     qualified = [p for p in countries if passes_filters(p, profile)]
@@ -394,7 +389,7 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
     # Batch-load the cached AI evals for the whole pool so the seed-sparse countries score
     # on real values (one query, not one per country).
     evals_by_place = criterion_eval.values_for_places(
-        db, [p.id for p in pool], criteria.OBJECTIVE_KEYS
+        db, [p.id for p in pool], criteria.objective_keys()
     )
     scored = sorted(
         ((p, *_score_place(p, weights, profile, evals_by_place.get(p.id))) for p in pool),

@@ -29,9 +29,9 @@ def test_every_leaf_has_a_category_parent():
 
 
 def test_tags_resolve_and_reasons_map_to_tags():
-    for tags in criteria.LEAF_TAGS.values():
+    for tags in criteria.leaf_tags().values():
         for tag in tags:
-            assert tag in criteria.TAGS, f"unknown tag {tag}"
+            assert tag in criteria.tags(), f"unknown tag {tag}"
     assert "fear" in criteria.tags_for_reasons(["discrimination"])
     assert "financial" in criteria.tags_for_reasons(["patrimoine"])
 

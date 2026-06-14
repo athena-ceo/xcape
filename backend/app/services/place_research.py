@@ -54,7 +54,6 @@ _ENUMS: dict[str, list[str]] = {
 
 # Acceptance of specific communities (the inclusion criterion scores the worst of the
 # ones the user cares about). high = welcoming, mixed = uneven, low = hostile.
-_GROUP_KEYS = criteria.COMMUNITY_KEYS  # initial seed from the registry (open set)
 _GROUP_LEVELS = ["high", "mixed", "low"]
 
 _SYSTEM = (
@@ -76,8 +75,8 @@ def _place_schema() -> dict:
     # Per-community acceptance, judged from evidence (see _SYSTEM).
     attr_props["social_acceptance"] = {
         "type": "object",
-        "properties": {g: {"type": "string", "enum": _GROUP_LEVELS} for g in _GROUP_KEYS},
-        "required": list(_GROUP_KEYS),
+        "properties": {g: {"type": "string", "enum": _GROUP_LEVELS} for g in criteria.community_keys()},
+        "required": criteria.community_keys(),
         "additionalProperties": False,
     }
     return {

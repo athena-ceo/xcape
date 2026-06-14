@@ -1,19 +1,23 @@
 # Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-"""Criterion registry — loaded from the single source `app/data/criteria.json`.
+"""Criterion registry — the single, admin-editable source of the criteria tree.
 
-The JSON holds a multi-level tree (categories → leaves), cross-cutting tags (personas +
-concerns), the reason→tags map, per-leaf value scales, default weights and persona-framed
-AI descriptions. Everything else (scoring, evaluation, the board, the report, the frontend
-via GET /criteria) reads from here, so built-in and custom criteria are handled the same
-way and the content lives in one editable place.
+The registry is one JSON document held in the DB (`app_config['criteria']`), seeded from the
+bundled `app/data/criteria.json`. It holds a multi-level tree (categories → leaves),
+cross-cutting tags (personas + concerns), the reason→tags map, communities, per-leaf value
+scales, default weights and persona-framed AI descriptions. Everything else (scoring,
+evaluation, the board, the report, the frontend via GET /criteria) reads from here.
 
-Open-set principle: every dimension here (criteria, tags, categories, personas, reasons,
-communities) is an **initial seed**, not a closed universe. New members are added as data
-(this JSON, or per-search custom criteria / free-text communities) and are treated as
-first-class everywhere — scoring, evaluation, display and filtering iterate the data, never
-a hard-coded enum. Code must not assume the set is fixed.
+Open-set principle: every dimension (criteria, tags, categories, personas, reasons,
+communities) is an editable set — admins add / modify members, and **deactivate rather than
+delete** them (each carries an `active` flag, default true). The accessors below return only
+**active** members (cascading: a node under a deactivated category is also excluded), so a
+deactivated member disappears from scoring/evaluation/display/filtering without data loss.
+Per-search custom criteria and free-text communities are first-class too.
+
+These accessors are FUNCTIONS (not import-time constants) so admin edits take effect live —
+`invalidate()` clears the cache after a save.
 
 Leaf kinds:
 - **objective** — AI-scored 0-100 per country (`ai_description` is the prompt), cached.
@@ -33,55 +37,122 @@ _REGISTRY_FILE = Path(__file__).resolve().parent.parent / "data" / "criteria.jso
 
 @lru_cache(maxsize=1)
 def _registry() -> dict:
+    """The registry: the DB document if present, else the bundled file (best-effort so it
+    works in tests / before the DB is seeded)."""
+    try:
+        from app.db.session import SessionLocal
+        from app.models.app_config import AppConfig
+
+        db = SessionLocal()
+        try:
+            row = db.get(AppConfig, "criteria")
+            if row and row.value:
+                return row.value
+        finally:
+            db.close()
+    except Exception:
+        pass
     return json.loads(_REGISTRY_FILE.read_text(encoding="utf-8"))
 
 
+def invalidate() -> None:
+    """Drop the cache so the next read reflects an admin edit."""
+    _registry.cache_clear()
+
+
+def file_registry() -> dict:
+    """The bundled seed registry (used to seed the DB)."""
+    return json.loads(_REGISTRY_FILE.read_text(encoding="utf-8"))
+
+
+def _is_active(m: dict) -> bool:
+    return m.get("active", True) is not False
+
+
 def raw() -> dict:
-    """The whole registry (served to the frontend by GET /criteria)."""
+    """The whole registry, unfiltered (admin GET sees inactive members too)."""
     return _registry()
 
 
 def nodes() -> list[dict]:
-    return _registry()["nodes"]
-
-
-def _by_key() -> dict[str, dict]:
-    return {n["key"]: n for n in nodes()}
+    """All nodes, including inactive (for admin/label resolution)."""
+    return _registry().get("nodes", [])
 
 
 def node(key: str) -> dict | None:
-    return _by_key().get(key)
+    return {n["key"]: n for n in nodes()}.get(key)
+
+
+def _active_node_keys() -> set[str]:
+    """Keys of nodes that are active AND have no deactivated ancestor."""
+    by_key = {n["key"]: n for n in nodes()}
+
+    def ok(n: dict) -> bool:
+        cur: dict | None = n
+        while cur is not None:
+            if not _is_active(cur):
+                return False
+            cur = by_key.get(cur.get("parent")) if cur.get("parent") else None
+        return True
+
+    return {n["key"] for n in nodes() if ok(n)}
+
+
+def active_nodes() -> list[dict]:
+    keys = _active_node_keys()
+    return [n for n in nodes() if n["key"] in keys]
 
 
 def leaves() -> list[dict]:
-    """Scored nodes (have a 'kind'), in registry order."""
-    return [n for n in nodes() if n.get("kind")]
+    """Active scored nodes (have a 'kind'), in registry order."""
+    return [n for n in active_nodes() if n.get("kind")]
 
 
-# --- Ordered key lists (replace the old hard-coded lists in shortlist) ----------------
-CRITERIA_KEYS: list[str] = [n["key"] for n in nodes() if n.get("kind")]
-OBJECTIVE_KEYS: list[str] = [n["key"] for n in nodes() if n.get("kind") == "objective"]
-COMPUTED_KEYS: list[str] = [n["key"] for n in nodes() if n.get("kind") == "computed"]
+# --- Ordered key lists (active only) --------------------------------------------------
+def criteria_keys() -> list[str]:
+    return [n["key"] for n in leaves()]
 
-# --- Lookups derived from the registry ------------------------------------------------
-SCALES: dict[str, dict[str, float]] = {
-    n["key"]: n["scale"] for n in nodes() if n.get("scale")
-}
-DEFAULT_WEIGHTS: dict[str, float] = {
-    n["key"]: float(n["default_weight"]) for n in nodes()
-    if n.get("kind") and n.get("default_weight")
-}
-LEAF_TAGS: dict[str, list[str]] = {
-    n["key"]: n.get("tags", []) for n in nodes() if n.get("kind")
-}
-REASON_TAGS: dict[str, list[str]] = _registry().get("reason_tags", {})
-TAGS: dict[str, dict] = _registry().get("tags", {})
-# Communities a user can flag (initial seed; free-text additions are first-class — they
-# score via the country's general openness, see shortlist._inclusion_value).
-COMMUNITIES: list[dict] = _registry().get("communities", [])
-COMMUNITY_KEYS: list[str] = [c["key"] for c in COMMUNITIES]
-# Reasons-for-leaving are open too: any key here is a selectable reason and maps to tags.
-REASONS: list[str] = list(REASON_TAGS.keys())
+
+def objective_keys() -> list[str]:
+    return [n["key"] for n in leaves() if n.get("kind") == "objective"]
+
+
+def computed_keys() -> list[str]:
+    return [n["key"] for n in leaves() if n.get("kind") == "computed"]
+
+
+# --- Lookups (active only) ------------------------------------------------------------
+def scales() -> dict[str, dict[str, float]]:
+    return {n["key"]: n["scale"] for n in leaves() if n.get("scale")}
+
+
+def default_weights() -> dict[str, float]:
+    return {n["key"]: float(n["default_weight"]) for n in leaves() if n.get("default_weight")}
+
+
+def leaf_tags() -> dict[str, list[str]]:
+    return {n["key"]: n.get("tags", []) for n in leaves()}
+
+
+def tags() -> dict[str, dict]:
+    return {k: v for k, v in _registry().get("tags", {}).items() if _is_active(v)}
+
+
+def reason_tags() -> dict[str, list[str]]:
+    return _registry().get("reason_tags", {})
+
+
+def reasons() -> list[str]:
+    return list(reason_tags().keys())
+
+
+def communities() -> list[dict]:
+    """Active communities (initial seed; free-text additions are first-class)."""
+    return [c for c in _registry().get("communities", []) if _is_active(c)]
+
+
+def community_keys() -> list[str]:
+    return [c["key"] for c in communities()]
 
 
 def ai_description(key: str) -> str | None:
@@ -101,23 +172,35 @@ def label(key: str, lang: str = "fr") -> str:
     return n.get(f"label_{lang}") or n.get("label_en") or key
 
 
-def tags_for_reasons(reasons: list[str] | None) -> set[str]:
+def tags_for_reasons(reason_list: list[str] | None) -> set[str]:
     """The set of tags implied by the user's reasons-for-leaving / priorities."""
+    rt = reason_tags()
     out: set[str] = set()
-    for r in (reasons or []):
-        out.update(REASON_TAGS.get(r, [r]))
+    for r in (reason_list or []):
+        out.update(rt.get(r, [r]))
     return out
 
 
 def definitions(custom_defs: list | None = None) -> dict[str, dict]:
-    """The unified set of AI-evaluable criterion definitions for a search — objective
-    built-in leaves AND the search's custom criteria — each as {label, description}. The
-    single source the evaluation path iterates."""
+    """Active AI-evaluable criterion definitions for a search — objective built-in leaves AND
+    the search's custom criteria — each as {label, description}. The single source the
+    evaluation path iterates."""
     defs = {
         n["key"]: {"label": n.get("label_en") or n["key"], "description": n["ai_description"]}
-        for n in nodes() if n.get("kind") == "objective"
+        for n in leaves() if n.get("kind") == "objective"
     }
     for c in (custom_defs or []):
         if c.get("key"):
             defs[c["key"]] = {"label": c.get("label", c["key"]), "description": c.get("description")}
     return defs
+
+
+def public_registry() -> dict:
+    """Active-only registry for the frontend (deactivated members don't appear)."""
+    keys = _active_node_keys()
+    return {
+        "tags": tags(),
+        "reason_tags": reason_tags(),
+        "communities": communities(),
+        "nodes": [n for n in nodes() if n["key"] in keys],
+    }

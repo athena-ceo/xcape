@@ -58,10 +58,10 @@ def suggest(db, user, *, tags: list[str], free_text: str) -> dict:
     catalog = [
         {"key": n["key"], "label": n.get("label_en") or n["key"],
          "tags": n.get("tags", []), "about": n.get("ai_description") or n.get("label_en")}
-        for n in criteria.nodes() if n.get("kind")
+        for n in criteria.leaves()
     ]
     valid_keys = {c["key"] for c in catalog}
-    tag_labels = [criteria.TAGS.get(t, {}).get("label_en", t) for t in (tags or [])]
+    tag_labels = [criteria.tags().get(t, {}).get("label_en", t) for t in (tags or [])]
 
     try:
         data = ai_client.respond_json(

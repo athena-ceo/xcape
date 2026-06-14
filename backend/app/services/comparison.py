@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 from app.models.place import Place
 from app.models.profile import Profile
 from app.models.user import User
-from app.services.shortlist import _SCALES  # ordinal scales: higher = better for the user
+from app.services import criteria
 
 
 def criterion_delta(key: str, cand_value, base_value) -> str | None:
-    scale = _SCALES.get(key)
+    scale = criteria.scales().get(key)
     if not scale:
         return None
     cv = scale.get(str(cand_value).lower())

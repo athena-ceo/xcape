@@ -33,7 +33,7 @@ def main() -> None:
     db = SessionLocal()
     try:
         places = db.query(Place).filter(Place.kind == "country").all()
-        keys = criteria.OBJECTIVE_KEYS
+        keys = criteria.objective_keys()
         print(f"Evaluating {len(keys)} objective criteria across {len(places)} countries "
               f"(force={force}, stale_days={stale_days}, limit={limit}). Cache-first, resumable.")
         try:

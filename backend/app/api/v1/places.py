@@ -22,7 +22,7 @@ def list_places(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Place)
+    q = db.query(Place).filter(Place.active.is_(True))  # deactivated places aren't offered
     if kind:
         q = q.filter(Place.kind == kind)
     return q.order_by(Place.name).all()

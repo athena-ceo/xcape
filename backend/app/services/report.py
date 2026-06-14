@@ -69,8 +69,8 @@ def build_report(db: Session, user: User, search: Search) -> bytes:
 
     custom_defs = search.custom_criteria or []
     custom_labels = {c["key"]: c.get("label", c["key"]) for c in custom_defs if c.get("key")}
-    eval_keys = criteria.OBJECTIVE_KEYS + list(custom_labels.keys())
-    row_keys = list(sl.CRITERIA_KEYS) + list(custom_labels.keys())
+    eval_keys = criteria.objective_keys() + list(custom_labels.keys())
+    row_keys = list(criteria.criteria_keys()) + list(custom_labels.keys())
 
     # Per-candidate cached evals (one query each) for quality + justifications.
     evals_by_cand = {c.id: criterion_eval.evals_for_place(db, c.place_id, eval_keys) for c in cands}

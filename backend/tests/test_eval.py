@@ -19,10 +19,10 @@ class _Profile:
 
 
 def test_objective_keys_exclude_computed():
-    assert "safety" in criteria.OBJECTIVE_KEYS
-    assert "tax" in criteria.OBJECTIVE_KEYS
+    assert "safety" in criteria.objective_keys()
+    assert "tax" in criteria.objective_keys()
     for computed in ("visa", "inclusion", "language_ease", "climate", "cost_of_living"):
-        assert computed not in criteria.OBJECTIVE_KEYS
+        assert computed not in criteria.objective_keys()
 
 
 def test_eval_value_preferred_over_bucket():

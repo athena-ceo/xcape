@@ -31,7 +31,22 @@ def _upsert(db: Session, *, kind: str, name: str, **fields) -> Place:
     return place
 
 
+def seed_criteria(db: Session) -> bool:
+    """Seed the editable criteria registry into app_config from the bundled file, once.
+    Idempotent: leaves an existing (possibly admin-edited) registry untouched."""
+    from app.models.app_config import AppConfig
+    from app.services import criteria
+
+    if db.get(AppConfig, "criteria") is not None:
+        return False
+    db.add(AppConfig(key="criteria", value=criteria.file_registry()))
+    db.commit()
+    criteria.invalidate()
+    return True
+
+
 def seed(db: Session) -> int:
+    seed_criteria(db)
     data = json.loads(SEED_FILE.read_text(encoding="utf-8"))
     count = 0
     for country in data.get("countries", []):

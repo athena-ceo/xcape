@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from app.db.session import SessionLocal
 from app.models.place import Place
-from app.services import ai_client
-from app.services.place_research import _GROUP_KEYS, _GROUP_LEVELS, _SYSTEM
+from app.services import ai_client, criteria
+from app.services.place_research import _GROUP_LEVELS, _SYSTEM
 
 _NEW_KEYS = ["social_acceptance", "openness", "gender_equality", "culture", "food"]
 _LEVELS3 = ["high", "medium", "low"]
@@ -33,8 +33,8 @@ def _schema() -> dict:
             "food": {"type": "string", "enum": _LEVELS3},
             "social_acceptance": {
                 "type": "object",
-                "properties": {g: {"type": "string", "enum": _GROUP_LEVELS} for g in _GROUP_KEYS},
-                "required": list(_GROUP_KEYS),
+                "properties": {g: {"type": "string", "enum": _GROUP_LEVELS} for g in criteria.community_keys()},
+                "required": criteria.community_keys(),
                 "additionalProperties": False,
             },
         },

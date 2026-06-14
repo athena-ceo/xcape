@@ -12,6 +12,7 @@ router = APIRouter()
 
 @router.get("")
 def get_criteria(_: User = Depends(get_current_user)):
-    """The criteria registry (tree, tags, reasons, communities) — the single catalog the
-    frontend renders, so the UI reflects whatever the registry (later: admin) defines."""
-    return criteria_service.raw()
+    """The active criteria registry (tree, tags, reasons, communities) — the single catalog
+    the frontend renders, so the UI reflects whatever the registry / admin defines.
+    Deactivated members are excluded."""
+    return criteria_service.public_registry()

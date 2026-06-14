@@ -20,18 +20,18 @@ def criteria_view(
     db: Session, place: Place, profile: Profile | None, custom_defs: list | None,
 ) -> dict:
     custom_keys = [c["key"] for c in (custom_defs or []) if c.get("key")]
-    eval_keys = criteria.OBJECTIVE_KEYS + custom_keys
+    eval_keys = criteria.objective_keys() + custom_keys
     attrs = place.attributes or {}
     rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
     evals = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
 
     # Colour tier for EVERY criterion (built-in + custom) computed the same way — from its
     # 0-1 value (eval, else seed bucket, else neutral). No built-in/custom branch.
-    all_keys = list(sl.CRITERIA_KEYS) + custom_keys
+    all_keys = list(criteria.criteria_keys()) + custom_keys
     quality = {k: sl.quality_tier(sl._criterion_value(k, attrs, profile, place, evals)) for k in all_keys}
     # Templated reason for computed criteria; eval-based (score + justification) wherever a
     # cached evaluation exists; a "pending" marker for any criterion with no value yet.
-    reasons = {k: comparison.criterion_reason(place, profile, k) for k in sl.CRITERIA_KEYS}
+    reasons = {k: comparison.criterion_reason(place, profile, k) for k in criteria.criteria_keys()}
     pending: list[str] = []
     for key in eval_keys:
         ev = rows.get(key)
@@ -54,14 +54,14 @@ def criterion_details(
     evidence; it gets a real justified score once the eval is populated."""
     custom_lookup = {c["key"]: c for c in (custom_defs or []) if c.get("key")}
     custom_keys = list(custom_lookup.keys())
-    eval_keys = criteria.OBJECTIVE_KEYS + custom_keys
+    eval_keys = criteria.objective_keys() + custom_keys
     rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
     eval_values = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
     legacy_map = {d["key"]: d for d in (legacy or {}).get("criteria", [])}
     attrs = place.attributes or {}
 
     out: list[dict] = []
-    for key in list(sl.CRITERIA_KEYS) + custom_keys:
+    for key in list(criteria.criteria_keys()) + custom_keys:
         value = sl._criterion_value(key, attrs, profile, place, eval_values)
         ev = rows.get(key)
         summary, sources, justified = "", [], False

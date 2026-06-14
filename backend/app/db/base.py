@@ -11,6 +11,7 @@ class Base(DeclarativeBase):
 # Import models so Alembic autogenerate + create_all see every table.
 from app.models import (  # noqa: E402,F401
     ai_log,
+    app_config,
     candidate,
     chat,
     custom_eval,
