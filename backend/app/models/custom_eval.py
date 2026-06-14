@@ -4,7 +4,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    JSON, DateTime, ForeignKey, String, UniqueConstraint, func,
+    JSON, DateTime, ForeignKey, Integer, String, UniqueConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,7 +28,8 @@ class PlaceCustomEval(Base):
     )
     key: Mapped[str] = mapped_column(String(80), index=True)
     label: Mapped[str] = mapped_column(String(160))
-    level: Mapped[str] = mapped_column(String(10))  # good / ok / bad
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0-100, AI-assessed
+    level: Mapped[str] = mapped_column(String(10))  # good / ok / bad (derived from score)
     summary_fr: Mapped[str | None] = mapped_column(String, nullable=True)
     summary_en: Mapped[str | None] = mapped_column(String, nullable=True)
     sources: Mapped[list | None] = mapped_column(JSON, default=list)

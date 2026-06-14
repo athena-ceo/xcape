@@ -43,6 +43,7 @@ export function ComparisonPlayground() {
   const [newCriterion, setNewCriterion] = useState<CritKey | ''>('')
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
+  const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
 
   const [questions, setQuestions] = useState<any[]>([])
@@ -54,7 +55,7 @@ export function ComparisonPlayground() {
 
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
-  const [why, setWhy] = useState<{ placeId: number; name: string; key: string; text: string } | null>(null)
+  const [why, setWhy] = useState<{ placeId: number; name: string; key: string; text: string; score?: number | null } | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const lastReplyRef = useRef<HTMLDivElement | null>(null)
 
@@ -130,6 +131,7 @@ export function ComparisonPlayground() {
       name: placeName(places[c.place_id], lang),
       key,
       text: reasonText(key, c.reasons?.[key]),
+      score: c.reasons?.[key]?.score,
     })
   }
 
@@ -215,14 +217,16 @@ export function ComparisonPlayground() {
     await reloadCandidates() // re-read from server rather than trusting the response
   }
 
-  // Add a user-defined criterion: the AI rates every country, then it joins the board.
+  // Add a user-defined criterion: a short name for the column + an optional longer
+  // description that guides the AI. The AI rates every country, then it joins the board.
   async function addCustom() {
     const label = newCustom.trim()
     if (!label || addingCustom) return
     setAddingCustom(true)
     try {
-      await api.addCustomCriterion(sid, label)
+      await api.addCustomCriterion(sid, label, newCustomDesc.trim() || undefined)
       setNewCustom('')
+      setNewCustomDesc('')
       await reload() // picks up the new column, labels and re-scored candidates
     } finally {
       setAddingCustom(false)
@@ -436,12 +440,17 @@ export function ComparisonPlayground() {
             </button>
           </div>
         )}
-        {/* User-defined criterion: AI evaluates each country on it. */}
+        {/* User-defined criterion: a short column name + an optional longer description
+            that guides the AI, which then scores each country on it. */}
         <div className="flex items-center gap-2">
           <input value={newCustom} onChange={(e) => setNewCustom(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-            placeholder={t.comparison.customPrompt}
-            className="w-56 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
+            placeholder={t.comparison.customNamePrompt}
+            className="w-40 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
+          <input value={newCustomDesc} onChange={(e) => setNewCustomDesc(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+            placeholder={t.comparison.customDescPrompt}
+            className="w-64 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
           <button onClick={addCustom} disabled={!newCustom.trim() || addingCustom}
             className="border border-turquoise-100 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
             {addingCustom && <Spinner />}
@@ -520,11 +529,14 @@ export function ComparisonPlayground() {
             className="bg-white rounded-xl max-w-sm w-full p-5">
             <div className="flex items-start gap-3 mb-1">
               <p className="font-medium text-turquoise-900">
-                {why.name} — {(t.criteria as Record<string, string>)[why.key] ?? why.key}
+                {why.name} — {critLabel(why.key)}
               </p>
               <button onClick={() => setWhy(null)} className="ml-auto text-turquoise-800/50 hover:text-turquoise-900"
                 aria-label={t.comparison.close}>×</button>
             </div>
+            {why.score != null && (
+              <p className="text-sm font-medium text-turquoise-600 mb-1">{t.comparison.scoreLabel}: {why.score}/100</p>
+            )}
             <p className="text-sm text-turquoise-800/80 mb-4">{why.text || '—'}</p>
             <Link to={`/drilldown/${why.placeId}#criterion-${why.key}`}
               className="text-sm text-turquoise-600 hover:underline">

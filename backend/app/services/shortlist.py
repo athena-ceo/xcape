@@ -52,8 +52,6 @@ _GROUP_SCALE = {"high": 1.0, "mixed": 0.5, "low": 0.15}
 _OPENNESS_SCALE = {"high": 1.0, "medium": 0.55, "low": 0.15}
 # Communities a user can say matter to them (acceptance judged per the worst of these).
 MINORITY_GROUPS = ["lgbtq", "jewish", "muslim", "ethnic_minorities", "immigrants"]
-# User-defined criteria are rated good/ok/bad by AI; map to the same 0-1 scale.
-_CUSTOM_SCALE = {"good": 1.0, "ok": 0.6, "bad": 0.3}
 
 # All criteria the UI can show / weight / filter on.
 CRITERIA_KEYS = [
@@ -213,7 +211,7 @@ def _criterion_value(
     custom: dict[str, str] | None = None,
 ) -> float:
     if custom is not None and key in custom:
-        return _CUSTOM_SCALE.get(str(custom[key]).lower(), 0.5)
+        return float(custom[key])  # already a resolved 0-1 value (custom_criteria.value_of)
     if key == "visa":
         return _visa_value(attrs, profile, place)
     if key == "cost_of_living":
@@ -334,7 +332,7 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     )
     scorable = [c for c in candidates if c.place]
     for cand in scorable:
-        custom = custom_criteria.levels_for_place(db, cand.place_id, custom_keys) if custom_keys else None
+        custom = custom_criteria.values_for_place(db, cand.place_id, custom_keys) if custom_keys else None
         score, reasons = _score_place(cand.place, weights, profile, custom)
         cand.match_score = score
         cand.match_reasons = reasons

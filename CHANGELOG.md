@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Chat can replace the comparison set
+
+- Fix: asking the assistant to "propose a new set of countries" updated its message but not
+  the table — it described a proposal without acting. New `set_comparison` tool replaces the
+  board with a specific set of countries (researches unknowns, selects exactly those,
+  re-ranks). The chat system prompt now instructs the assistant to APPLY search changes via
+  tools (and to call `set_comparison` whenever it proposes a new set), not just describe them.
+
+### 2026-06-14 — Custom criteria: name + description + score
+
+- A user-defined criterion now has a **short name** (the table column) and an optional
+  **longer description** that guides the AI prompt — two fields in the add-criterion UI.
+- The AI evaluation now returns a **0-100 score** (plus the bilingual justification and
+  sources); the score drives the ranking value (finer than the old good/ok/bad buckets,
+  with the colour tier derived from it) and is shown alongside the justification in the
+  explanation pop-up. `place_custom_evals.score` (migration 0012); old rows fall back to
+  the level. The pop-up now also uses the criterion's real name.
+
 ### 2026-06-14 — Faster chatbot
 
 - The chat assistant now runs on a faster configuration: `gpt-5-mini` (new

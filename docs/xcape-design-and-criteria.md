@@ -65,9 +65,11 @@ and `openness` (general societal openness) feeding the inclusion criterion, and 
 drill-down — cached `facts` (capital, population, region, flag, coords, photo) and
 `criteria_detail` (sourced AI explanations).
 
-**User-defined criteria** can be added per search (a phrase like "vegan-friendly"); the AI
-rates each country good/ok/bad with a justification, cached in `place_custom_evals` and
-scored alongside the built-ins.
+**User-defined criteria** can be added per search: a **short name** (the column header)
+plus an optional **longer description** that guides the AI. The AI returns a **0-100
+score** with a bilingual justification and sources (cached in `place_custom_evals`); the
+score drives the ranking (colour tier derived from it) and shows in the explanation
+pop-up. Scored alongside the built-ins.
 
 ## Scoring
 

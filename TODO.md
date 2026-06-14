@@ -8,6 +8,49 @@ affected. Ship items independently.
 
 ## Open
 
+### Employment, retirement & cross-border taxation criteria
+
+**Idea:** a whole category of work/money-mobility criteria that strongly drive relocation
+but aren't captured yet:
+- **Job opportunities** — demand in the user's field/occupation, overall unemployment,
+  job security, ease of getting hired given the user's **language level** (ties into
+  `language_ease`), work-visa/permit ease for their citizenship (ties into `visa`).
+- **Employer presence** — whether the user's current employer (esp. multinationals) has
+  offices there → a concrete pull. Capture employer name → office locations via search.
+- **Retirement** — many users relocate to retire: pension/retirement-visa options for
+  **non-local** workers, cost & taxation of retirement income, healthcare access for
+  retirees, residency-by-means routes (e.g. Portugal D7). Make this a first-class
+  user situation (a "retiring" mode/household state), not just a job angle.
+- **Cross-border taxation penalties** — double-taxation exposure based on the user's
+  **citizenship(s) + current country + destination**: is there a tax treaty? (e.g. the
+  US↔France treaty avoids double *taxation* but not double *filing*; US↔Saudi Arabia has
+  none). Also exit taxes, wealth tax, taxation of foreign/retirement income, social-charge
+  treaties. This is inherently per-user (depends on citizenship), like visa/inclusion.
+
+**Done looks like:** new built-in criteria (e.g. `jobs`, `employer_presence`,
+`retirement`, `tax_treaty`) scored against the profile, with the user-specific ones
+(tax treaty, work-permit, employer) computed from citizenship + employer inputs and
+explained in the drill-down; new onboarding inputs (occupation/field, current employer,
+"retiring?" flag). Some of these (tax-treaty matrix, employer offices) are best AI-/data-
+backed and cached per (citizenship × destination) or (employer × country), mirroring the
+custom-criteria cache.
+
+**Approach:** start with the two highest-value, most-tractable pieces —
+(1) a **tax-treaty / double-taxation** signal keyed on citizenship+destination (AI lookup
++ cache, surfaced under the existing `tax`/`visa` story), and (2) **job opportunity by
+field + language**, reusing the custom-criteria evaluation machinery
+(`services/custom_criteria.py`). Retirement and employer-presence follow. Needs design for
+the new profile inputs and the per-user caching key.
+
+**Why:** income, retirement security and tax exposure are decisive for real moves and a
+strong differentiator; "I'd be double-taxed there" can rule a country out entirely.
+
+**Files:** `data/profileOptions.ts` + onboarding/profile (occupation, employer, retiring
+flag, citizenship already present), `services/shortlist.py` (new criteria + per-user
+scoring like visa/inclusion), `services/place_research.py` or a new service + cache table
+for tax-treaty/employer data, `models/profile.py` + migration, i18n,
+`docs/xcape-design-and-criteria.md`.
+
 ### Voice output for the chatbot (text-to-speech)
 
 **Now:** voice **input** exists (`src/components/VoiceButton.tsx` records audio →

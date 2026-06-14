@@ -81,17 +81,33 @@ TOOLS = [
     },
     {
         "type": "function",
+        "name": "set_comparison",
+        "description": (
+            "Replace the comparison board with a specific set of countries (English names, "
+            "up to 5). Researches any not yet known, then adds and selects exactly these "
+            "and re-ranks. ALWAYS call this when you propose a new set of countries, so your "
+            "proposal actually appears in the table instead of only in your message."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"countries": {"type": "array", "items": {"type": "string"}}},
+            "required": ["countries"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
         "name": "add_custom_criterion",
         "description": (
             "Add a user-defined criterion the built-in list doesn't cover (e.g. "
-            "'vegan-friendly', 'good surfing', 'startup ecosystem'). The AI rates each "
+            "'vegan-friendly', 'good surfing', 'startup ecosystem'). The AI scores each "
             "country on it and it joins the comparison and ranking."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "label": {"type": "string"},
-                "description": {"type": "string"},
+                "label": {"type": "string", "description": "Short name for the table column (1-3 words)."},
+                "description": {"type": "string", "description": "Longer explanation of what to evaluate, used to prompt the AI."},
             },
             "required": ["label"],
             "additionalProperties": False,
@@ -220,6 +236,52 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         custom_criteria.evaluate_for_search(db, search, key, label, args.get("description"), user_id=user.id)
         sl.rescore_candidates(db, user, search)
         return {"ok": True, "added_criterion": label}, True
+
+    if name == "set_comparison":
+        names = [str(n).strip() for n in (args.get("countries") or []) if str(n).strip()]
+        names = names[: sl.MAX_COMPARE]
+        if not names:
+            return {"ok": False, "error": "no countries provided"}, False
+        target_ids: list[int] = []
+        applied: list[str] = []
+        for nm in names:
+            place = _find_place(db, nm)
+            if place is None:
+                try:
+                    place = place_research.research_place(db, nm, user_id=user.id)
+                except ai_client.AIUnavailable:
+                    place = None
+            if place is None:
+                continue
+            cand = (
+                db.query(Candidate)
+                .filter(Candidate.search_id == search.id, Candidate.place_id == place.id)
+                .first()
+            )
+            if cand:
+                cand.status = "active"
+            else:
+                cand = Candidate(search_id=search.id, place_id=place.id,
+                                 per_criterion=place.attributes or {}, selected=True)
+                db.add(cand)
+            target_ids.append(place.id)
+            applied.append(place.name)
+        # Make the board exactly this set: select the targets, deselect the rest.
+        for c in (
+            db.query(Candidate)
+            .filter(Candidate.search_id == search.id, Candidate.status == "active")
+            .all()
+        ):
+            c.selected = c.place_id in target_ids
+        db.commit()
+        # Fill any user-defined criteria for the (possibly new) countries.
+        for cc in (search.custom_criteria or []):
+            if cc.get("key"):
+                for pid in target_ids:
+                    place = db.get(Place, pid)
+                    custom_criteria.evaluate(db, place, cc["key"], cc["label"], cc.get("description"), user_id=user.id)
+        sl.rescore_candidates(db, user, search)
+        return {"ok": True, "countries": applied}, True
 
     if name == "rebuild_shortlist":
         sl.build_instant_shortlist(db, user, search)
