@@ -64,5 +64,10 @@ class AddCustomCriterionRequest(BaseModel):
     weight: float = 1.0
 
 
+class SuggestCriteriaRequest(BaseModel):
+    tags: list[str] = []
+    text: str | None = None
+
+
 class SetSelectedRequest(BaseModel):
     selected: bool

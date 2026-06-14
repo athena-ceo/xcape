@@ -5,6 +5,26 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Phase 2: data-driven criteria tree, tags, persona content, AI selection
+
+- **Single-source registry** (`app/data/criteria.json`, served by `GET /criteria`): a
+  multi-level tree (categories → leaves), cross-cutting **tags** (personas financial/fear +
+  concerns), reason→tags map, communities, value scales, default weights and persona-framed
+  AI descriptions. Backend (`services/criteria.py`) and frontend (`services/criteria.ts` +
+  `useCriteria`) both read it — the hard-coded criteria/label lists are retired. New leaves:
+  tax_treaty, asset_security, proximity. **Open-set principle:** every dimension is an
+  initial seed, extendable as data / per-search; new members are first-class.
+- **Tag-driven prioritisation**: reasons/priorities map to tags and up-weight every leaf
+  carrying them (replaces the hand-maintained reason→criterion table). **Proximity**
+  computed from country centroids (haversine) vs the user's current country.
+- **Table & control**: collapsible category groups with per-country roll-up colour, leaves
+  revealed on expand, registry value labels (Proximity Near/Far). CriteriaSettings: numeric
+  importance (0–5) + presets, multi-select climate filter. Rent/buy dropped from onboarding.
+- **AI criterion-selection (hybrid)**: pick concern/persona tag chips and/or describe your
+  situation in free text → `gpt-5-mini` (`services/criteria_select.py`, endpoint
+  `POST /searches/{id}/suggest-criteria`) sets the matching importance weights and proposes
+  custom criteria. ("Tune by situation" panel on the board.)
+
 ### 2026-06-14 — New request (reset) + PDF report
 
 - **New request / start over**: a header action that truly resets — it wipes the user's

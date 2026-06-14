@@ -16,8 +16,12 @@ from app.schemas.search import (
     AddCustomCriterionRequest,
     CandidateOut,
     SetSelectedRequest,
+    SuggestCriteriaRequest,
 )
-from app.services import ai_client, board, comparison, criteria, criterion_eval, place_research
+from app.services import (
+    ai_client, board, comparison, criteria, criteria_select, criterion_eval, place_research,
+)
+from app.models.profile import Profile
 from app.services import shortlist as shortlist_service
 from app.services.shortlist import MAX_COMPARE
 
@@ -255,6 +259,44 @@ def add_custom_criterion(
     if key not in (search.criteria_set or []):
         search.criteria_set = [*(search.criteria_set or []), key]
     db.commit()
+    return list_candidates(search_id, user=user, db=db)
+
+
+@router.post("/{search_id}/suggest-criteria", response_model=list[CandidateOut])
+def suggest_criteria(
+    search_id: int,
+    body: SuggestCriteriaRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """From the user's chosen tags + free-text situation, AI-select which criteria matter:
+    set their importance weights and add any proposed custom criteria, then re-rank."""
+    search = _owned(db, user, search_id)
+    result = criteria_select.suggest(db, user, tags=body.tags, free_text=body.text or "")
+
+    # Apply weights to the profile (merge with any existing).
+    if result["weights"]:
+        profile = user.profile or Profile(user_id=user.id)
+        if profile.id is None:
+            db.add(profile)
+        profile.criteria_weights = {**(profile.criteria_weights or {}), **result["weights"]}
+        db.commit()
+
+    # Register suggested custom criteria (evaluated progressively via /evaluate-pending).
+    defs = list(search.custom_criteria or [])
+    keys = {c.get("key") for c in defs}
+    for c in result["custom"]:
+        key = criterion_eval.slugify(c["label"])
+        if key in keys:
+            continue
+        defs.append({"key": key, "label": c["label"], "description": c.get("description"), "weight": 1.0})
+        keys.add(key)
+        if key not in (search.criteria_set or []):
+            search.criteria_set = [*(search.criteria_set or []), key]
+    search.custom_criteria = defs
+    db.commit()
+
+    shortlist_service.rescore_candidates(db, user, search)
     return list_candidates(search_id, user=user, db=db)
 
 

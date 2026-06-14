@@ -86,6 +86,11 @@ export const api = {
     }),
   evaluatePending: (id: number, limit = 4) =>
     request<any[]>(`/searches/${id}/evaluate-pending?limit=${limit}`, { method: 'POST' }),
+  suggestCriteria: (id: number, tags: string[], text: string) =>
+    request<any[]>(`/searches/${id}/suggest-criteria`, {
+      method: 'POST',
+      body: JSON.stringify({ tags, text }),
+    }),
   // Fetch the PDF report as a blob (auth header) and trigger a browser download.
   downloadReport: async (id: number) => {
     const t = token()

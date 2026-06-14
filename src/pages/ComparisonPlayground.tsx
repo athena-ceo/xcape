@@ -42,6 +42,10 @@ export function ComparisonPlayground() {
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [filters, setFilters] = useState<Record<string, any>>({})
   const [showSettings, setShowSettings] = useState(false)
+  const [showTune, setShowTune] = useState(false)
+  const [tuneTags, setTuneTags] = useState<string[]>([])
+  const [tuneText, setTuneText] = useState('')
+  const [tuning, setTuning] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [applying, setApplying] = useState(false)
 
@@ -206,6 +210,20 @@ export function ComparisonPlayground() {
       else setMessages(await api.getChat(sid))
     } finally {
       setChatBusy(false)
+    }
+  }
+
+  // Hybrid criterion selection: chosen tags + free text → AI sets weights / adds criteria.
+  async function tune() {
+    if (tuning) return
+    setTuning(true)
+    try {
+      await api.suggestCriteria(sid, tuneTags, tuneText.trim())
+      setShowTune(false)
+      setTuneText('')
+      await reload()  // picks up new weights, custom criteria and re-ranked candidates
+    } finally {
+      setTuning(false)
     }
   }
 
@@ -398,6 +416,10 @@ export function ComparisonPlayground() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <h1 className="text-xl font-medium text-turquoise-900">{t.comparison.title}</h1>
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
+          <button onClick={() => setShowTune((s) => !s)}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5">
+            {t.comparison.tune}
+          </button>
           <button onClick={() => setShowSettings((s) => !s)}
             className="border border-turquoise-100 rounded-md px-3 py-1.5">
             {t.comparison.settings}
@@ -414,6 +436,34 @@ export function ComparisonPlayground() {
           </button>
         </div>
       </div>
+
+      {showTune && (
+        <div className="bg-white border border-turquoise-100 rounded-lg p-4 mb-4">
+          <p className="text-sm text-turquoise-800/70 mb-2">{t.comparison.tuneHint}</p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {Object.entries(reg?.tags ?? {}).map(([key, tag]) => {
+              const on = tuneTags.includes(key)
+              return (
+                <button key={key} type="button"
+                  onClick={() => setTuneTags((ts) => on ? ts.filter((x) => x !== key) : [...ts, key])}
+                  className={`text-xs rounded-full border px-2.5 py-1 ${
+                    on ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700'
+                       : 'border-turquoise-100 hover:bg-turquoise-50'}`}>
+                  {lang === 'fr' ? (tag as any).label_fr : (tag as any).label_en}
+                </button>
+              )
+            })}
+          </div>
+          <textarea value={tuneText} onChange={(e) => setTuneText(e.target.value)}
+            placeholder={t.comparison.tunePrompt} rows={2}
+            className="w-full border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
+          <button onClick={tune} disabled={tuning || (!tuneTags.length && !tuneText.trim())}
+            className="bg-turquoise-600 text-turquoise-50 rounded-md px-4 py-2 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+            {tuning && <Spinner className="border-turquoise-100 border-t-white" />}
+            {tuning ? t.comparison.customAdding : t.comparison.tuneApply}
+          </button>
+        </div>
+      )}
 
       {showSettings && (
         <CriteriaSettings weights={weights} filters={filters} busy={applying} onApply={applySettings} />
