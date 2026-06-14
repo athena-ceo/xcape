@@ -6,9 +6,10 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { Chip } from '../components/Chip'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
+import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS, LANG_OPTIONS, MAX_PRIORITIES,
+  CLIMATE_KEYS, HOUSEHOLDS, MAX_PRIORITIES,
   PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
@@ -182,13 +183,12 @@ export function ProfilePage() {
         </Section>
 
         <Section title={t.onboarding.language.knownQ}>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-            {LANG_OPTIONS.map((l) => (
-              <Chip key={l} active={f.known_languages.includes(l)}
-                onClick={() => set('known_languages', toggle(f.known_languages, l))}>
-                {t.langNames[l]}
-              </Chip>
-            ))}
+          <div className="mb-4">
+            <LanguageMultiSelect
+              value={f.known_languages}
+              onChange={(v) => set('known_languages', v)}
+              addLabel={t.onboarding.language.knownQ}
+            />
           </div>
           <div className="grid gap-3">
             <Chip active={f.willing_to_learn === true} onClick={() => set('willing_to_learn', true)}>

@@ -142,6 +142,60 @@ def respond_json(
     return json.loads(text)
 
 
+def converse(
+    messages: list[dict],
+    *,
+    system: str | None = None,
+    web_search: bool = False,
+    kind: str = "chat",
+    db: Session | None = None,
+    user_id: int | None = None,
+) -> str:
+    """Multi-turn call: `messages` is a list of {role, content}. Returns output text."""
+    kwargs: dict = {"model": settings.openai_model, "input": messages}
+    if web_search:
+        kwargs["tools"] = [{"type": "web_search"}]
+    if system:
+        kwargs["instructions"] = system
+    summary = messages[-1]["content"] if messages else ""
+    resp = _create(kwargs, db=db, user_id=user_id, kind=kind, summary=summary)
+    return getattr(resp, "output_text", "") or ""
+
+
+def converse_stream(
+    messages: list[dict],
+    *,
+    system: str | None = None,
+    web_search: bool = False,
+    kind: str = "chat",
+    db: Session | None = None,
+    user_id: int | None = None,
+):
+    """Streaming multi-turn call: yields text deltas as they arrive."""
+    client = _client()
+    kwargs: dict = {"model": settings.openai_model, "input": messages}
+    if web_search:
+        kwargs["tools"] = [{"type": "web_search"}]
+    if system:
+        kwargs["instructions"] = system
+    t0 = time.monotonic()
+    with client.responses.stream(**kwargs) as stream:
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                yield event.delta
+        final = stream.get_final_response()
+    latency = int((time.monotonic() - t0) * 1000)
+    _log(
+        db,
+        user_id=user_id,
+        kind=kind,
+        model=settings.openai_model,
+        summary=messages[-1]["content"] if messages else "",
+        usage=getattr(final, "usage", None),
+        latency_ms=latency,
+    )
+
+
 def transcribe_audio(
     data: bytes,
     *,

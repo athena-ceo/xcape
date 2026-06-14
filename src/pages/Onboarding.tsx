@@ -6,9 +6,10 @@ import { useNavigate } from 'react-router-dom'
 
 import { Chip } from '../components/Chip'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
+import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS, LANG_OPTIONS, LOCALE_LANGUAGE,
+  CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
   MAX_PRIORITIES, PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
@@ -239,13 +240,12 @@ export function Onboarding() {
             <>
               <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.language.knownQ}</h1>
               <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.language.knownHint}</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-                {LANG_OPTIONS.map((l) => (
-                  <Chip key={l} active={a.known_languages.includes(l)}
-                    onClick={() => setA({ ...a, known_languages: toggle(a.known_languages, l) })}>
-                    {t.langNames[l]}
-                  </Chip>
-                ))}
+              <div className="mb-6">
+                <LanguageMultiSelect
+                  value={a.known_languages}
+                  onChange={(v) => setA({ ...a, known_languages: v })}
+                  addLabel={t.onboarding.language.knownQ}
+                />
               </div>
 
               <p className="text-sm font-medium text-turquoise-900 mb-1">{t.onboarding.language.q}</p>

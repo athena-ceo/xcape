@@ -46,6 +46,16 @@ case "$CMD" in
     MSG="${1:-change}"
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
+  make-admin)
+    EMAIL="${1:-}"
+    [[ -z "$EMAIL" ]] && { echo "usage: ./xcape.sh make-admin <dev|prod> <email>"; exit 1; }
+    $COMPOSE exec -T db psql -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-xcape_dev}" \
+      -c "update users set is_admin = true where lower(email) = lower('${EMAIL}');"
+    echo "Granted admin to ${EMAIL}. They can now open /admin (link appears in the header after re-login)." ;;
+  reset-password)
+    EMAIL="${1:-}"; NEWPW="${2:-}"
+    [[ -z "$EMAIL" || -z "$NEWPW" ]] && { echo "usage: ./xcape.sh reset-password <dev|prod> <email> <newpassword>"; exit 1; }
+    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.set_password "$EMAIL" "$NEWPW" ;;
   test)     $COMPOSE exec "$BACKEND_SVC" python -m pytest /app/tests -q ;;
   smoke)    SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py ;;
   shell)    $COMPOSE exec "$BACKEND_SVC" bash ;;
@@ -99,6 +109,8 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   migrate                 apply Alembic migrations
   makemigration "msg"     autogenerate a migration
   seed                    load the bundled place database
+  make-admin <env> <email>  grant admin rights to a user
+  reset-password <env> <email> <pw>  set a user's password
   test                    run backend pytest
   smoke                   run end-to-end smoke tests against the running stack
   shell                   open a backend shell

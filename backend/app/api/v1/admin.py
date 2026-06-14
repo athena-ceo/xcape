@@ -1,20 +1,36 @@
 # Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
+from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.ai_log import AIQueryLog
 from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
-from app.schemas.auth import UserOut
+from app.schemas.auth import AdminPasswordReset, UserOut
 from app.schemas.place import PlaceOut
 from app.schemas.search import SearchOut
 
 router = APIRouter()
+
+
+@router.post("/users/{user_id}/reset-password", status_code=204)
+def reset_password(
+    user_id: int,
+    body: AdminPasswordReset,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin sets a new password for any user."""
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    target.password_hash = hash_password(body.password)
+    db.commit()
 
 
 @router.get("/users", response_model=list[UserOut])

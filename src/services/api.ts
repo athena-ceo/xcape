@@ -84,12 +84,38 @@ export const api = {
     request<{ criteria: any[] }>(`/places/${id}/detail?lang=${lang}`),
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
+  getAdminUsers: () => request<any[]>('/admin/users'),
+  adminResetPassword: (userId: number, password: string) =>
+    request<void>(`/admin/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
   sendChat: (id: number, message: string) =>
     request<any>(`/searches/${id}/chat`, {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
+  // Streaming chat: invokes onDelta with each text chunk as it arrives.
+  streamChat: async (id: number, message: string, onDelta: (delta: string) => void) => {
+    const res = await fetch(`${API_URL}/api/v1/searches/${id}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
+      },
+      body: JSON.stringify({ message }),
+    })
+    if (!res.ok || !res.body) throw new Error(`Stream failed: ${res.status}`)
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      onDelta(decoder.decode(value, { stream: true }))
+    }
+  },
 }
 
 export { API_URL }

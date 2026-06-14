@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { PasswordField } from '../components/PasswordField'
 import { useT } from '../i18n'
 import { useAuth } from '../store/auth'
 
@@ -53,13 +54,10 @@ export function RegisterPage() {
           value={email} onChange={(e) => setEmail(e.target.value)}
           className="w-full border border-turquoise-100 rounded-md px-3 py-2"
         />
-        <input
-          type="password" required minLength={8} placeholder={t.auth.password}
-          value={password} onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-turquoise-100 rounded-md px-3 py-2"
-        />
+        <PasswordField required minLength={8} placeholder={t.auth.password} autoComplete="new-password"
+          value={password} onChange={setPassword} />
         {error && <p className="text-red-600 text-sm">{error}</p>}
-        <button className="w-full bg-turquoise-600 text-turquoise-50 rounded-md py-2.5">
+        <button type="submit" className="w-full bg-turquoise-600 text-turquoise-50 rounded-md py-2.5">
           {t.auth.submitRegister}
         </button>
       </form>

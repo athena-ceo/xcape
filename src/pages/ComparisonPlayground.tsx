@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { CriteriaSettings } from '../components/CriteriaSettings'
 import { Markdown } from '../components/Markdown'
 import { Spinner } from '../components/Spinner'
 import { VoiceButton } from '../components/VoiceButton'
@@ -39,6 +40,8 @@ export function ComparisonPlayground() {
   const [questions, setQuestions] = useState<any[]>([])
   const [narrowing, setNarrowing] = useState(false)
   const [weights, setWeights] = useState<Record<string, number>>({})
+  const [filters, setFilters] = useState<Record<string, any>>({})
+  const [showSettings, setShowSettings] = useState(false)
   const [applying, setApplying] = useState(false)
 
   const [baseline, setBaseline] = useState<any>(null)
@@ -58,6 +61,7 @@ export function ComparisonPlayground() {
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
     setMessages(hist)
     setWeights(profile?.criteria_weights ?? {})
+    setFilters(profile?.filters ?? {})
     await reloadCandidates()
   }
 
@@ -70,20 +74,32 @@ export function ComparisonPlayground() {
 
   useEffect(() => { reload(); loadBaseline() }, [sid]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function indicator(delta?: string) {
-    if (delta === 'better') return <span title={t.comparison.better} className="text-green-600">↑</span>
-    if (delta === 'worse') return <span title={t.comparison.worse} className="text-red-600">↓</span>
-    if (delta === 'same') return <span title={t.comparison.same} className="text-turquoise-800/30">=</span>
-    return null
+  // Colour a cell by how good the criterion is for this user: green good, amber weak,
+  // red no-go. Light tints that complement the turquoise palette.
+  function qualityClass(tier?: string) {
+    if (tier === 'good') return 'bg-emerald-50 text-emerald-800'
+    if (tier === 'ok') return 'bg-amber-50 text-amber-900'
+    if (tier === 'bad') return 'bg-red-50 text-red-800'
+    return ''
   }
 
   async function send(message: string) {
     if (!message.trim() || chatBusy) return
     setChat('')
-    setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: 'user', content: message }])
+    const aid = `a-${Date.now()}`
+    setMessages((m) => [
+      ...m,
+      { id: `u-${Date.now()}`, role: 'user', content: message },
+      { id: aid, role: 'assistant', content: '' },
+    ])
     setChatBusy(true)
     try {
-      await api.sendChat(sid, message)
+      await api.streamChat(sid, message, (delta) =>
+        setMessages((m) => m.map((x) => (x.id === aid ? { ...x, content: x.content + delta } : x))),
+      )
+    } catch {
+      // Fall back to a single non-streamed reply, then re-read history.
+      await api.sendChat(sid, message).catch(() => {})
       setMessages(await api.getChat(sid))
     } finally {
       setChatBusy(false)
@@ -149,6 +165,20 @@ export function ComparisonPlayground() {
     setExplain({ candidate, data })
   }
 
+  // Apply criteria settings: persist weights + filters, then rebuild the shortlist so
+  // filters (e.g. language) change which countries qualify.
+  async function applySettings(w: Record<string, number>, f: Record<string, any>) {
+    setApplying(true)
+    try {
+      await api.updateProfile({ criteria_weights: w, filters: f })
+      await api.buildShortlist(sid)
+      setShowSettings(false)
+      await reload()
+    } finally {
+      setApplying(false)
+    }
+  }
+
   const availableCriteria = ALL_CRITERIA.filter((k) => !rows.includes(k))
 
   return (
@@ -156,12 +186,28 @@ export function ComparisonPlayground() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <h1 className="text-xl font-medium text-turquoise-900">{t.comparison.title}</h1>
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
+          <button onClick={() => setShowSettings((s) => !s)}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5">
+            {t.comparison.settings}
+          </button>
           <button onClick={narrow} disabled={narrowing}
             className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
             {narrowing && <Spinner />}
             {narrowing ? t.comparison.narrowing : t.comparison.narrow}
           </button>
         </div>
+      </div>
+
+      {showSettings && (
+        <CriteriaSettings weights={weights} filters={filters} busy={applying} onApply={applySettings} />
+      )}
+
+      {/* Colour legend */}
+      <div className="flex items-center gap-4 text-xs text-turquoise-800/70 mb-2">
+        <span>{t.comparison.legend}:</span>
+        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800">{t.comparison.legendGood}</span>
+        <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900">{t.comparison.legendWeak}</span>
+        <span className="px-2 py-0.5 rounded bg-red-50 text-red-800">{t.comparison.legendNogo}</span>
       </div>
 
       {/* Comparison table */}
@@ -171,12 +217,12 @@ export function ComparisonPlayground() {
             <tr className="bg-turquoise-50 text-left">
               <th className="p-3 font-medium">{t.comparison.criterion}</th>
               {baseline && (
-                <th className="p-3 font-medium bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
+                <th className="p-3 font-medium text-center bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
                   {placeName(baseline, lang)}
                 </th>
               )}
               {candidates.map((c) => (
-                <th key={c.id} className="p-3 font-medium whitespace-nowrap">
+                <th key={c.id} className="p-3 font-medium text-center whitespace-nowrap">
                   <Link to={`/drilldown/${c.place_id}`} className="text-turquoise-600 hover:underline">
                     {placeName(places[c.place_id], lang)}
                   </Link>
@@ -199,11 +245,12 @@ export function ComparisonPlayground() {
                   </td>
                 )}
                 {candidates.map((c) => (
-                  <td key={c.id} className="p-3 text-center">
+                  // Value and colour both read from the live place attributes (the same
+                  // source the backend scores from) so they never disagree.
+                  <td key={c.id} className={`p-3 text-center ${qualityClass(c.quality?.[key])}`}>
                     {key === 'language_ease'
                       ? languageCell(t, places[c.place_id]?.attributes)
-                      : attrValue(t, c.per_criterion?.[key])}
-                    {' '}{indicator(c.vs_current?.[key])}
+                      : attrValue(t, places[c.place_id]?.attributes?.[key])}
                   </td>
                 ))}
               </tr>
@@ -300,7 +347,7 @@ export function ComparisonPlayground() {
               {m.role === 'user' ? m.content : <Markdown>{m.content}</Markdown>}
             </div>
           ))}
-          {chatBusy && (
+          {chatBusy && !messages[messages.length - 1]?.content && (
             <p className="text-sm text-turquoise-800/50 flex items-center gap-2">
               <Spinner /> {t.comparison.thinking}
             </p>

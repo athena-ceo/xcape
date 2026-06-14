@@ -25,6 +25,9 @@ class Profile(Base):
     must_haves: Mapped[list | None] = mapped_column(JSON, default=list)
     nice_to_haves: Mapped[list | None] = mapped_column(JSON, default=list)
     criteria_weights: Mapped[dict | None] = mapped_column(JSON, default=dict)
+    # Hard constraints applied to the candidate pool, e.g. {"language_ease": true,
+    # "climate": "warm", "safety": "high"} — see services.shortlist._passes_filters.
+    filters: Mapped[dict | None] = mapped_column(JSON, default=dict)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

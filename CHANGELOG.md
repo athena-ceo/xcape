@@ -5,6 +5,41 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — Password reset (CLI + admin)
+
+- `./xcape.sh reset-password <env> <email> <newpassword>` (via `app.db.set_password`).
+- Admin endpoint `POST /admin/users/{id}/reset-password` (admin-only) and an admin
+  users table with a "Reset password" action. Tests added.
+
+### 2026-06-14 — Criteria filters & weights, colour cells, any language, admin, docs
+
+- Criteria filters (hard constraints) in addition to weights: language ("only where I
+  can communicate"), climate, visa, and minimum buckets for ordinal criteria
+  (`profiles.filters`, migration 0008; `shortlist.passes_filters`). Filters rebuild the
+  shortlist pool, so e.g. an Arabic speaker now surfaces Arabic-speaking countries.
+- "Criteria settings" panel in the comparison board: per-criterion importance
+  (ignore/low/normal/high) and the key filters; applying re-ranks and re-filters.
+- Comparison cells are colour-coded by per-user quality (green good / amber weak / red
+  no-go) with a legend, replacing the arrows. `quality` tiers added to candidates.
+- Language selection is now open-ended (any ISO language via Intl.DisplayNames),
+  replacing the fixed 8-language list.
+- Admin: `./xcape.sh make-admin <env> <email>` grants admin; the Admin link → /admin.
+- Docs: `docs/xcape-design-and-criteria.md` (palette, colour coding, criteria
+  definitions, scoring, filters, data sources, admin).
+
+### 2026-06-14 — Context-aware, streaming chat
+
+- The chat is now a real conversation: each turn includes a compact briefing of what we
+  know (name, residence, citizenships, household, reasons, budget, climate, languages,
+  priorities, and the shortlist being compared) plus the recent message history — it no
+  longer starts fresh each question.
+- Streaming: answers stream token-by-token (`/searches/{id}/chat/stream`, plain-text
+  chunks; `ai_client.converse_stream`) so text appears immediately instead of after the
+  full reply. The streaming generator uses its own DB session (the request session is
+  torn down before a StreamingResponse generator runs).
+- Frontend appends deltas live into the assistant bubble; "thinking" spinner shows only
+  until the first token.
+
 ### 2026-06-14 — Score explanation
 
 - Clicking a score in the comparison board opens a breakdown of how it was derived:

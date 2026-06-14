@@ -100,6 +100,32 @@ def test_score_explanation_breaks_down_and_sums(auth_client, db_session):
     assert abs(sum(r["contribution"] for r in exp["rows"]) - exp["score"]) < 1.0
 
 
+def test_language_filter_restricts_pool(auth_client, db_session):
+    seed(db_session)
+    # Require a country where the user (Arabic speaker) can communicate.
+    auth_client.put("/api/v1/profile", json={
+        "language_skills": {"known": ["Arabic"]},
+        "filters": {"language_ease": True},
+    })
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    cands = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
+    places = {p["id"]: p for p in auth_client.get("/api/v1/places?kind=country").json()}
+    assert cands, "expected Arabic-speaking countries"
+    for c in cands:
+        langs = [str(x).lower() for x in (places[c["place_id"]]["attributes"].get("languages") or [])]
+        assert "arabic" in langs
+
+
+def test_candidates_carry_quality_tiers(auth_client, db_session):
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/shortlist")
+    cands = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+    assert cands and all("quality" in c for c in cands)
+    tiers = {v for c in cands for v in c["quality"].values()}
+    assert tiers <= {"good", "ok", "bad"}
+
+
 def test_candidate_unique_per_search(auth_client, db_session):
     seed(db_session)
     sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]

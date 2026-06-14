@@ -15,6 +15,7 @@ class ProfileUpdate(BaseModel):
     must_haves: list[str] | None = None
     nice_to_haves: list[str] | None = None
     criteria_weights: dict | None = None
+    filters: dict | None = None
 
 
 class ProfileOut(ProfileUpdate):

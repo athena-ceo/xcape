@@ -42,6 +42,12 @@ _SCALES: dict[str, dict[str, float]] = {
     "internet": {"fast": 1.0, "ok": 0.6, "slow": 0.3},
 }
 
+# All criteria the UI can show / weight / filter on.
+CRITERIA_KEYS = [
+    "cost_of_living", "climate", "language_ease", "healthcare", "safety",
+    "political_stability", "tax", "visa", "expat_community", "nature", "internet",
+]
+
 _DEFAULT_WEIGHTS: dict[str, float] = {
     "cost_of_living": 1.0,
     "healthcare": 1.0,
@@ -125,9 +131,35 @@ def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> fl
     return base
 
 
+# Coarse monthly cost of living for one person (EUR), by symbolic level — a proxy used
+# to score affordability against the user's budget. The per-country AI drill-down gives
+# real figures; this only needs to rank countries sensibly relative to a budget.
+_COST_BAND = {"low": 1200, "medium": 2200, "high": 3500}
+_HOUSEHOLD_FACTOR = {"single": 1.0, "couple": 1.6, "family": 2.4}
+
+
+def _cost_value(attrs: dict, profile: Profile | None) -> float:
+    """Affordability of the cost of living given the user's budget + household.
+
+    With a budget set, score how comfortably it covers the estimated cost; without one,
+    fall back to the plain symbolic scale (cheaper = better).
+    """
+    level = str(attrs.get("cost_of_living", "")).lower()
+    budget = getattr(profile, "budget_monthly", None) if profile else None
+    if budget and level in _COST_BAND:
+        factor = _HOUSEHOLD_FACTOR.get(getattr(profile, "household_type", None), 1.3)
+        estimate = _COST_BAND[level] * factor
+        ratio = budget / estimate
+        # ratio 0.5 (budget half the cost) -> 0; ratio 1.2 (comfortable surplus) -> 1.
+        return max(0.0, min(1.0, (ratio - 0.5) / 0.7))
+    return _SCALES["cost_of_living"].get(level, 0.5)
+
+
 def _criterion_value(key: str, attrs: dict, profile: Profile | None, place: Place | None = None) -> float:
     if key == "visa":
         return _visa_value(attrs, profile, place)
+    if key == "cost_of_living":
+        return _cost_value(attrs, profile)
     if key == "climate":
         pref = profile.climate_pref if profile else None
         return 1.0 if (pref and attrs.get("climate") == pref) else 0.5
@@ -147,6 +179,44 @@ def _criterion_value(key: str, attrs: dict, profile: Profile | None, place: Plac
         return round(base * 0.7, 3)
     scale = _SCALES.get(key, {})
     return scale.get(str(attrs.get(key, "")).lower(), 0.5)
+
+
+def quality_tier(value: float) -> str:
+    """Map a 0-1 criterion value to a colour tier: good / ok / bad."""
+    return "good" if value >= 0.7 else ("ok" if value >= 0.45 else "bad")
+
+
+def candidate_quality(place: Place, profile: Profile | None) -> dict[str, str]:
+    """Per-criterion colour tier for a place, from the user's perspective."""
+    attrs = place.attributes or {}
+    return {k: quality_tier(_criterion_value(k, attrs, profile, place)) for k in CRITERIA_KEYS}
+
+
+def passes_filters(place: Place, profile: Profile | None) -> bool:
+    """Hard constraints: a place must satisfy every active filter to qualify."""
+    filters = (profile.filters or {}) if profile else {}
+    attrs = place.attributes or {}
+    for key, fval in filters.items():
+        if fval in (None, "", False):
+            continue
+        if key == "language_ease":
+            known = {str(x).lower() for x in (profile.language_skills or {}).get("known", [])}
+            langs = {str(x).lower() for x in (attrs.get("languages") or [])}
+            if not (known and langs and (known & langs)):
+                return False
+        elif key == "climate":
+            if attrs.get("climate") != fval:
+                return False
+        elif key == "visa":
+            if _visa_value(attrs, profile, place) < 0.9:
+                return False
+        elif key in _SCALES:
+            scale = _SCALES[key]
+            pv = scale.get(str(attrs.get(key, "")).lower())
+            fv = scale.get(str(fval).lower())
+            if pv is None or fv is None or pv < fv:
+                return False
+    return True
 
 
 def _score_place(place: Place, weights: dict[str, float], profile: Profile | None):
@@ -232,8 +302,12 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
     weights = _effective_weights(profile)
 
     countries = db.query(Place).filter(Place.kind == "country").all()
+    # Apply hard filters (e.g. "must speak a language I know"); if filters exclude
+    # everything, fall back to the unfiltered pool so the user still sees options.
+    qualified = [p for p in countries if passes_filters(p, profile)]
+    pool = qualified or countries
     scored = sorted(
-        ((p, *_score_place(p, weights, profile)) for p in countries),
+        ((p, *_score_place(p, weights, profile)) for p in pool),
         key=lambda t: t[1],
         reverse=True,
     )[:SHORTLIST_SIZE]

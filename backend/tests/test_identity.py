@@ -25,6 +25,17 @@ def test_register_captures_names_and_defaults_current_country(client):
     assert me["current_country"] == "France"
 
 
+def test_me_tolerates_null_citizenships(auth_client, db_session):
+    # Accounts created before the citizenships column have NULL there; /auth/me must
+    # still serialize (regression: it used to 500 on the non-optional list field).
+    from app.models.user import User
+
+    user = db_session.query(User).filter(User.email == "test@example.com").first()
+    user.citizenships = None
+    db_session.commit()
+    assert auth_client.get("/api/v1/auth/me").status_code == 200
+
+
 def test_patch_me_updates_current_country(auth_client):
     resp = auth_client.patch("/api/v1/auth/me", json={"current_country": "Belgium"})
     assert resp.status_code == 200

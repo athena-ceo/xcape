@@ -32,6 +32,10 @@ class UserUpdate(BaseModel):
     citizenships: list[str] | None = None
 
 
+class AdminPasswordReset(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -40,7 +44,7 @@ class UserOut(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     current_country: str | None = None
-    citizenships: list[str] = []
+    citizenships: list[str] | None = None  # NULL for accounts created before this field
     is_admin: bool
     is_verified: bool
     locale: str

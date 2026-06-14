@@ -166,8 +166,10 @@ def fetch_criteria_detail(
     data = ai_client.respond_json(
         f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
         f"explanation IN {language} for each of these criteria: {', '.join(_DETAIL_CRITERIA)}. "
-        f"Use web search for current facts. Put source URLs ONLY in the sources array — do "
-        f"NOT include any URLs or a 'Sources:' note inside the summary text.",
+        f"Use web search for current facts. Put sources ONLY in the sources array, each as "
+        f"a plain bare URL (https://… with no Markdown, no link text, and no tracking "
+        f"query parameters such as utm_source). Do NOT include any URLs or a 'Sources:' "
+        f"note inside the summary text.",
         _detail_schema(),
         schema_name="criteria_detail",
         web_search=True,

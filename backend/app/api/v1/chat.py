@@ -2,6 +2,7 @@
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -42,3 +43,18 @@ def send(
 ):
     search = _owned(db, user, search_id)
     return chat_service.reply(db, user, search, body.message)
+
+
+@router.post("/{search_id}/chat/stream")
+def send_stream(
+    search_id: int,
+    body: ChatRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Streaming chat: plain-text chunks as the answer is generated."""
+    search = _owned(db, user, search_id)
+    return StreamingResponse(
+        chat_service.reply_stream(db, user, search, body.message),
+        media_type="text/plain; charset=utf-8",
+    )

@@ -37,12 +37,19 @@ export function Drilldown() {
   const photos = media.filter((m) => m.type === 'photo')
   const links = media.filter((m) => m.type !== 'photo')
 
-  // Human label for a source: the site name (hostname without www), else the URL.
-  function sourceLabel(url: string): string {
+  // A source may arrive as a plain URL or as a Markdown link "[name](url)". Pull out the
+  // URL, drop utm_* tracking params, and label it with the site name (hostname).
+  function parseSource(raw: string): { url: string; label: string } | null {
+    const match = String(raw).match(/https?:\/\/[^\s)\]]+/)
+    if (!match) return null
     try {
-      return new URL(url).hostname.replace(/^www\./, '')
+      const u = new URL(match[0])
+      for (const key of [...u.searchParams.keys()]) {
+        if (key.toLowerCase().startsWith('utm_')) u.searchParams.delete(key)
+      }
+      return { url: u.toString(), label: u.hostname.replace(/^www\./, '') }
     } catch {
-      return url
+      return { url: match[0], label: match[0] }
     }
   }
 
@@ -133,12 +140,15 @@ export function Drilldown() {
             {Array.isArray(d.sources) && d.sources.length > 0 && (
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                 <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>
-                {d.sources.map((s: string, i: number) => (
-                  <a key={i} href={s} target="_blank" rel="noreferrer"
-                    className="text-xs text-turquoise-600 hover:underline break-all">
-                    {sourceLabel(s)}
-                  </a>
-                ))}
+                {d.sources.map((s: string, i: number) => {
+                  const src = parseSource(s)
+                  return src && (
+                    <a key={i} href={src.url} target="_blank" rel="noreferrer"
+                      className="text-xs text-turquoise-600 hover:underline">
+                      {src.label}
+                    </a>
+                  )
+                })}
               </div>
             )}
           </div>
