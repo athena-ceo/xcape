@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useT, type Language } from '../i18n'
 import { api } from '../services/api'
 import { useAuth } from '../store/auth'
+import { HelpDialog } from './HelpDialog'
 
 export function Header() {
   const { t, lang, setLang } = useT()
@@ -15,6 +16,7 @@ export function Header() {
   const [resetOpen, setResetOpen] = useState(false)
   const [resetSid, setResetSid] = useState<number | null>(null)
   const [working, setWorking] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   // Friendly greeting with the user's name; fall back to the email handle if the
   // account has no first name yet.
@@ -61,6 +63,9 @@ export function Header() {
           <option value="fr">FR</option>
           <option value="en">EN</option>
         </select>
+
+        <button onClick={() => setHelpOpen(true)} title={t.nav.help} aria-label={t.nav.help}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-turquoise-100 text-turquoise-600 font-medium">?</button>
 
         {token ? (
           <>
@@ -119,6 +124,8 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
     </header>
   )
 }

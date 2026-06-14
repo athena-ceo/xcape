@@ -679,13 +679,19 @@ export function ComparisonPlayground() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 bg-white rounded-md px-3 py-2">
+        <div className="flex items-center gap-1 bg-white rounded-md pl-3 pr-1.5 py-1">
           <input value={chat} onChange={(e) => setChat(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send(chat)}
             placeholder={t.comparison.placeholder}
-            className="flex-1 outline-none text-sm" />
-          <VoiceButton onTranscript={(text) => setChat((c) => (c.trim() ? `${c.trim()} ${text}` : text))} />
-          <button onClick={() => send(chat)} disabled={chatBusy} className="text-turquoise-600 disabled:opacity-40">→</button>
+            className="flex-1 outline-none text-sm py-2" />
+          {/* Separate, comfortably-sized tap targets: a divider keeps the mic clear of the
+              send arrow so they're not mis-tapped on mobile. */}
+          <span className="w-px h-6 bg-turquoise-100 mx-1" aria-hidden="true" />
+          <VoiceButton
+            className="inline-flex items-center justify-center w-10 h-10 rounded-full transition hover:bg-turquoise-50 disabled:opacity-40"
+            onTranscript={(text) => setChat((c) => (c.trim() ? `${c.trim()} ${text}` : text))} />
+          <button onClick={() => send(chat)} disabled={chatBusy} aria-label={t.comparison.send}
+            className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-turquoise-600 text-turquoise-50 text-lg disabled:opacity-40">→</button>
         </div>
       </div>
 

@@ -12,6 +12,28 @@ interface Props {
   className?: string
 }
 
+// Pick a recording format the browser actually supports. iOS Safari/WebKit (and so every
+// iOS browser, incl. "Firefox") can't produce webm — it records mp4/aac — so we must
+// negotiate rather than assume webm, and upload with a matching extension so the AI
+// provider can decode it.
+const MIME_CANDIDATES = [
+  'audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/mpeg',
+  'audio/ogg;codecs=opus',
+]
+function pickMimeType(): string | undefined {
+  const MR = typeof MediaRecorder !== 'undefined' ? MediaRecorder : undefined
+  if (!MR || typeof MR.isTypeSupported !== 'function') return undefined
+  return MIME_CANDIDATES.find((c) => MR.isTypeSupported(c))
+}
+function extForMime(mime: string): string {
+  if (mime.includes('webm')) return 'webm'
+  if (mime.includes('mp4')) return 'mp4'
+  if (mime.includes('aac')) return 'm4a'
+  if (mime.includes('mpeg')) return 'mp3'
+  if (mime.includes('ogg')) return 'ogg'
+  return 'webm'
+}
+
 // Standard microphone icon (Tabler "microphone" outline). Filled red while recording.
 function MicIcon({ recording }: { recording: boolean }) {
   return (
@@ -55,9 +77,15 @@ export function VoiceButton({ onTranscript, title, className }: Props) {
       fail(t.voice.micBlocked)
       return
     }
-    const mr = new MediaRecorder(stream)
+    const mime = pickMimeType()
+    let mr: MediaRecorder
+    try {
+      mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
+    } catch {
+      mr = new MediaRecorder(stream)
+    }
     const chunks: Blob[] = []
-    mr.ondataavailable = (e) => chunks.push(e.data)
+    mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
     mr.onstop = async () => {
       stream.getTracks().forEach((tr) => tr.stop())
       setBusy(true)
@@ -67,8 +95,12 @@ export function VoiceButton({ onTranscript, title, className }: Props) {
           fail(t.voice.needAuth)
           return
         }
+        // Use the format the browser actually recorded in (mr.mimeType), so the upload
+        // extension matches the bytes — critical on iOS, which records mp4 not webm.
+        const actual = mr.mimeType || mime || 'audio/webm'
+        if (!chunks.length) { fail(t.voice.noSpeech); return }
         const form = new FormData()
-        form.append('audio', new Blob(chunks, { type: 'audio/webm' }), 'audio.webm')
+        form.append('audio', new Blob(chunks, { type: actual }), `audio.${extForMime(actual)}`)
         const res = await fetch(`${API_URL}/api/v1/voice/transcribe`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -88,7 +120,9 @@ export function VoiceButton({ onTranscript, title, className }: Props) {
         setBusy(false)
       }
     }
-    mr.start()
+    // Timeslice so ondataavailable fires periodically (more reliable on iOS than a single
+    // final chunk).
+    mr.start(1000)
     recorderRef.current = mr
     setRecording(true)
   }
@@ -112,7 +146,7 @@ export function VoiceButton({ onTranscript, title, className }: Props) {
       aria-label={error ?? title ?? t.voice.label}
       aria-pressed={recording}
       title={error ?? title ?? t.voice.label}
-      className={className ?? `inline-flex items-center justify-center transition disabled:opacity-40 ${color}`}
+      className={`${className ?? 'inline-flex items-center justify-center transition disabled:opacity-40'} ${color}`}
     >
       <MicIcon recording={recording} />
     </button>
