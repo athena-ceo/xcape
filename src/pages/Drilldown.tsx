@@ -75,6 +75,12 @@ export function Drilldown() {
     return cat ? cat.key : (groups.find((g) => g.keys.includes(clickedKey))?.key ?? null)
   }, [clickedKey, reg, groups])
 
+  // Always open the category the user clicked through to (overriding any persisted collapse),
+  // so the drill-down reliably lands on that criterion. The user can still collapse it after.
+  useEffect(() => {
+    if (clickedCat) setOpenCats((o) => ({ ...o, [clickedCat]: true }))
+  }, [clickedCat])
+
   function isOpen(catKey: string): boolean {
     if (catKey in openCats) return openCats[catKey]
     return catKey === clickedCat  // default: only the clicked criterion's category is open
@@ -299,8 +305,9 @@ export function Drilldown() {
       )}
       <div className="space-y-3 mb-6">
         {groups.map((g) => {
-          // Hide weight-0 (unimportant) criteria unless revealed; skip empty categories.
-          const vis = showZero ? g.keys : g.keys.filter((k) => weightOf(k) > 0)
+          // Hide weight-0 (unimportant) criteria unless revealed — but always show the one the
+          // user clicked through from the table, so the drill-down lands on it.
+          const vis = showZero ? g.keys : g.keys.filter((k) => weightOf(k) > 0 || k === clickedKey)
           if (!vis.length) return null
           const open = isOpen(g.key)
           const pendingCount = vis.filter((k) => detailByKey[k]?.pending).length
