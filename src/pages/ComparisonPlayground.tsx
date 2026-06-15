@@ -41,6 +41,10 @@ export function ComparisonPlayground() {
   const [filters, setFilters] = useState<Record<string, any>>({})
   const [showSettings, setShowSettings] = useState(false)
   const [settingsDirty, setSettingsDirty] = useState(false)
+  // Bumped after a successful Apply to remount the settings panel from the freshly-saved
+  // props, so its "dirty" baseline resets cleanly (re-enabling the toolbar) regardless of
+  // how the server echoes the values back.
+  const [settingsKey, setSettingsKey] = useState(0)
   const [showTune, setShowTune] = useState(false)
   const [tuneTags, setTuneTags] = useState<string[]>([])
   const [tuneText, setTuneText] = useState('')
@@ -306,8 +310,11 @@ export function ComparisonPlayground() {
         }
       }
       await api.repopulate(sid)
-      setShowSettings(false)
       await reload()
+      // Reset the panel's draft baseline to the now-saved values (clears dirty, re-enables
+      // the toolbar) and keep it open so the user can see the changes took effect.
+      setSettingsDirty(false)
+      setSettingsKey((k) => k + 1)
     } finally {
       setApplying(false)
     }
@@ -500,7 +507,7 @@ export function ComparisonPlayground() {
       )}
 
       {showSettings && (
-        <CriteriaSettings weights={weights} filters={filters} customCriteria={customCrit}
+        <CriteriaSettings key={settingsKey} weights={weights} filters={filters} customCriteria={customCrit}
           busy={applying} onApply={applySettings}
           onCancel={() => { setSettingsDirty(false); setShowSettings(false) }}
           onDirtyChange={setSettingsDirty} />

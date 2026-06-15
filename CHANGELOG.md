@@ -15,6 +15,9 @@
   Repopulate can no longer silently discard in-progress weight/filter changes.
 - The draft no longer resyncs from server state while you are editing (a background re-score
   or stray re-render can't wipe edits in progress).
+- After **Apply**, the panel now stays open and refreshes to show the saved values, and the
+  toolbar re-enables — fixing a bug where Apply left every button greyed out and gave no
+  confirmation the change had taken effect.
 
 ### 2026-06-14 — Collapsible categories persist; no unjustified drill-down scores
 

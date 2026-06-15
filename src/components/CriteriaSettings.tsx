@@ -51,6 +51,9 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
   const dirtyRef = useRef(dirty)
   dirtyRef.current = dirty
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+  // Safety net: whatever path unmounts the panel, report "clean" so the toolbar never
+  // stays disabled.
+  useEffect(() => () => onDirtyChange?.(false), [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resync from saved state ONLY when there are no unsaved edits — so an external change
   // (or a stray re-render) can never wipe edits in progress.
