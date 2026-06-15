@@ -128,8 +128,6 @@ export const api = {
     a.remove()
     URL.revokeObjectURL(url)
   },
-  discriminate: (id: number) =>
-    request<{ questions: any[] }>(`/searches/${id}/discriminate`, { method: 'POST' }),
   getBaseline: (id: number) => request<any | null>(`/searches/${id}/baseline`),
 
   listPlaces: (kind?: string) =>

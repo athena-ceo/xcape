@@ -37,8 +37,6 @@ export function ComparisonPlayground() {
   const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
 
-  const [questions, setQuestions] = useState<any[]>([])
-  const [narrowing, setNarrowing] = useState(false)
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [filters, setFilters] = useState<Record<string, any>>({})
   const [showSettings, setShowSettings] = useState(false)
@@ -266,16 +264,6 @@ export function ComparisonPlayground() {
     await reloadCandidates()
   }
 
-  async function narrow() {
-    setNarrowing(true)
-    try {
-      const res = await api.discriminate(sid)
-      setQuestions(res.questions ?? [])
-    } finally {
-      setNarrowing(false)
-    }
-  }
-
   // Picking an answer sets that criterion's importance weight, which re-scores and
   // re-ranks the candidates server-side.
   async function applyWeight(criterion: string, weight: number) {
@@ -458,11 +446,6 @@ export function ComparisonPlayground() {
             className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
             {downloading && <Spinner />}
             {t.comparison.downloadReport}
-          </button>
-          <button onClick={narrow} disabled={narrowing}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
-            {narrowing && <Spinner />}
-            {narrowing ? t.comparison.narrowing : t.comparison.narrow}
           </button>
         </div>
       </div>
@@ -675,36 +658,6 @@ export function ComparisonPlayground() {
           </button>
         </div>
       </div>
-
-      {/* Discriminator questions — clicking an answer re-weights and re-ranks. */}
-      {questions.length > 0 && (
-        <div className="bg-white border border-turquoise-100 rounded-lg p-4 mb-4">
-          <p className="text-sm text-turquoise-800/60 mb-3">{t.comparison.narrowHint}</p>
-          <div className="space-y-4">
-            {questions.map((q, i) => (
-              <div key={i}>
-                <p className="text-sm font-medium">
-                  {(t.criteria as Record<string, string>)[q.criterion] ?? q.criterion} — {q.question}
-                </p>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {(q.options ?? []).map((o: any, j: number) => {
-                    const active = weights[q.criterion] === o.weight
-                    return (
-                      <button key={j} onClick={() => applyWeight(q.criterion, o.weight)}
-                        disabled={applying}
-                        className={`text-xs rounded-full px-2.5 py-1 border transition disabled:opacity-50 ${
-                          active ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700'
-                                 : 'border-turquoise-100 hover:bg-turquoise-50'}`}>
-                        {o.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Chat — shared conversation with the drill-down page (same searchId). */}
       <ChatPanel searchId={sid} onChanged={reload} />

@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.search import Search
 from app.models.user import User
 from app.schemas.search import CandidateOut, SearchCreate, SearchOut, SearchUpdate
-from app.services import ai_client, board, comparison, discriminate
+from app.services import board, comparison
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
@@ -104,15 +104,3 @@ def baseline(
         "per_criterion": place.attributes or {},
         "pending": view["pending"],
     }
-
-
-@router.post("/{search_id}/discriminate")
-def discriminate_questions(
-    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
-):
-    """AI-generated questions that would best narrow the current shortlist."""
-    search = _owned(db, user, search_id)
-    try:
-        return discriminate.generate_questions(db, user, search)
-    except ai_client.AIUnavailable:
-        raise HTTPException(status_code=503, detail="AI unavailable (no API key configured)")
