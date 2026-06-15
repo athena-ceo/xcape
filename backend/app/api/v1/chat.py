@@ -37,11 +37,14 @@ def history(search_id: int, user: User = Depends(get_current_user), db: Session 
 def send(
     search_id: int,
     body: ChatRequest,
+    place_id: int | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Chat with tool-calling. Returns the assistant reply and whether the assistant
-    changed the search (so the frontend can re-read the board)."""
+    changed the search (so the frontend can re-read the board). `place_id` (optional) adds
+    that country's drill-down details to the assistant's context — used by the detail page,
+    sharing the same conversation thread as the comparison page."""
     search = _owned(db, user, search_id)
-    msg, changed = chat_service.reply(db, user, search, body.message)
+    msg, changed = chat_service.reply(db, user, search, body.message, place_id=place_id)
     return {"reply": msg.content, "changed": changed}

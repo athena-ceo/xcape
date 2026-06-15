@@ -49,7 +49,7 @@ def test_unjustified_objective_score_is_hidden_and_proximity_justified(db_sessio
                   attributes={"culture": "high"})  # bucket only, no eval
     db_session.add(place)
     db_session.commit()
-    details = {d["key"]: d for d in board.criterion_details(db_session, place, _Prof(), [], "en", {"criteria": []})}
+    details = {d["key"]: d for d in board.criterion_details(db_session, place, _Prof(), [], "en")}
     assert details["culture"]["score"] is None        # bucket-only → no fabricated number
     assert details["proximity"]["score"] is not None  # distance-justified
     assert "km" in details["proximity"]["summary"].lower()

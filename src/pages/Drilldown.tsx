@@ -1,24 +1,28 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
+import { ChatPanel } from '../components/ChatPanel'
 import { Spinner } from '../components/Spinner'
 import { useT } from '../i18n'
 import { placeName } from '../i18n/places'
 import { api } from '../services/api'
+import { categories, labelOf, useCriteria } from '../services/criteria'
 
-// Drill-down on a country: built-in summary, basic facts (population, capital, …), an
-// inline map and photos, AI per-criterion detail with sources, and useful links.
-// Facts load fast; the AI detail and media stream in with their own loading states.
+// Drill-down on a country: facts, map, photos, and per-criterion AI detail grouped by
+// category (collapsed by default except the one the user clicked). The details fill in
+// progressively — the clicked criterion first, then visible ones, then the rest — and the
+// chat assistant (shared with the comparison page) is available with this country's context.
 export function Drilldown() {
   const { t, lang } = useT()
+  const reg = useCriteria()
   const { placeId } = useParams()
   const navigate = useNavigate()
   const { hash, search } = useLocation()
   const id = Number(placeId)
-  const searchId = new URLSearchParams(search).get('search')
+  const clickedKey = hash.startsWith('#criterion-') ? hash.slice('#criterion-'.length) : null
 
   const [place, setPlace] = useState<any>(null)
   const [facts, setFacts] = useState<any>(null)
@@ -26,18 +30,112 @@ export function Drilldown() {
   const [media, setMedia] = useState<any[]>([])
   const [loadingDetail, setLoadingDetail] = useState(true)
   const [loadingMedia, setLoadingMedia] = useState(true)
+  const [searchId, setSearchId] = useState<number | null>(null)
+
+  // Collapse state per category (persisted). Default collapsed except the clicked criterion's.
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('xcape_open_detail_cats') || '{}') } catch { return {} }
+  })
+
+  const detailRef = useRef<any[]>([])
+  const openCatsRef = useRef(openCats)
+  const drainingRef = useRef(false)
+  useEffect(() => { detailRef.current = detail ?? [] }, [detail])
+  useEffect(() => { openCatsRef.current = openCats }, [openCats])
+
+  // Resolve a search id for the chat: prefer ?search=, else the user's latest search so the
+  // drill-down attaches to (and shares) the same conversation thread.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(search).get('search')
+    if (fromUrl) { setSearchId(Number(fromUrl)); return }
+    api.listSearches().then((s) => setSearchId(s.length ? s[0].id : null)).catch(() => setSearchId(null))
+  }, [search])
+
+  // Build category groups (registry order) limited to criteria present in the detail, plus a
+  // trailing group for custom criteria (not in the registry tree).
+  const groups = useMemo(() => {
+    const rows = detail ?? []
+    const byKey = new Set(rows.map((r) => r.key))
+    const cats = categories(reg)
+    const inCats = new Set(cats.flatMap((c) => c.leaves))
+    const out = cats
+      .map((c) => ({ key: c.key, label: labelOf(reg, c.key, lang), keys: c.leaves.filter((k) => byKey.has(k)) }))
+      .filter((g) => g.keys.length)
+    const extra = rows.map((r) => r.key).filter((k) => !inCats.has(k))
+    if (extra.length) out.push({ key: '__custom', label: t.comparison.customGroup, keys: extra })
+    return out
+  }, [detail, reg, lang, t])
+
+  const clickedCat = useMemo(() => {
+    if (!clickedKey) return null
+    const cats = categories(reg)
+    const cat = cats.find((c) => c.leaves.includes(clickedKey))
+    return cat ? cat.key : (groups.find((g) => g.keys.includes(clickedKey))?.key ?? null)
+  }, [clickedKey, reg, groups])
+
+  function isOpen(catKey: string): boolean {
+    if (catKey in openCats) return openCats[catKey]
+    return catKey === clickedCat  // default: only the clicked criterion's category is open
+  }
+  function toggleCat(catKey: string) {
+    setOpenCats((o) => {
+      const next = { ...o, [catKey]: !isOpen(catKey) }
+      try { localStorage.setItem('xcape_open_detail_cats', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+    setTimeout(drain, 0)  // a newly-expanded category bumps its criteria up the queue
+  }
+
+  // The order to generate still-pending criteria: clicked → visible (open) → collapsed.
+  function orderedPending(): string[] {
+    const rows = detailRef.current
+    const pending = new Set(rows.filter((r) => r.pending).map((r) => r.key))
+    if (!pending.size) return []
+    const order: string[] = []
+    const push = (k: string) => { if (pending.has(k) && !order.includes(k)) order.push(k) }
+    if (clickedKey) push(clickedKey)
+    for (const g of groups) if (isOpen(g.key)) g.keys.forEach(push)
+    for (const g of groups) if (!isOpen(g.key)) g.keys.forEach(push)
+    rows.filter((r) => r.pending).forEach((r) => push(r.key))  // safety net
+    return order
+  }
+
+  // Fill pending criteria a couple at a time, re-rendering each batch, until none remain.
+  async function drain() {
+    if (drainingRef.current) return
+    drainingRef.current = true
+    try {
+      for (let i = 0; i < 60; i++) {
+        const keys = orderedPending()
+        if (!keys.length) break
+        const res = await api.generateDetail(id, { keys, limit: 2 }, lang, searchId ?? undefined)
+        detailRef.current = res.criteria
+        setDetail(res.criteria)
+      }
+    } finally {
+      drainingRef.current = false
+    }
+  }
 
   useEffect(() => {
+    setLoadingDetail(true)
     api.getPlace(id).then(setPlace)
     api.getFacts(id).then(setFacts).catch(() => {})
-    api.getDetail(id, lang, searchId ? Number(searchId) : undefined)
-      .then((d) => setDetail(d.criteria ?? [])).catch(() => setDetail([]))
-      .finally(() => setLoadingDetail(false))
     api.getMedia(id).then(setMedia).catch(() => {}).finally(() => setLoadingMedia(false))
-  }, [id, lang, searchId])
+  }, [id])
 
-  // After the criterion detail renders, scroll to the section the user clicked (the URL
-  // hash, e.g. #criterion-healthcare), with a brief highlight.
+  // Load the (instant) assembled detail, then progressively generate the pending criteria.
+  // Re-runs when the search context resolves (so custom criteria are included).
+  useEffect(() => {
+    let cancelled = false
+    api.getDetail(id, lang, searchId ?? undefined)
+      .then((d) => { if (!cancelled) { setDetail(d.criteria ?? []); detailRef.current = d.criteria ?? [] } })
+      .catch(() => { if (!cancelled) setDetail([]) })
+      .finally(() => { if (!cancelled) { setLoadingDetail(false); void drain() } })
+    return () => { cancelled = true }
+  }, [id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After detail first renders, scroll to the clicked criterion with a brief highlight.
   useEffect(() => {
     if (loadingDetail || !hash) return
     const el = document.getElementById(hash.slice(1))
@@ -51,9 +149,10 @@ export function Drilldown() {
   const summary = place && (lang === 'fr' ? place.summary_fr : place.summary_en)
   const photos = media.filter((m) => m.type === 'photo')
   const links = media.filter((m) => m.type !== 'photo')
+  const detailByKey: Record<string, any> = useMemo(
+    () => Object.fromEntries((detail ?? []).map((r) => [r.key, r])), [detail],
+  )
 
-  // A source may arrive as a plain URL or as a Markdown link "[name](url)". Pull out the
-  // URL, drop utm_* tracking params, and label it with the site name (hostname).
   function parseSource(raw: string): { url: string; label: string } | null {
     const match = String(raw).match(/https?:\/\/[^\s)\]]+/)
     if (!match) return null
@@ -68,7 +167,6 @@ export function Drilldown() {
     }
   }
 
-  // Older cached summaries had URLs / "Sources:" inlined; strip them for display.
   function cleanSummary(s: string): string {
     return s
       .replace(/https?:\/\/\S+/g, '')
@@ -85,6 +183,41 @@ export function Drilldown() {
       <div className="bg-turquoise-50 rounded-md px-3 py-2">
         <p className="text-xs text-turquoise-800/60">{label}</p>
         <p className="text-sm font-medium text-turquoise-900">{value}</p>
+      </div>
+    )
+  }
+
+  function criterionBox(key: string) {
+    const d = detailByKey[key]
+    if (!d) return null
+    return (
+      <div key={key} id={`criterion-${key}`}
+        className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
+        <p className="text-sm font-medium text-turquoise-900 mb-1">
+          {d.label ?? (t.criteria as Record<string, string>)[key] ?? key}
+          {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
+        </p>
+        {d.pending ? (
+          <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2">
+            <Spinner /> {t.drilldown.generating}
+          </p>
+        ) : (
+          <p className={`text-sm ${d.summary ? 'text-turquoise-800/80' : 'text-turquoise-800/40 italic'}`}>
+            {d.summary ? cleanSummary(d.summary) : t.drilldown.assessmentPending}
+          </p>
+        )}
+        {Array.isArray(d.sources) && d.sources.length > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+            <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>
+            {d.sources.map((s: string, i: number) => {
+              const src = parseSource(s)
+              return src && (
+                <a key={i} href={src.url} target="_blank" rel="noreferrer"
+                  className="text-xs text-turquoise-600 hover:underline">{src.label}</a>
+              )
+            })}
+          </div>
+        )}
       </div>
     )
   }
@@ -138,7 +271,7 @@ export function Drilldown() {
         </div>
       )}
 
-      {/* Per-criterion detail with sources */}
+      {/* Per-criterion detail, grouped by category (collapsed except the clicked one) */}
       <h2 className="text-lg font-medium text-turquoise-900 mb-3">{t.drilldown.detailTitle}</h2>
       {loadingDetail && (
         <p className="text-turquoise-800/60 mb-4 flex items-center gap-2">
@@ -146,33 +279,30 @@ export function Drilldown() {
         </p>
       )}
       <div className="space-y-3 mb-6">
-        {(detail ?? []).map((d) => (
-          <div key={d.key} id={`criterion-${d.key}`}
-            className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
-            <p className="text-sm font-medium text-turquoise-900 mb-1">
-              {d.label ?? (t.criteria as Record<string, string>)[d.key] ?? d.key}
-              {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
-            </p>
-            <p className={`text-sm ${d.summary ? 'text-turquoise-800/80' : 'text-turquoise-800/40 italic'}`}>
-              {d.summary ? cleanSummary(d.summary) : t.drilldown.assessmentPending}
-            </p>
-            {Array.isArray(d.sources) && d.sources.length > 0 && (
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>
-                {d.sources.map((s: string, i: number) => {
-                  const src = parseSource(s)
-                  return src && (
-                    <a key={i} href={src.url} target="_blank" rel="noreferrer"
-                      className="text-xs text-turquoise-600 hover:underline">
-                      {src.label}
-                    </a>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        ))}
+        {groups.map((g) => {
+          const open = isOpen(g.key)
+          const pendingCount = g.keys.filter((k) => detailByKey[k]?.pending).length
+          return (
+            <Fragment key={g.key}>
+              <button onClick={() => toggleCat(g.key)}
+                className="w-full flex items-center gap-2 text-left bg-turquoise-50/70 border border-turquoise-100 rounded-lg px-3 py-2">
+                <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>
+                <span className="font-medium text-turquoise-900">{g.label}</span>
+                {pendingCount > 0 && <Spinner />}
+                <span className="ml-auto text-xs text-turquoise-800/50">{g.keys.length}</span>
+              </button>
+              {open && <div className="space-y-3 pl-1">{g.keys.map((k) => criterionBox(k))}</div>}
+            </Fragment>
+          )
+        })}
       </div>
+
+      {/* Assistant — same conversation as the comparison page, with this country's context */}
+      {searchId != null && (
+        <div className="mb-6">
+          <ChatPanel searchId={searchId} placeId={id} />
+        </div>
+      )}
 
       {/* Useful links */}
       <h2 className="text-lg font-medium text-turquoise-900 mb-3">{t.drilldown.links}</h2>

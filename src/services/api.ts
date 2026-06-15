@@ -132,6 +132,12 @@ export const api = {
     request<{ criteria: any[] }>(
       `/places/${id}/detail?lang=${lang}${search != null ? `&search=${search}` : ''}`,
     ),
+  // Generate up to `limit` of the still-pending criteria, in the given priority order.
+  generateDetail: (id: number, body: { keys: string[]; limit: number }, lang: string, search?: number) =>
+    request<{ criteria: any[] }>(
+      `/places/${id}/detail/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getAdminUsers: () => request<any[]>('/admin/users'),
@@ -155,11 +161,13 @@ export const api = {
 
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
   // Tool-enabled chat: returns the assistant reply and whether it changed the search.
-  sendChat: (id: number, message: string) =>
-    request<{ reply: string; changed: boolean }>(`/searches/${id}/chat`, {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    }),
+  // `placeId` (optional) adds that country's drill-down details to the assistant's context;
+  // the conversation thread is shared across the comparison and drill-down pages.
+  sendChat: (id: number, message: string, placeId?: number) =>
+    request<{ reply: string; changed: boolean }>(
+      `/searches/${id}/chat${placeId != null ? `?place_id=${placeId}` : ''}`,
+      { method: 'POST', body: JSON.stringify({ message }) },
+    ),
 }
 
 export { API_URL }

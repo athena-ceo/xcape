@@ -321,6 +321,7 @@ export const fr = {
     summary: 'Aperçu',
     detailTitle: 'Détail par critère',
     assessmentPending: 'Évaluation détaillée à venir.',
+    generating: 'Recherche en cours…',
     source: 'Source',
     sources: 'Sources',
     capital: 'Capitale',

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.candidate import Candidate
 from app.models.chat import ChatMessage
+from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
 from app.services import ai_client, chat_tools
@@ -71,7 +72,7 @@ def _active_filters(profile, search: Search) -> list[str]:
     return out
 
 
-def _user_context(db: Session, user: User, search: Search) -> str:
+def _user_context(db: Session, user: User, search: Search, place_id: int | None = None) -> str:
     """A compact briefing of everything we know, injected into the system instructions."""
     p = user.profile
     lines = [f"Locale: {user.locale}."]
@@ -117,12 +118,36 @@ def _user_context(db: Session, user: User, search: Search) -> str:
     if picks:
         lines.append("Shortlist being compared: " + ", ".join(picks) + ".")
 
-    return "What we know about this user:\n" + "\n".join(f"- {x}" for x in lines)
+    ctx = "What we know about this user:\n" + "\n".join(f"- {x}" for x in lines)
+    if place_id is not None:
+        ctx += "\n\n" + _place_briefing(db, user, search, place_id)
+    return ctx
 
 
-def _build(db: Session, user: User, search: Search) -> tuple[str, list[dict]]:
+def _place_briefing(db: Session, user: User, search: Search, place_id: int) -> str:
+    """When the user is on a country's drill-down, brief the assistant on that country's
+    per-criterion details so it can answer about what the user is looking at."""
+    from app.services import board  # local import to avoid a module-load cycle
+
+    place = db.get(Place, place_id)
+    if place is None:
+        return ""
+    custom_defs = search.custom_criteria or []
+    rows = board.criterion_details(db, place, user.profile, custom_defs, user.locale or "fr")
+    lines = []
+    for r in rows:
+        if r.get("summary"):
+            sc = f" ({r['score']}/100)" if r.get("score") is not None else ""
+            lines.append(f"- {r.get('label') or r['key']}{sc}: {r['summary']}")
+    head = f"The user is currently viewing {place.name}'s detail page."
+    if not lines:
+        return head
+    return head + " Known per-criterion details for " + place.name + ":\n" + "\n".join(lines)
+
+
+def _build(db: Session, user: User, search: Search, place_id: int | None = None) -> tuple[str, list[dict]]:
     """Returns (instructions, input messages) — system briefing + recent conversation."""
-    instructions = SYSTEM_PROMPT + "\n\n" + _user_context(db, user, search)
+    instructions = SYSTEM_PROMPT + "\n\n" + _user_context(db, user, search, place_id)
     history = (
         db.query(ChatMessage)
         .filter(ChatMessage.search_id == search.id)
@@ -137,14 +162,17 @@ def _build(db: Session, user: User, search: Search) -> tuple[str, list[dict]]:
 _MAX_TOOL_ROUNDS = 6
 
 
-def reply(db: Session, user: User, search: Search, message: str) -> tuple[ChatMessage, bool]:
+def reply(
+    db: Session, user: User, search: Search, message: str, place_id: int | None = None,
+) -> tuple[ChatMessage, bool]:
     """Reply with tool-calling. The model may call tools (set importance/filters, add or
-    select countries, rebuild) which act on the search; we then let it answer. Returns
-    (assistant message, changed) where `changed` means the board should be re-read.
+    select countries, rebuild) which act on the search; we then let it answer. `place_id`
+    (when chatting from a country's drill-down) adds that country's details to the context.
+    Returns (assistant message, changed) where `changed` means the board should be re-read.
     """
     db.add(ChatMessage(search_id=search.id, role="user", content=message))
     db.commit()
-    instructions, messages = _build(db, user, search)
+    instructions, messages = _build(db, user, search, place_id)
     input_items: list = list(messages)
     changed = False
     answer = ""

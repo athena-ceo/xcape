@@ -14,6 +14,7 @@ from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.media import MediaAsset
 from app.models.place import Place
 from app.services import ai_client, criteria
@@ -232,6 +233,73 @@ def fetch_criteria_detail(
         summary = item.get(f"summary_{lang}") or item.get("summary_en") or item.get("summary_fr", "")
         out.append({"key": item["key"], "summary": summary, "sources": item.get("sources", [])})
     return {"criteria": out}
+
+
+def detail_map(place: Place) -> dict[str, dict]:
+    """Normalize `place.criteria_detail` to a per-key map {key: {summary_fr, summary_en,
+    sources}}, accepting BOTH the new per-key shape and the legacy bulk `{"criteria":[...]}`
+    blob (per-key entries win). The single reader of cached per-criterion detail text."""
+    raw = place.criteria_detail or {}
+    out: dict[str, dict] = {}
+    for item in raw.get("criteria", []) or []:  # legacy bulk shape
+        if isinstance(item, dict) and item.get("key"):
+            out[item["key"]] = item
+    for key, val in raw.items():  # new per-key shape (wins)
+        if key != "criteria" and isinstance(val, dict):
+            out[key] = val
+    return out
+
+
+def _one_detail_schema() -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "summary_fr": {"type": "string"},
+            "summary_en": {"type": "string"},
+            "sources": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["summary_fr", "summary_en", "sources"],
+        "additionalProperties": False,
+    }
+
+
+def criterion_detail_one(
+    db: Session, place: Place, key: str, *, user_id: int | None = None
+) -> dict | None:
+    """Generate (cache-first) the explanation text for ONE computed criterion (cost, climate,
+    language, visa, inclusion …) and cache it per-key on `place.criteria_detail`. Bilingual +
+    sources. Returns the entry, or None if AI is unavailable. Never touches place_custom_evals,
+    so it can't disturb the deterministic computed scores."""
+    existing = detail_map(place)
+    if key in existing:
+        return existing[key]
+    label = criteria.label(key, "en")
+    try:
+        data = ai_client.respond_json(
+            f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
+            f"explanation of \"{label}\" there (from a resident's point of view). Provide BOTH "
+            f"a French version (summary_fr) and an English version (summary_en). Use web search "
+            f"for current facts. Put sources ONLY in the sources array, each a plain bare URL "
+            f"(https://…, no Markdown, no tracking params). Do NOT put URLs inside the summaries.",
+            _one_detail_schema(),
+            schema_name="criterion_detail",
+            web_search=True,
+            model=settings.openai_chat_model,  # lightweight text → faster model
+            system=_SYSTEM,
+            kind="research",
+            db=db,
+            user_id=user_id,
+        )
+    except ai_client.AIUnavailable:
+        return None
+    entry = {"summary_fr": data.get("summary_fr"), "summary_en": data.get("summary_en"),
+             "sources": data.get("sources", [])}
+    # Reassign a new dict so SQLAlchemy detects the JSON change; preserve any existing entries.
+    cache = dict(place.criteria_detail or {})
+    cache[key] = entry
+    place.criteria_detail = cache
+    db.commit()
+    return entry
 
 
 def fetch_media(db: Session, place: Place, *, user_id: int | None = None) -> list[MediaAsset]:

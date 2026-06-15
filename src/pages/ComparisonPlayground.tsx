@@ -4,11 +4,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { ChatPanel } from '../components/ChatPanel'
 import { CriteriaSettings } from '../components/CriteriaSettings'
-import { Markdown } from '../components/Markdown'
 import { Spinner } from '../components/Spinner'
 import { Waiting } from '../components/Waiting'
-import { VoiceButton } from '../components/VoiceButton'
 import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
@@ -36,10 +35,6 @@ export function ComparisonPlayground() {
     })
   }
 
-  const [chat, setChat] = useState('')
-  const [messages, setMessages] = useState<any[]>([])
-  const [chatBusy, setChatBusy] = useState(false)
-
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string; weight?: number; min?: number }[]>([])
@@ -62,23 +57,6 @@ export function ComparisonPlayground() {
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
   const [why, setWhy] = useState<{ placeId: number; name: string; key: string; value: any; text: string; score?: number | null } | null>(null)
-  const chatScrollRef = useRef<HTMLDivElement | null>(null)
-  const lastReplyRef = useRef<HTMLDivElement | null>(null)
-
-  // When a new assistant reply arrives, scroll so the TOP of that reply is at the top of
-  // the chat box (the user reads from the start of the answer). While waiting, or after a
-  // user turn, fall back to pinning to the bottom so the spinner / new message is visible.
-  useEffect(() => {
-    const el = chatScrollRef.current
-    if (!el) return
-    const last = messages[messages.length - 1]
-    if (!chatBusy && last?.role === 'assistant' && lastReplyRef.current) {
-      el.scrollTop = lastReplyRef.current.offsetTop - el.offsetTop
-    } else {
-      el.scrollTop = el.scrollHeight
-    }
-  }, [messages, chatBusy])
-
   // Split a candidate list into the board (selected) and the suggestion pool, and kick off
   // progressive evaluation if any cells are still pending.
   function applyCandidates(cands: any[]) {
@@ -122,12 +100,11 @@ export function ComparisonPlayground() {
   }
 
   async function reload() {
-    const [pls, hist, profile, custom] = await Promise.all([
-      api.listPlaces('country'), api.getChat(sid), api.getProfile() as Promise<any>,
+    const [pls, profile, custom] = await Promise.all([
+      api.listPlaces('country'), api.getProfile() as Promise<any>,
       api.listCustomCriteria(sid).catch(() => []),
     ])
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
-    setMessages(hist)
     setWeights(profile?.criteria_weights ?? {})
     setFilters(profile?.filters ?? {})
     setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label, weight: c.weight, min: c.min })))
@@ -211,22 +188,6 @@ export function ComparisonPlayground() {
     if (vl) return vl
     const raw = attrs?.[key]
     return raw ? attrValue(t, raw) : tierWord(tier)
-  }
-
-  async function send(message: string) {
-    if (!message.trim() || chatBusy) return
-    setChat('')
-    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: 'user', content: message }])
-    setChatBusy(true)
-    try {
-      const res = await api.sendChat(sid, message)
-      // The assistant may have used tools to change the board — re-read everything so the
-      // table, weights and filters reflect it (also syncs the chat history).
-      if (res.changed) await reload()
-      else setMessages(await api.getChat(sid))
-    } finally {
-      setChatBusy(false)
-    }
   }
 
   // Hybrid criterion selection: chosen tags + free text → AI sets weights / adds criteria.
@@ -699,43 +660,8 @@ export function ComparisonPlayground() {
         </div>
       )}
 
-      {/* Chat */}
-      <div className="bg-turquoise-50 border border-turquoise-100 rounded-lg p-3">
-        <p className="text-sm font-medium text-turquoise-600 mb-2">{t.comparison.askAssistant}</p>
-        <div ref={chatScrollRef} className="space-y-2 mb-3 max-h-72 overflow-y-auto">
-          {messages.length === 0 && (
-            <p className="text-sm text-turquoise-800/50">{t.comparison.chatEmpty}</p>
-          )}
-          {messages.map((m, i) => (
-            <div key={m.id}
-              ref={i === messages.length - 1 && m.role === 'assistant' ? lastReplyRef : undefined}
-              className={`text-sm rounded-lg px-3 py-2 ${
-                m.role === 'user' ? 'bg-turquoise-600 text-turquoise-50 ml-8'
-                                  : 'bg-white border border-turquoise-100 mr-8'}`}>
-              {m.role === 'user' ? m.content : <Markdown>{m.content}</Markdown>}
-            </div>
-          ))}
-          {chatBusy && (
-            <p className="text-sm text-turquoise-800/50 flex items-center gap-2">
-              <Spinner /> {t.comparison.thinking}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-1 bg-white rounded-md pl-3 pr-1.5 py-1">
-          <input value={chat} onChange={(e) => setChat(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && send(chat)}
-            placeholder={t.comparison.placeholder}
-            className="flex-1 outline-none text-sm py-2" />
-          {/* Separate, comfortably-sized tap targets: a divider keeps the mic clear of the
-              send arrow so they're not mis-tapped on mobile. */}
-          <span className="w-px h-6 bg-turquoise-100 mx-1" aria-hidden="true" />
-          <VoiceButton
-            className="inline-flex items-center justify-center w-10 h-10 rounded-full transition hover:bg-turquoise-50 disabled:opacity-40"
-            onTranscript={(text) => setChat((c) => (c.trim() ? `${c.trim()} ${text}` : text))} />
-          <button onClick={() => send(chat)} disabled={chatBusy} aria-label={t.comparison.send}
-            className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-turquoise-600 text-turquoise-50 text-lg disabled:opacity-40">→</button>
-        </div>
-      </div>
+      {/* Chat — shared conversation with the drill-down page (same searchId). */}
+      <ChatPanel searchId={sid} onChanged={reload} />
 
       {/* Criterion justification popover (tap a cell) */}
       {why && (

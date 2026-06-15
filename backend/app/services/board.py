@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models.place import Place
 from app.models.profile import Profile
-from app.services import comparison, criteria, criterion_eval
+from app.services import comparison, criteria, criterion_eval, place_research
 from app.services import shortlist as sl
 
 
@@ -45,41 +45,53 @@ def criteria_view(
 
 def criterion_details(
     db: Session, place: Place, profile: Profile | None, custom_defs: list | None,
-    lang: str, legacy: dict | None,
+    lang: str,
 ) -> list[dict]:
-    """Per-criterion detail for the drill-down. A 0-100 score is shown ONLY when it's
-    justified — by a cached AI eval, by legacy `criteria_detail` text, or (for proximity) a
-    synthesised distance explanation. An objective leaf that only has a coarse seed bucket
-    (no evaluation yet) returns score=None so we never show a precise number with no
-    evidence; it gets a real justified score once the eval is populated."""
+    """Per-criterion detail for the drill-down — assembled from caches only, NO AI calls.
+
+    Each row carries `pending: True` until its explanation text exists, so the page can show
+    boxes immediately and fill them progressively (see /detail/generate):
+    - objective & custom criteria: text + score come from the cached AI eval (place_custom_evals);
+      pending until evaluated (score stays None so we never show a bucket-derived number);
+    - computed criteria (cost, climate, language, visa, inclusion): score is deterministic from
+      the profile (always shown); text comes from the per-key `place.criteria_detail` cache,
+      pending until generated;
+    - proximity: synthesised distance explanation, never pending."""
     custom_lookup = {c["key"]: c for c in (custom_defs or []) if c.get("key")}
     custom_keys = list(custom_lookup.keys())
-    eval_keys = criteria.objective_keys() + custom_keys
-    rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
+    eval_objective_keys = set(criteria.objective_keys()) | set(custom_keys)
+    rows = criterion_eval.evals_for_place(db, place.id, list(eval_objective_keys))
     eval_values = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
-    legacy_map = {d["key"]: d for d in (legacy or {}).get("criteria", [])}
+    detail = place_research.detail_map(place)
     attrs = place.attributes or {}
 
     out: list[dict] = []
     for key in list(criteria.criteria_keys()) + custom_keys:
         value = sl._criterion_value(key, attrs, profile, place, eval_values)
         ev = rows.get(key)
-        summary, sources, justified = "", [], False
-        if ev is not None:
-            summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr or ""
-            sources = ev.sources or []
-            justified = True
-        elif key in legacy_map:
-            summary = legacy_map[key].get("summary", "")
-            sources = legacy_map[key].get("sources", [])
-            justified = bool(summary)
+        summary, sources, score, pending = "", [], None, False
+        if key in eval_objective_keys:
+            if ev is not None:
+                summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr or ""
+                sources = ev.sources or []
+                score = round(value * 100)
+            else:
+                pending = True  # no AI eval yet → generate on demand
         elif key == "proximity":
             summary = _proximity_summary(profile, place, lang)
-            justified = bool(summary)
+            score = round(value * 100)
+        else:  # computed criterion: deterministic score now, AI text lazily
+            score = round(value * 100)
+            d = detail.get(key)
+            if d:
+                summary = (d.get(f"summary_{lang}") or d.get("summary_en")
+                           or d.get("summary_fr") or d.get("summary") or "")
+                sources = d.get("sources", [])
+            if not summary:
+                pending = True
         out.append({
             "key": key, "label": custom_lookup.get(key, {}).get("label"),
-            "score": round(value * 100) if justified else None,
-            "summary": summary, "sources": sources,
+            "score": score, "summary": summary, "sources": sources, "pending": pending,
         })
     return out
 
