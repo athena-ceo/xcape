@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — `reseed-criteria` op to roll out registry changes
+
+- New `./xcape.sh reseed-criteria <dev|prod>` overwrites the editable criteria registry
+  (criteria tree, personas, communities) from the bundled `criteria.json`. `seed`/`deploy`
+  intentionally leave an existing registry untouched (to preserve admin edits), so this is
+  how registry changes — e.g. the new personas/communities — get rolled out to an
+  environment. It prompts for confirmation and warns that it replaces admin UI edits.
+
 ### 2026-06-16 — Fix: custom-criterion weight/min edits silently reverted
 
 - Editing a **custom criterion's importance or threshold** (in Criteria settings or via the

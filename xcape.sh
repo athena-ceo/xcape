@@ -46,6 +46,15 @@ case "$CMD" in
     MSG="${1:-change}"
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
+  reseed-criteria)
+    # Overwrite the editable criteria registry (criteria tree, personas, communities) from
+    # the bundled criteria.json. seed/deploy never touch an existing registry, so this is how
+    # registry changes (e.g. new personas) roll out. WARNING: replaces any admin UI edits.
+    echo "This OVERWRITES the $ENV criteria registry (tree, personas, communities) from"
+    echo "the bundled criteria.json, replacing any admin edits made in the UI."
+    read -r -p "Proceed on $ENV? [y/N] " ans
+    [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "Aborted."; exit 0; }
+    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.reseed_criteria ;;
   backfill-social)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
   evaluate-all)
@@ -119,7 +128,9 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   health
   migrate                 apply Alembic migrations
   makemigration "msg"     autogenerate a migration
-  seed                    load the bundled place database
+  seed                    load the bundled place database (+ cached evals; idempotent)
+  reseed-criteria <env>   overwrite the criteria registry (tree, personas, communities) from
+                          criteria.json — rolls out registry changes; replaces admin UI edits
   backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
   evaluate-all [--force] [--stale-days N] [--limit N]
                           AI-evaluate every objective criterion for every country (cross-user cache)
