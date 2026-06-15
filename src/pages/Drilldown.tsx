@@ -32,6 +32,7 @@ export function Drilldown() {
   const [loadingMedia, setLoadingMedia] = useState(true)
   const [searchId, setSearchId] = useState<number | null>(null)
   const [weights, setWeights] = useState<Record<string, number>>({})
+  const [customWeights, setCustomWeights] = useState<Record<string, number>>({})
   const [showZero, setShowZero] = useState(false)
 
   // Collapse state per category (persisted). Default collapsed except the clicked criterion's.
@@ -133,10 +134,24 @@ export function Drilldown() {
     api.getProfile().then((p: any) => setWeights(p?.criteria_weights ?? {})).catch(() => {})
   }, [id])
 
-  const weightOf = (key: string) => weights[key] ?? 0
-  // Edit a criterion's importance inline; persists to the profile (drives the comparison rank).
-  async function setWeight(key: string, v: number) {
-    const next = { ...weights, [key]: Math.max(0, Math.min(5, v)) }
+  // Custom-criterion weights come from the search's definitions, not the profile.
+  useEffect(() => {
+    if (searchId == null) return
+    api.listCustomCriteria(searchId)
+      .then((list: any[]) => setCustomWeights(Object.fromEntries(list.map((c) => [c.key, c.weight ?? 1]))))
+      .catch(() => {})
+  }, [searchId])
+
+  const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
+  // Edit a criterion's importance inline; persists (custom → the per-search def, else the profile).
+  async function setWeight(key: string, raw: number) {
+    const v = Math.max(0, Math.min(5, raw))
+    if (key in customWeights) {
+      setCustomWeights((w) => ({ ...w, [key]: v }))
+      if (searchId != null) await api.updateCustomCriterion(searchId, key, { weight: v }).catch(() => {})
+      return
+    }
+    const next = { ...weights, [key]: v }
     setWeights(next)
     await api.updateProfile({ criteria_weights: next }).catch(() => {})
   }

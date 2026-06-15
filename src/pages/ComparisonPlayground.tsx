@@ -281,10 +281,16 @@ export function ComparisonPlayground() {
   async function applyWeight(criterion: string, weight: number) {
     if (applying) return
     setApplying(true)
-    const next = { ...weights, [criterion]: weight }
-    setWeights(next)
     try {
-      await api.updateProfile({ criteria_weights: next }) // triggers rescore
+      if (customCrit.some((c) => c.key === criterion)) {
+        // Custom-criterion weight lives on the per-search definition, not the profile.
+        setCustomCrit((cc) => cc.map((c) => (c.key === criterion ? { ...c, weight } : c)))
+        await api.updateCustomCriterion(sid, criterion, { weight })
+      } else {
+        const next = { ...weights, [criterion]: weight }
+        setWeights(next)
+        await api.updateProfile({ criteria_weights: next }) // triggers rescore
+      }
       await reloadCandidates() // scores in the table update
     } finally {
       setApplying(false)
@@ -342,7 +348,9 @@ export function ComparisonPlayground() {
       ? [{ key: '__custom', label: t.comparison.customGroup, leaves: customCrit.map((c) => c.key) }]
       : []),
   ]
-  const weightOf = (key: string) => weights[key] ?? 0
+  // Custom-criterion weights live on the per-search definition; built-ins on the profile.
+  const customWeights = Object.fromEntries(customCrit.map((c) => [c.key, c.weight ?? 1]))
+  const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
   // Collapsed by default; the user's choice persists (see openCats / toggleCat).
   const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? false
   // Roll-up colour tier for a category column = weighted average of its leaves' tiers.
