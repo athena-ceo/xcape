@@ -42,7 +42,7 @@ export function ComparisonPlayground() {
 
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
-  const [customCrit, setCustomCrit] = useState<{ key: string; label: string }[]>([])
+  const [customCrit, setCustomCrit] = useState<{ key: string; label: string; weight?: number; min?: number }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
@@ -109,6 +109,12 @@ export function ComparisonPlayground() {
         const anyPending = cands.some((c) => (c.pending || []).length) || !!(b?.pending?.length)
         if (!anyPending) break
       }
+      // Once the late objective/custom evals have landed, re-apply hard filters so the
+      // board re-flags / tops up against now-known values (the iteration). Non-destructive.
+      if (Object.keys(filters).length) {
+        await api.repopulate(sid)
+        await reloadCandidates()
+      }
     } finally {
       evaluatingRef.current = false
       setEvaluating(false)
@@ -124,7 +130,7 @@ export function ComparisonPlayground() {
     setMessages(hist)
     setWeights(profile?.criteria_weights ?? {})
     setFilters(profile?.filters ?? {})
-    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label })))
+    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label, weight: c.weight, min: c.min })))
     await reloadCandidates()
   }
 
@@ -333,14 +339,35 @@ export function ComparisonPlayground() {
     setExplain({ candidate, data })
   }
 
-  // Apply criteria settings: persist weights + filters, then rebuild the shortlist so
-  // filters (e.g. language) change which countries qualify.
-  async function applySettings(w: Record<string, number>, f: Record<string, any>) {
+  // Apply criteria settings: persist weights + filters (+ custom-criterion weight/threshold),
+  // then repopulate so filters change which countries qualify — keeping the selected board
+  // and topping it up (flagging any that don't meet the filters).
+  async function applySettings(payload: import('../components/CriteriaSettings').SettingsPayload) {
     setApplying(true)
     try {
-      await api.updateProfile({ criteria_weights: w, filters: f })
-      await api.buildShortlist(sid)
+      await api.updateProfile({ criteria_weights: payload.weights, filters: payload.filters })
+      // Custom-criterion weight/threshold live per-search; push any that changed.
+      for (const c of payload.customCriteria) {
+        const prev = customCrit.find((x) => x.key === c.key)
+        if (!prev || prev.weight !== c.weight || prev.min !== c.min) {
+          await api.updateCustomCriterion(sid, c.key, { weight: c.weight, min: c.min ?? null })
+        }
+      }
+      await api.repopulate(sid)
       setShowSettings(false)
+      await reload()
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  // Explicit "repopulate the list with the current criteria" — reliable, persists, and
+  // respects all active filters (top-up with flagged extras when a filter is strict).
+  async function repopulate() {
+    if (applying) return
+    setApplying(true)
+    try {
+      await api.repopulate(sid)
       await reload()
     } finally {
       setApplying(false)
@@ -433,6 +460,12 @@ export function ComparisonPlayground() {
             className="border border-turquoise-100 rounded-md px-3 py-1.5">
             {t.comparison.settings}
           </button>
+          <button onClick={repopulate} disabled={applying}
+            title={t.comparison.repopulateHint}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
+            {applying && <Spinner />}
+            {t.comparison.repopulate}
+          </button>
           <button onClick={downloadReport} disabled={downloading || !candidates.length}
             className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
             {downloading && <Spinner />}
@@ -475,7 +508,8 @@ export function ComparisonPlayground() {
       )}
 
       {showSettings && (
-        <CriteriaSettings weights={weights} filters={filters} busy={applying} onApply={applySettings} />
+        <CriteriaSettings weights={weights} filters={filters} customCriteria={customCrit}
+          busy={applying} onApply={applySettings} />
       )}
 
       {/* Colour legend */}
@@ -510,6 +544,14 @@ export function ComparisonPlayground() {
                   <button onClick={() => removeCountry(c.id)}
                     title={t.comparison.remove}
                     className="ml-2 text-turquoise-800/40 hover:text-red-600">×</button>
+                  {!!c.filter_violations?.length && (
+                    <div className="mt-1">
+                      <span className="inline-block text-[10px] font-normal rounded-full bg-amber-100 text-amber-800 px-2 py-0.5"
+                        title={`${t.comparison.flagTitle}: ${c.filter_violations.map(critLabel).join(', ')}`}>
+                        ⚠ {t.comparison.flagBadge}
+                      </span>
+                    </div>
+                  )}
                 </th>
               ))}
             </tr>

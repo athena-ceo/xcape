@@ -1,7 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 
 import { useT } from '../i18n'
 import { categories, labelOf, nodeOf, useCriteria } from '../services/criteria'
@@ -10,21 +10,38 @@ const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
 const PRESETS: { key: string; w: number }[] = [
   { key: 'impIgnore', w: 0 }, { key: 'impLow', w: 0.5 }, { key: 'impNormal', w: 1 }, { key: 'impHigh', w: 2.5 },
 ]
+export interface CustomCrit { key: string; label: string; weight?: number; min?: number }
+export interface SettingsPayload {
+  weights: Record<string, number>
+  filters: Record<string, any>
+  customCriteria: CustomCrit[]
+}
 
 interface Props {
   weights: Record<string, number>
   filters: Record<string, any>
+  customCriteria?: CustomCrit[]
   busy: boolean
-  onApply: (weights: Record<string, number>, filters: Record<string, any>) => void
+  onApply: (payload: SettingsPayload) => void
 }
 
 // Criteria control: per-criterion numeric importance (with quick presets), grouped by
-// category, plus the hard filters. Reads the catalog from the registry.
-export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
+// category, plus the hard filters (a generic Any / At least OK / Only good threshold on
+// every criterion, and bespoke controls for language/visa/inclusion/climate). Custom
+// criteria appear in their own group with the same importance + threshold controls. Reads
+// the catalog from the registry.
+export function CriteriaSettings({ weights, filters, customCriteria = [], busy, onApply }: Props) {
   const { t, lang } = useT()
   const reg = useCriteria()
   const [w, setW] = useState<Record<string, number>>({ ...weights })
   const [f, setF] = useState<Record<string, any>>({ ...filters })
+  const [cc, setCc] = useState<CustomCrit[]>(customCriteria.map((c) => ({ ...c })))
+  // Resync when the persisted state changes (e.g. after an AI action or a repopulate), so
+  // the panel never shows stale / reverted toggles.
+  useEffect(() => { setW({ ...weights }) }, [weights])
+  useEffect(() => { setF({ ...filters }) }, [filters])
+  useEffect(() => { setCc(customCriteria.map((c) => ({ ...c }))) }, [customCriteria])
+
   const climateSel: string[] = Array.isArray(f.climate) ? f.climate : (f.climate ? [f.climate] : [])
 
   function weightFor(key: string): number {
@@ -37,12 +54,45 @@ export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
     const next = climateSel.includes(c) ? climateSel.filter((x) => x !== c) : [...climateSel, c]
     setF({ ...f, climate: next })
   }
+  // Generic threshold: '' (any) | 'ok' | 'good', stored as a tier word in filters[key].
+  function genericThreshold(key: string): string {
+    const v = f[key]
+    return v === 'good' || v === 'ok' ? v : ''
+  }
+  function setGenericThreshold(key: string, v: string) {
+    const next = { ...f }
+    if (v) next[key] = v
+    else delete next[key]
+    setF(next)
+  }
+  function setCustom(key: string, patch: Partial<CustomCrit>) {
+    setCc((list) => list.map((c) => (c.key === key ? { ...c, ...patch } : c)))
+  }
+  // min number <-> tier word for the custom threshold select.
+  function customTier(min?: number): string {
+    return min != null && min >= 0.7 ? 'good' : min != null && min > 0 ? 'ok' : ''
+  }
+  function setCustomTier(key: string, v: string) {
+    setCustom(key, { min: v === 'good' ? 0.7 : v === 'ok' ? 0.45 : undefined })
+  }
+
   function apply() {
     const cleaned: Record<string, any> = {}
     for (const [k, v] of Object.entries(f)) {
       if (Array.isArray(v) ? v.length : v) cleaned[k] = v
     }
-    onApply(w, cleaned)
+    onApply({ weights: w, filters: cleaned, customCriteria: cc })
+  }
+
+  function thresholdSelect(value: string, onChange: (v: string) => void) {
+    return (
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="border border-turquoise-100 rounded px-2 py-1 text-sm">
+        <option value="">{t.comparison.minAny}</option>
+        <option value="ok">{t.comparison.minOk}</option>
+        <option value="good">{t.comparison.minGood}</option>
+      </select>
+    )
   }
 
   function filterCell(key: string) {
@@ -79,7 +129,26 @@ export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
         ))}
       </div>
     )
-    return null
+    // Every other criterion: a generic minimum threshold.
+    return thresholdSelect(genericThreshold(key), (v) => setGenericThreshold(key, v))
+  }
+
+  function weightInput(value: number, onChange: (v: number) => void) {
+    return (
+      <div className="flex items-center gap-2">
+        <input type="number" min={0} max={5} step={0.5} value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-16 border border-turquoise-100 rounded-md px-2 py-1" />
+        <div className="flex gap-1">
+          {PRESETS.map((p) => (
+            <button key={p.key} type="button" onClick={() => onChange(p.w)}
+              className="text-xs rounded border border-turquoise-100 px-1.5 py-0.5 hover:bg-turquoise-50">
+              {(t.comparison as Record<string, string>)[p.key]}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -102,26 +171,28 @@ export function CriteriaSettings({ weights, filters, busy, onApply }: Props) {
               {cat.leaves.map((key) => (
                 <tr key={key} className="border-t border-turquoise-50">
                   <td className="py-1.5 pr-2 pl-3">{labelOf(reg, key, lang)}</td>
-                  <td className="py-1.5 pr-2">
-                    <div className="flex items-center gap-2">
-                      <input type="number" min={0} max={5} step={0.5} value={weightFor(key)}
-                        onChange={(e) => setWeight(key, Number(e.target.value))}
-                        className="w-16 border border-turquoise-100 rounded-md px-2 py-1" />
-                      <div className="flex gap-1">
-                        {PRESETS.map((p) => (
-                          <button key={p.key} type="button" onClick={() => setWeight(key, p.w)}
-                            className="text-xs rounded border border-turquoise-100 px-1.5 py-0.5 hover:bg-turquoise-50">
-                            {(t.comparison as Record<string, string>)[p.key]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </td>
+                  <td className="py-1.5 pr-2">{weightInput(weightFor(key), (v) => setWeight(key, v))}</td>
                   <td className="py-1.5">{filterCell(key)}</td>
                 </tr>
               ))}
             </Fragment>
           ))}
+          {cc.length > 0 && (
+            <Fragment>
+              <tr className="border-t border-turquoise-100 bg-turquoise-50/60">
+                <td colSpan={3} className="py-1.5 font-medium text-turquoise-900">{t.comparison.customGroup}</td>
+              </tr>
+              {cc.map((c) => (
+                <tr key={c.key} className="border-t border-turquoise-50">
+                  <td className="py-1.5 pr-2 pl-3">{c.label}</td>
+                  <td className="py-1.5 pr-2">
+                    {weightInput(c.weight ?? 1, (v) => setCustom(c.key, { weight: Math.max(0, Math.min(5, v)) }))}
+                  </td>
+                  <td className="py-1.5">{thresholdSelect(customTier(c.min), (v) => setCustomTier(c.key, v))}</td>
+                </tr>
+              ))}
+            </Fragment>
+          )}
         </tbody>
       </table>
       <button onClick={apply} disabled={busy}

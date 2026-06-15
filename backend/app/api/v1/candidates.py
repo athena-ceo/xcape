@@ -17,6 +17,7 @@ from app.schemas.search import (
     CandidateOut,
     SetSelectedRequest,
     SuggestCriteriaRequest,
+    UpdateCustomCriterionRequest,
 )
 from app.services import (
     ai_client, board, comparison, criteria, criteria_select, criterion_eval, place_research,
@@ -72,6 +73,8 @@ def list_candidates(
     base_langs = {str(lang).lower() for lang in ((base_attrs or {}).get("languages") or [])}
 
     custom_defs = search.custom_criteria or []
+    # Cached evals (objective built-ins + custom) drive the live hard-filter check below.
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
     for cand in candidates:
         cand.vs_current = comparison.compute_deltas(cand.per_criterion, base_attrs)
@@ -80,6 +83,10 @@ def list_candidates(
             cand.quality = view["quality"]
             cand.reasons = view["reasons"]
             cand.pending = view["pending"]
+            evals = criterion_eval.values_for_place(db, cand.place_id, eval_keys)
+            cand.filter_violations = shortlist_service.filter_status(
+                cand.place, profile, evals, custom_defs
+            )["violations"]
         if known:
             # Read languages from the live place so existing searches benefit without
             # needing the shortlist rebuilt.
@@ -259,6 +266,35 @@ def add_custom_criterion(
     if key not in (search.criteria_set or []):
         search.criteria_set = [*(search.criteria_set or []), key]
     db.commit()
+    return list_candidates(search_id, user=user, db=db)
+
+
+@router.patch("/{search_id}/custom-criteria/{key}", response_model=list[CandidateOut])
+def update_custom_criterion(
+    search_id: int,
+    key: str,
+    body: UpdateCustomCriterionRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a custom criterion's importance (weight) and/or its hard-filter minimum
+    (min, 0-1; null clears it), then repopulate so the change takes effect."""
+    search = _owned(db, user, search_id)
+    defs = list(search.custom_criteria or [])
+    target = next((c for c in defs if c.get("key") == key), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Custom criterion not found")
+    fields = body.model_dump(exclude_unset=True)
+    if "weight" in fields and fields["weight"] is not None:
+        target["weight"] = float(fields["weight"])
+    if "min" in fields:
+        if fields["min"] in (None, ""):
+            target.pop("min", None)
+        else:
+            target["min"] = float(fields["min"])
+    search.custom_criteria = defs
+    db.commit()
+    shortlist_service.repopulate_board(db, user, search)
     return list_candidates(search_id, user=user, db=db)
 
 

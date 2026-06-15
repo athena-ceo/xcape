@@ -136,6 +136,14 @@ def _find_place(db: Session, name: str) -> Place | None:
     return db.query(Place).filter(Place.kind == "country", Place.name.ilike(name)).first()
 
 
+def _violations(db: Session, user: User, search: Search, place: Place) -> list[str]:
+    """Which active hard filters this place fails (so the assistant can flag it)."""
+    custom_defs = search.custom_criteria or []
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+    evals = criterion_eval.values_for_place(db, place.id, eval_keys)
+    return sl.filter_status(place, user.profile, evals, custom_defs)["violations"]
+
+
 def _selected_count(db: Session, search_id: int) -> int:
     return (
         db.query(Candidate)
@@ -169,7 +177,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
                     filters[k] = v
         p.filters = filters
         db.commit()
-        sl.build_instant_shortlist(db, user, search)
+        sl.repopulate_board(db, user, search)
         return {"ok": True, "filters": filters}, True
 
     if name == "add_country":
@@ -197,7 +205,8 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         db.commit()
         # Score now; any missing cells fill in progressively via /evaluate-pending.
         sl.rescore_candidates(db, user, search)
-        return {"ok": True, "added": place.name, "selected": cand.selected}, True
+        return {"ok": True, "added": place.name, "selected": cand.selected,
+                "filter_violations": _violations(db, user, search, place)}, True
 
     if name == "select_country":
         place = _find_place(db, args.get("name", ""))
@@ -238,6 +247,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
             return {"ok": False, "error": "no countries provided"}, False
         target_ids: list[int] = []
         applied: list[str] = []
+        target_places: list[Place] = []
         for nm in names:
             place = _find_place(db, nm)
             if place is None:
@@ -260,6 +270,7 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
                 db.add(cand)
             target_ids.append(place.id)
             applied.append(place.name)
+            target_places.append(place)
         # Make the board exactly this set: select the targets, deselect the rest.
         for c in (
             db.query(Candidate)
@@ -270,10 +281,14 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
         db.commit()
         # Score now; missing cells fill in progressively via /evaluate-pending.
         sl.rescore_candidates(db, user, search)
-        return {"ok": True, "countries": applied}, True
+        # Report any that break the user's active filters so the assistant can flag them.
+        violating = {
+            p.name: v for p in target_places if (v := _violations(db, user, search, p))
+        }
+        return {"ok": True, "countries": applied, "filter_violations": violating}, True
 
     if name == "rebuild_shortlist":
-        sl.build_instant_shortlist(db, user, search)
+        sl.repopulate_board(db, user, search)
         return {"ok": True}, True
 
     return {"ok": False, "error": f"unknown tool {name}"}, False

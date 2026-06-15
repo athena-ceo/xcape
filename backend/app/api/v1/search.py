@@ -70,6 +70,17 @@ def build_shortlist(
     return shortlist_service.build_instant_shortlist(db, user, search)
 
 
+@router.post("/{search_id}/repopulate", response_model=list[CandidateOut])
+def repopulate(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Rebuild the list against the current weights + hard filters, keeping the user's
+    selected board and topping it up (flagging any that don't meet the filters). Safe to
+    re-run as async evals land."""
+    search = _owned(db, user, search_id)
+    return shortlist_service.repopulate_board(db, user, search)
+
+
 @router.get("/{search_id}/baseline")
 def baseline(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)

@@ -59,6 +59,15 @@ export const api = {
     request<any>('/searches', { method: 'POST', body: JSON.stringify({ title }) }),
   buildShortlist: (id: number) =>
     request<any[]>(`/searches/${id}/shortlist`, { method: 'POST' }),
+  // Rebuild the list against current weights + filters, keeping the selected board and
+  // topping it up (flagging any that don't meet the filters).
+  repopulate: (id: number) =>
+    request<any[]>(`/searches/${id}/repopulate`, { method: 'POST' }),
+  updateCustomCriterion: (id: number, key: string, body: { weight?: number; min?: number | null }) =>
+    request<any[]>(`/searches/${id}/custom-criteria/${encodeURIComponent(key)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
   listCandidates: (id: number) => request<any[]>(`/searches/${id}/candidates`),
   addCandidate: (id: number, body: { place_id?: number; place_name?: string }) =>
     request<any>(`/searches/${id}/candidates`, { method: 'POST', body: JSON.stringify(body) }),

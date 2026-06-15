@@ -44,6 +44,7 @@ class CandidateOut(BaseModel):
     quality: dict[str, str] = {}     # criterion -> good/ok/bad (colour tier)
     reasons: dict[str, dict] = {}    # criterion -> {code, ...tokens} justification
     pending: list[str] = []          # criteria still being AI-evaluated (show a spinner)
+    filter_violations: list[str] = []  # active hard filters this place fails (flag in UI)
     rank: int | None = None
 
 
@@ -62,6 +63,11 @@ class AddCustomCriterionRequest(BaseModel):
     label: str
     description: str | None = None
     weight: float = 1.0
+
+
+class UpdateCustomCriterionRequest(BaseModel):
+    weight: float | None = None
+    min: float | None = None  # 0-1 hard-filter threshold; null clears it
 
 
 class SuggestCriteriaRequest(BaseModel):

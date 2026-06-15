@@ -238,37 +238,88 @@ def candidate_quality(
     return {k: quality_tier(_criterion_value(k, attrs, profile, place, evals)) for k in criteria.criteria_keys()}
 
 
-def passes_filters(place: Place, profile: Profile | None) -> bool:
-    """Hard constraints: a place must satisfy every active filter to qualify."""
+# Quality tiers map to minimum 0-1 thresholds (matches quality_tier cutoffs).
+_TIER_THRESHOLD = {"good": 0.7, "ok": 0.45, "any": 0.0}
+
+
+def _threshold(fval) -> float:
+    """A filter value as a minimum 0-1 threshold. Accepts a raw number or a tier word."""
+    if isinstance(fval, bool):
+        return 0.7  # a bare True on a generic criterion means "must be good"
+    if isinstance(fval, (int, float)):
+        return float(fval)
+    return _TIER_THRESHOLD.get(str(fval).lower(), 0.7)
+
+
+def filter_status(
+    place: Place, profile: Profile | None,
+    evals: dict[str, float] | None = None,
+    custom_defs: list[dict] | None = None,
+) -> dict[str, list[str]]:
+    """Per-place hard-filter result against the user's active filters.
+
+    Returns {"violations": [...], "pending": [...]}: a place QUALIFIES when both are
+    empty. `pending` holds criteria whose AI score hasn't been computed yet (objective
+    built-ins or custom criteria with no cached eval) — they can't be judged now and are
+    re-checked once the eval lands (progressive fill). Everything else either passes or
+    is a violation.
+    """
     filters = (profile.filters or {}) if profile else {}
     attrs = place.attributes or {}
+    evals = evals or {}
+    objective = set(criteria.objective_keys())
+    violations: list[str] = []
+    pending: list[str] = []
+
     for key, fval in filters.items():
-        if fval in (None, "", False):
+        if fval in (None, "", False) or (isinstance(fval, list) and not fval):
             continue
         if key == "language_ease":
-            known = {str(x).lower() for x in (profile.language_skills or {}).get("known", [])}
+            known = {str(x).lower() for x in (profile.language_skills or {}).get("known", [])} if profile else set()
             langs = {str(x).lower() for x in (attrs.get("languages") or [])}
             if not (known and langs and (known & langs)):
-                return False
+                violations.append(key)
         elif key == "climate":
-            # Accept a single climate or a list of acceptable climates (any-of).
             allowed = fval if isinstance(fval, list) else [fval]
             if attrs.get("climate") not in allowed:
-                return False
+                violations.append(key)
         elif key == "visa":
             if _visa_value(attrs, profile, place) < 0.9:
-                return False
+                violations.append(key)
         elif key == "inclusion":
-            # "Only welcoming places" — exclude where the user's communities aren't accepted.
             if _inclusion_value(attrs, profile) < 0.5:
-                return False
-        elif key in criteria.scales():
-            scale = criteria.scales()[key]
-            pv = scale.get(str(attrs.get(key, "")).lower())
-            fv = scale.get(str(fval).lower())
-            if pv is None or fv is None or pv < fv:
-                return False
-    return True
+                violations.append(key)
+        else:
+            # Generic minimum on any other criterion. Objective criteria are AI-scored, so
+            # require a cached eval — without one we can't judge yet (pending). Computed
+            # criteria (cost, proximity) resolve synchronously.
+            if key in objective and key not in evals:
+                pending.append(key)
+                continue
+            if _criterion_value(key, attrs, profile, place, evals) < _threshold(fval):
+                violations.append(key)
+
+    # Custom-criterion minimums live per-search on the criterion definition.
+    for c in custom_defs or []:
+        k, mn = c.get("key"), c.get("min")
+        if not k or mn in (None, "", False):
+            continue
+        if k not in evals:
+            pending.append(k)
+        elif float(evals[k]) < _threshold(mn):
+            violations.append(k)
+
+    return {"violations": violations, "pending": pending}
+
+
+def passes_filters(
+    place: Place, profile: Profile | None,
+    evals: dict[str, float] | None = None,
+    custom_defs: list[dict] | None = None,
+) -> bool:
+    """True when a place satisfies every active filter (and none are pending)."""
+    st = filter_status(place, profile, evals, custom_defs)
+    return not st["violations"] and not st["pending"]
 
 
 def _score_place(
@@ -383,7 +434,9 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
 
     countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
     # Apply hard filters (e.g. "must speak a language I know"); if filters exclude
-    # everything, fall back to the unfiltered pool so the user still sees options.
+    # everything, fall back to the unfiltered pool so the user still sees options. (The
+    # board's top-up-with-flagged-extras behaviour lives in repopulate_board, used when the
+    # user edits criteria later.)
     qualified = [p for p in countries if passes_filters(p, profile)]
     pool = qualified or countries
     # Batch-load the cached AI evals for the whole pool so the seed-sparse countries score
@@ -412,6 +465,94 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
         )
         db.add(cand)
         candidates.append(cand)
+    db.commit()
+    for cand in candidates:
+        db.refresh(cand)
+    return candidates
+
+
+def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]:
+    """Rebuild the list respecting the current weights + hard filters, without throwing
+    away the user's curated board.
+
+    - the user's currently-selected countries stay selected (re-scored; flagged in the UI
+      if they now violate a filter — we never auto-remove them);
+    - the selected board is topped up to MAX_COMPARE from the best candidates, preferring
+      filter-qualifying ones, then pending, then (flagged) violating — so a strict filter
+      still yields a full board instead of an empty one;
+    - the unselected suggestion pool is refreshed to SHORTLIST_SIZE from the current
+      ranking. Idempotent and non-destructive of selections, so it's safe to call again
+      after async custom/objective evals land (the progressive-fill iteration).
+    """
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
+
+    profile = user.profile
+    weights = _effective_weights(profile)
+    custom_defs = list(search.custom_criteria or [])
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+
+    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+
+    # Score + filter-classify every country; rank qualified → pending → violating, by score.
+    scored = []  # (place, score, reasons, tier)
+    for p in countries:
+        evals = evals_by_place.get(p.id)
+        score, reasons = _score_place(p, weights, profile, evals)
+        st = filter_status(p, profile, evals, custom_defs)
+        tier = 0 if not st["violations"] and not st["pending"] else (1 if not st["violations"] else 2)
+        scored.append((p, score, reasons, tier))
+    scored.sort(key=lambda t: (t[3], -t[1]))
+
+    existing = {
+        c.place_id: c
+        for c in db.query(Candidate)
+        .filter(Candidate.search_id == search.id, Candidate.status == "active")
+        .all()
+    }
+    selected_ids = {pid for pid, c in existing.items() if c.selected}
+
+    # Keep current selections; top up to MAX_COMPARE from the best-ranked remainder.
+    final_selected = set(selected_ids)
+    for p, _s, _r, _t in scored:
+        if len(final_selected) >= MAX_COMPARE:
+            break
+        final_selected.add(p.id)
+    # Suggestion pool: best-ranked not-selected, up to SHORTLIST_SIZE.
+    suggestions = [p.id for p, _s, _r, _t in scored if p.id not in final_selected][:SHORTLIST_SIZE]
+    target_ids = final_selected | set(suggestions)
+
+    # Drop stale suggestions (anything not selected and no longer in the pool).
+    for pid, cand in existing.items():
+        if pid not in target_ids:
+            db.delete(cand)
+
+    # Upsert the target set with fresh scores + selection.
+    for p, score, reasons, _t in scored:
+        if p.id not in target_ids:
+            continue
+        cand = existing.get(p.id)
+        if cand is None:
+            cand = Candidate(search_id=search.id, place_id=p.id, per_criterion=p.attributes or {})
+            db.add(cand)
+        cand.status = "active"
+        cand.match_score = score
+        cand.match_reasons = reasons
+        cand.selected = p.id in final_selected
+    db.commit()
+
+    candidates = (
+        db.query(Candidate)
+        .filter(Candidate.search_id == search.id, Candidate.status == "active")
+        .all()
+    )
+    for rank, cand in enumerate(
+        sorted(candidates, key=lambda c: c.match_score or 0, reverse=True), start=1
+    ):
+        cand.rank = rank
     db.commit()
     for cand in candidates:
         db.refresh(cand)

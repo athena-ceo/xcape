@@ -36,10 +36,39 @@ SYSTEM_PROMPT = (
     "filter, add or replace countries, or propose a NEW SET of countries — you MUST APPLY "
     "the change by calling the right tool, not just describe it. In particular, whenever "
     "you propose a new set of countries, call set_comparison with those countries so the "
-    "table updates. After acting, briefly confirm what you changed."
+    "table updates. After acting, briefly confirm what you changed.\n\n"
+    "HARD FILTERS — the user may set hard filters (listed below if any). You MUST respect "
+    "them: only propose or add countries that satisfy every active filter. If too few "
+    "countries qualify, say so and suggest the user relax a filter — do NOT silently work "
+    "around it. NEVER add, change, or clear a filter (set_filter) unless the user EXPLICITLY "
+    "asks you to. If a country you add still breaks a filter, point that out to the user."
 )
 
 _HISTORY_LIMIT = 12  # how many prior turns to include
+
+
+def _active_filters(profile, search: Search) -> list[str]:
+    """Plain-language list of the active hard filters, for the AI briefing."""
+    out: list[str] = []
+    filters = (profile.filters or {}) if profile else {}
+    for key, val in filters.items():
+        if val in (None, "", False) or (isinstance(val, list) and not val):
+            continue
+        if key == "language_ease":
+            out.append("only countries where the user can already communicate")
+        elif key == "visa":
+            out.append("only countries that are easy for the user to settle in (visa)")
+        elif key == "inclusion":
+            out.append("only countries welcoming to the user's communities")
+        elif key == "climate":
+            allowed = val if isinstance(val, list) else [val]
+            out.append(f"climate must be one of: {', '.join(map(str, allowed))}")
+        else:
+            out.append(f"{key} must be at least '{val}'")
+    for c in (search.custom_criteria or []):
+        if c.get("min") not in (None, "", False):
+            out.append(f"{c.get('label', c.get('key'))} must score at least {c['min']}")
+    return out
 
 
 def _user_context(db: Session, user: User, search: Search) -> str:
@@ -70,6 +99,12 @@ def _user_context(db: Session, user: User, search: Search) -> str:
                 lines.append(f"Speaks: {', '.join(known)}.")
         if p.criteria_weights:
             lines.append(f"Prioritises: {', '.join(p.criteria_weights.keys())}.")
+
+    # Active hard filters (the user's non-negotiables) — the assistant must respect these.
+    filter_descr = _active_filters(p, search)
+    if filter_descr:
+        lines.append("ACTIVE HARD FILTERS (must be respected; do not remove unless asked): "
+                     + "; ".join(filter_descr) + ".")
 
     cands = (
         db.query(Candidate)
