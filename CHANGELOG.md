@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Deploy seeding is insert-only; `reseed-data` to force a refresh
+
+- `seed` (and therefore `deploy prod`) is now **insert-only**: it bootstraps a fresh DB and
+  adds newly-committed countries, but **never overwrites existing places or evals**. So a
+  redeploy no longer re-applies the whole country snapshot — it's a true no-op once the data
+  is in place, and can't clobber prod-side data.
+- New `./xcape.sh reseed-data <dev|prod>` force-refreshes country data (places + cached
+  evals) from the seed files, overwriting existing rows — use it to push committed data
+  updates (refreshed evals, corrected attributes). User searches/profiles and custom-criterion
+  evals are never touched. Mirrors the `reseed-criteria` pattern.
+
 ### 2026-06-16 — Hard filters exclude violators; advice on what to relax
 
 - A hard filter now **removes** every country that violates it from the board and replaces

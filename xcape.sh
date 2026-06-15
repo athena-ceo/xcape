@@ -46,6 +46,15 @@ case "$CMD" in
     MSG="${1:-change}"
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
+  reseed-data)
+    # Force-refresh country data (places + cached evals) from the bundled seed files,
+    # OVERWRITING existing rows. seed/deploy are insert-only, so use this to push committed
+    # data updates (refreshed evals, corrected attributes). User data is never touched.
+    echo "This OVERWRITES the $ENV country data (places + cached criterion evals) from the"
+    echo "bundled seed files. User searches/profiles and custom-criterion evals are untouched."
+    read -r -p "Proceed on $ENV? [y/N] " ans
+    [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "Aborted."; exit 0; }
+    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.reseed_data ;;
   reseed-criteria)
     # Overwrite the editable criteria registry (criteria tree, personas, communities) from
     # the bundled criteria.json. seed/deploy never touch an existing registry, so this is how
@@ -107,7 +116,7 @@ case "$CMD" in
     done
     echo "--> Applying migrations"
     $COMPOSE exec -T "$BACKEND_SVC" alembic upgrade head
-    echo "--> Seeding place database (idempotent)"
+    echo "--> Seeding place database (insert-only: bootstrap + new countries, no overwrite)"
     $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.seed
     echo "--> Health check"
     curl -fsS "http://localhost:${BACKEND_PORT:-8030}/health" && echo "" || { echo "BACKEND UNHEALTHY"; exit 1; }
@@ -128,7 +137,10 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   health
   migrate                 apply Alembic migrations
   makemigration "msg"     autogenerate a migration
-  seed                    load the bundled place database (+ cached evals; idempotent)
+  seed                    bootstrap the place database (+ cached evals; INSERT-ONLY — never
+                          overwrites existing rows)
+  reseed-data <env>       force-refresh country data (places + cached evals) from the seed
+                          files, overwriting existing rows; user data untouched
   reseed-criteria <env>   overwrite the criteria registry (tree, personas, communities) from
                           criteria.json — rolls out registry changes; replaces admin UI edits
   backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
