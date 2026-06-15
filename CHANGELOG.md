@@ -5,15 +5,18 @@
 
 ## [Unreleased]
 
-### 2026-06-16 — Filtered criteria always shown; the violating cell is flagged
+### 2026-06-16 — Weight 0 ignores a criterion entirely (filter goes dormant)
 
-- A criterion you've set a **hard filter** on is now **always visible** in the comparison
-  table, even at weight 0. Previously a category could show a "⚠ doesn't match" flag while
-  the offending criterion was hidden under "other criteria", so there was no visible culprit
-  (e.g. a `climate = temperate` filter flagged the Lifestyle roll-up but the Climate row was
-  hidden).
-- The specific **leaf cell** that fails a filter now shows the ⚠ flag and amber highlight
-  (matching the category roll-up), so you can see exactly which value doesn't match.
+- A criterion with **importance 0 is now ignored completely — its hard filter no longer
+  applies**. Previously "weight 0" (don't care) plus an active filter (must satisfy)
+  contradicted each other: a persona that zeroes, say, Climate would still flag every
+  country whose climate didn't match a leftover `climate = temperate` filter. Effective
+  weight folds in persona/defaults + your overrides, so a normal user's default filters
+  (climate/visa/language all have positive default weights) keep working.
+- **Criteria settings** now shows "Ignored — importance is 0" (dimmed) next to a filter
+  whose criterion is at weight 0, so the dormant state is visible.
+- The specific **leaf cell** that fails an active filter shows the ⚠ flag + amber highlight
+  (matching the category roll-up), so a flagged category always has a visible culprit row.
 
 ### 2026-06-16 — `reseed-criteria` op to roll out registry changes
 

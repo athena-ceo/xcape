@@ -284,8 +284,19 @@ def filter_status(
     violations: list[str] = []
     pending: list[str] = []
 
+    # A weight-0 criterion is ignored entirely — its hard filter is dormant too (otherwise
+    # "don't care" and "must satisfy" contradict). Effective weight folds in persona/defaults
+    # and the user's overrides, so a persona that zeroes a criterion also silences its filter.
+    weights = _effective_weights(profile)
+    custom_w = {c["key"]: float(c.get("weight", 1.0)) for c in (custom_defs or []) if c.get("key")}
+
+    def _active(key: str) -> bool:
+        return (custom_w[key] if key in custom_w else weights.get(key, 0.0)) > 0
+
     for key, fval in filters.items():
         if fval in (None, "", False) or (isinstance(fval, list) and not fval):
+            continue
+        if not _active(key):
             continue
         if key == "language_ease":
             known = {str(x).lower() for x in (profile.language_skills or {}).get("known", [])} if profile else set()
@@ -316,6 +327,8 @@ def filter_status(
     for c in custom_defs or []:
         k, mn = c.get("key"), c.get("min")
         if not k or mn in (None, "", False):
+            continue
+        if not _active(k):  # weight-0 custom criterion: dormant filter too
             continue
         if k not in evals:
             pending.append(k)

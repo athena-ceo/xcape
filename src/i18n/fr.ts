@@ -288,6 +288,7 @@ export const fr = {
     repopulateHint: 'Reconstruire la liste avec vos critères et filtres actuels',
     unsavedChanges: 'Modifications non enregistrées — appliquez ou annulez d’abord',
     applyFailed: 'Impossible d’appliquer vos réglages. Veuillez réessayer.',
+    filterIgnoredZero: 'Ignoré — importance à 0',
     showUnimportant: 'Afficher les autres critères',
     hideUnimportant: 'Masquer les autres critères',
     flagBadge: 'Ne correspond pas',

@@ -139,3 +139,20 @@ def test_candidate_unique_per_search(auth_client, db_session):
     second = auth_client.post(f"/api/v1/searches/{sid}/candidates", json={"place_id": place_id})
     assert second.status_code == 201
     assert second.json()["id"] == first.json()["id"]
+
+
+def test_weight_zero_makes_hard_filter_dormant():
+    """A weight-0 criterion is ignored entirely: its hard filter must not produce a
+    violation (otherwise 'don't care' and 'must satisfy' contradict)."""
+    from app.models.place import Place
+    from app.models.profile import Profile
+    from app.services.shortlist import filter_status
+
+    place = Place(kind="country", name="Hotland", attributes={"climate": "tropical"})
+    prof = Profile(filters={"climate": "temperate"}, criteria_weights={"climate": 2.0},
+                   reasons_leaving=[], household_type="single", minority_groups=[])
+    # Weighted → filter active → tropical != temperate → violation.
+    assert "climate" in filter_status(place, prof)["violations"]
+    # Weight 0 → criterion ignored → filter dormant → no violation.
+    prof.criteria_weights = {"climate": 0}
+    assert "climate" not in filter_status(place, prof)["violations"]

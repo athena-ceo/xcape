@@ -2,6 +2,7 @@
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 import { Fragment, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 
 import { useT } from '../i18n'
 import { categories, labelOf, nodeOf, useCriteria } from '../services/criteria'
@@ -77,6 +78,11 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
   function toggleClimate(c: string) {
     const next = climateSel.includes(c) ? climateSel.filter((x) => x !== c) : [...climateSel, c]
     setF({ ...f, climate: next })
+  }
+  // A filter is "set" when its value is truthy / a non-empty list.
+  function filterActive(key: string): boolean {
+    const v = f[key]
+    return Array.isArray(v) ? v.length > 0 : !!v
   }
   // Generic threshold: '' (any) | 'ok' | 'good', stored as a tier word in filters[key].
   function genericThreshold(key: string): string {
@@ -157,6 +163,17 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
     return thresholdSelect(genericThreshold(key), (v) => setGenericThreshold(key, v))
   }
 
+  // Wrap a filter control, dimming it and noting that a weight-0 criterion's filter is dormant
+  // (the criterion is ignored entirely — score and filter — so it can't constrain results).
+  function filterWithNote(control: ReactNode, ignored: boolean) {
+    return (
+      <div className={ignored ? 'opacity-60' : ''}>
+        {control}
+        {ignored && <div className="text-xs text-amber-700 mt-0.5">{t.comparison.filterIgnoredZero}</div>}
+      </div>
+    )
+  }
+
   function weightInput(value: number, onChange: (v: number) => void) {
     return (
       <div className="flex items-center gap-2">
@@ -196,7 +213,7 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
                 <tr key={key} className="border-t border-turquoise-50">
                   <td className="py-1.5 pr-2 pl-3">{labelOf(reg, key, lang)}</td>
                   <td className="py-1.5 pr-2">{weightInput(weightFor(key), (v) => setWeight(key, v))}</td>
-                  <td className="py-1.5">{filterCell(key)}</td>
+                  <td className="py-1.5">{filterWithNote(filterCell(key), weightFor(key) <= 0 && filterActive(key))}</td>
                 </tr>
               ))}
             </Fragment>
@@ -212,7 +229,7 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
                   <td className="py-1.5 pr-2">
                     {weightInput(c.weight ?? 1, (v) => setCustom(c.key, { weight: Math.max(0, Math.min(5, v)) }))}
                   </td>
-                  <td className="py-1.5">{thresholdSelect(customTier(c.min), (v) => setCustomTier(c.key, v))}</td>
+                  <td className="py-1.5">{filterWithNote(thresholdSelect(customTier(c.min), (v) => setCustomTier(c.key, v)), (c.weight ?? 1) <= 0 && c.min != null)}</td>
                 </tr>
               ))}
             </Fragment>

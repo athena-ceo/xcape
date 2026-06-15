@@ -371,14 +371,9 @@ export function ComparisonPlayground() {
   // Custom-criterion weights live on the per-search definition; built-ins on the profile.
   const customWeights = Object.fromEntries(customCrit.map((c) => [c.key, c.weight ?? 1]))
   const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
-  // A criterion you've set a hard filter on is relevant even at weight 0 — otherwise the
-  // category shows a "doesn't match" flag with no visible culprit (the filtered leaf is hidden).
-  const isFiltered = (key: string) => {
-    const v = (filters as Record<string, any>)[key]
-    return Array.isArray(v) ? v.length > 0 : !!v
-  }
-  // Leaves shown when "other criteria" is collapsed: weighted ones, plus any with an active filter.
-  const visibleLeaf = (key: string) => weightOf(key) > 0 || isFiltered(key)
+  // Weight-0 criteria are ignored entirely (score AND filter — see filter_status), so they're
+  // simply hidden behind "other criteria"; a dormant filter never produces a violation flag.
+  const visibleLeaf = (key: string) => weightOf(key) > 0
   // Collapsed by default; the user's choice persists (see openCats / toggleCat).
   const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? false
   // Roll-up colour tier for a category column = weighted average of its WEIGHTED leaves'
