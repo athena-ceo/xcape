@@ -11,7 +11,7 @@ import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
   CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
-  PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
+  PRIORITY_KEYS, rankWeight, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
@@ -78,6 +78,7 @@ export function Onboarding() {
   const [busy, setBusy] = useState(false)
   const [persona, setPersona] = useState<Persona | null>(null)
   const [deriving, setDeriving] = useState(false)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)  // priority being dragged to reorder
 
   // Pre-fill from the server ONCE on mount — never re-run, so an async locale change can't
   // overwrite answers the user is in the middle of selecting (e.g. multiple communities).
@@ -174,13 +175,24 @@ export function Onboarding() {
     }
   }
 
-  // Initial weights = the persona's profile, with any explicitly-picked priorities lifted to
-  // at least PRIORITY_WEIGHT. Criteria the persona doesn't list stay absent (weight 0).
+  // Initial weights = the persona's default profile, then the user's ranked priorities
+  // override on top: top of the list weighs most, decreasing by rank. Unselected criteria
+  // keep the persona default (0 if the persona doesn't weight them).
   function weightsFromPersona(): Record<string, number> {
-    const pw = persona?.weights ?? {}
-    const cw: Record<string, number> = { ...pw }
-    for (const k of a.priorities) cw[k] = Math.max(pw[k] ?? 0, PRIORITY_WEIGHT)
+    const cw: Record<string, number> = { ...(persona?.weights ?? {}) }
+    a.priorities.forEach((k, i) => { cw[k] = rankWeight(i, a.priorities.length) })
     return cw
+  }
+
+  // Priorities are an ORDERED list (rank = importance). Add appends; drag reorders.
+  function addPriority(k: string) { if (!a.priorities.includes(k)) setA({ ...a, priorities: [...a.priorities, k] }) }
+  function removePriority(k: string) { setA({ ...a, priorities: a.priorities.filter((x) => x !== k) }) }
+  function reorderPriority(from: number, to: number) {
+    if (from === to || from < 0 || to < 0) return
+    const arr = [...a.priorities]
+    const [m] = arr.splice(from, 1)
+    arr.splice(to, 0, m)
+    setA({ ...a, priorities: arr })
   }
 
   async function onNext() {
@@ -359,14 +371,45 @@ export function Onboarding() {
             <>
               <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.priorities.q}</h1>
               <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.priorities.hint}</p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {PRIORITY_KEYS.map((k) => (
-                  <Chip key={k} active={a.priorities.includes(k)}
-                    onClick={() => setA({ ...a, priorities: toggle(a.priorities, k) })}>
-                    {t.criteria[k]}
-                  </Chip>
+
+              {/* Ranked, reorderable list — top = most important (highest weight). */}
+              {a.priorities.length > 0 && (
+                <ol className="space-y-2 mb-4">
+                  {a.priorities.map((k, i) => (
+                    <li key={k} draggable
+                      onDragStart={() => setDragIdx(i)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => { if (dragIdx !== null) reorderPriority(dragIdx, i); setDragIdx(null) }}
+                      onDragEnd={() => setDragIdx(null)}
+                      className={`flex items-center gap-2 bg-turquoise-50 border border-turquoise-100 rounded-md px-3 py-2 ${dragIdx === i ? 'opacity-50' : ''}`}>
+                      <span className="cursor-grab text-turquoise-800/40 select-none" aria-hidden>⠿</span>
+                      <span className="w-5 h-5 grid place-items-center rounded-full bg-turquoise-600 text-turquoise-50 text-xs">{i + 1}</span>
+                      <span className="flex-1 text-sm text-turquoise-900">{(t.criteria as Record<string, string>)[k] ?? k}</span>
+                      <span className="flex items-center gap-1">
+                        <button type="button" aria-label="up" disabled={i === 0}
+                          onClick={() => reorderPriority(i, i - 1)}
+                          className="px-1 text-turquoise-600 disabled:opacity-30">▲</button>
+                        <button type="button" aria-label="down" disabled={i === a.priorities.length - 1}
+                          onClick={() => reorderPriority(i, i + 1)}
+                          className="px-1 text-turquoise-600 disabled:opacity-30">▼</button>
+                        <button type="button" aria-label="remove" onClick={() => removePriority(k)}
+                          className="px-1 text-turquoise-800/40 hover:text-red-600">×</button>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              {/* Add more priorities (unselected). */}
+              <div className="flex flex-wrap gap-2">
+                {PRIORITY_KEYS.filter((k) => !a.priorities.includes(k)).map((k) => (
+                  <button key={k} type="button" onClick={() => addPriority(k)}
+                    className="text-sm rounded-full border border-turquoise-100 px-3 py-1.5 text-turquoise-700 hover:bg-turquoise-50">
+                    + {(t.criteria as Record<string, string>)[k] ?? k}
+                  </button>
                 ))}
               </div>
+
               <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.priorities.moreQ}</p>
               <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.priorities.moreHint}</p>
               <VoiceField

@@ -151,7 +151,7 @@ export const fr = {
     },
     priorities: {
       q: 'Qu’est-ce qui compte le plus pour vous ?',
-      hint: 'Choisissez autant de priorités que vous voulez — elles pèseront davantage dans le classement.',
+      hint: 'Ajoutez ce qui compte, puis glissez pour les classer — plus c’est haut, plus le poids est important.',
       moreQ: 'Autre chose ?',
       moreHint: 'Décrivez avec vos mots d’autres priorités — nous en ferons des critères.',
       morePlaceholder: 'ex. un écosystème start-up dynamique et de bonnes écoles internationales',

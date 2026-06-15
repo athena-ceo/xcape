@@ -27,6 +27,13 @@ export const LOCALE_LANGUAGE: Record<string, string> = { fr: 'French', en: 'Engl
 
 export const PRIORITY_WEIGHT = 2.0
 
+// Weight for a priority by its rank in the user's ordered list: the top priority weighs most
+// (3.0), stepping down to 1.0 for the last — so ordering directly shapes the ranking.
+export function rankWeight(rank: number, total: number): number {
+  if (total <= 1) return 3
+  return Math.round((3 - (rank * 2) / (total - 1)) * 2) / 2  // 3.0 → 1.0 in 0.5 steps
+}
+
 export function toggle<T>(list: T[], value: T, max = Infinity): T[] {
   if (list.includes(value)) return list.filter((v) => v !== value)
   if (list.length >= max) return list

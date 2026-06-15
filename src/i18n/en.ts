@@ -153,7 +153,7 @@ export const en: Dict = {
     },
     priorities: {
       q: 'What matters most to you?',
-      hint: 'Pick as many priorities as you like — they’ll weigh more in the ranking.',
+      hint: 'Add the things that matter, then drag to rank them — the higher up, the more weight it carries.',
       moreQ: 'Anything else?',
       moreHint: 'Describe in your own words any other priorities — we’ll turn them into criteria.',
       morePlaceholder: 'e.g. a strong startup scene and good international schools',
