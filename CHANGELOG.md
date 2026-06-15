@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### 2026-06-15 — Criteria Settings: Apply / Cancel guard against losing edits
+
+- The **Criteria settings** panel now has explicit **Apply** and **Cancel** buttons, and shows
+  an "unsaved changes" hint while edited. Apply is disabled until something changes; Cancel
+  (or "Close" when clean) reverts the draft and closes.
+- While the panel has **unsaved edits**, the other board actions — **Tune by situation**,
+  **Repopulate**, **PDF report** and the Settings toggle — are **disabled**, so clicking
+  Repopulate can no longer silently discard in-progress weight/filter changes.
+- The draft no longer resyncs from server state while you are editing (a background re-score
+  or stray re-render can't wipe edits in progress).
+
 ### 2026-06-14 — Collapsible categories persist; no unjustified drill-down scores
 
 - Comparison-table categories are **collapsed by default** and the expand/collapse state is

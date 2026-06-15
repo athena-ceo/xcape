@@ -1,7 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 
 import { useT } from '../i18n'
 import { categories, labelOf, nodeOf, useCriteria } from '../services/criteria'
@@ -23,6 +23,8 @@ interface Props {
   customCriteria?: CustomCrit[]
   busy: boolean
   onApply: (payload: SettingsPayload) => void
+  onCancel: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 // Criteria control: per-criterion numeric importance (with quick presets), grouped by
@@ -30,17 +32,36 @@ interface Props {
 // every criterion, and bespoke controls for language/visa/inclusion/climate). Custom
 // criteria appear in their own group with the same importance + threshold controls. Reads
 // the catalog from the registry.
-export function CriteriaSettings({ weights, filters, customCriteria = [], busy, onApply }: Props) {
+export function CriteriaSettings({ weights, filters, customCriteria = [], busy, onApply, onCancel, onDirtyChange }: Props) {
   const { t, lang } = useT()
   const reg = useCriteria()
   const [w, setW] = useState<Record<string, number>>({ ...weights })
   const [f, setF] = useState<Record<string, any>>({ ...filters })
   const [cc, setCc] = useState<CustomCrit[]>(customCriteria.map((c) => ({ ...c })))
-  // Resync when the persisted state changes (e.g. after an AI action or a repopulate), so
-  // the panel never shows stale / reverted toggles.
-  useEffect(() => { setW({ ...weights }) }, [weights])
-  useEffect(() => { setF({ ...filters }) }, [filters])
-  useEffect(() => { setCc(customCriteria.map((c) => ({ ...c }))) }, [customCriteria])
+
+  // "Dirty" = the panel has edits not yet applied. We compare the local draft to the saved
+  // props (filters cleaned the same way apply() does).
+  const cleanF = (x: Record<string, any>) => {
+    const o: Record<string, any> = {}
+    for (const [k, v] of Object.entries(x)) if (Array.isArray(v) ? v.length : v) o[k] = v
+    return o
+  }
+  const dirty = JSON.stringify({ w, f: cleanF(f), cc })
+    !== JSON.stringify({ w: weights, f: cleanF(filters), cc: customCriteria.map((c) => ({ ...c })) })
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
+  useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+
+  // Resync from saved state ONLY when there are no unsaved edits — so an external change
+  // (or a stray re-render) can never wipe edits in progress.
+  useEffect(() => { if (!dirtyRef.current) setW({ ...weights }) }, [weights])
+  useEffect(() => { if (!dirtyRef.current) setF({ ...filters }) }, [filters])
+  useEffect(() => { if (!dirtyRef.current) setCc(customCriteria.map((c) => ({ ...c }))) }, [customCriteria])
+
+  function cancel() {
+    setW({ ...weights }); setF({ ...filters }); setCc(customCriteria.map((c) => ({ ...c })))
+    onCancel()
+  }
 
   const climateSel: string[] = Array.isArray(f.climate) ? f.climate : (f.climate ? [f.climate] : [])
 
@@ -195,10 +216,17 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
           )}
         </tbody>
       </table>
-      <button onClick={apply} disabled={busy}
-        className="mt-3 bg-turquoise-600 text-turquoise-50 rounded-md px-4 py-2 text-sm disabled:opacity-50">
-        {t.comparison.apply}
-      </button>
+      <div className="mt-3 flex items-center gap-2">
+        <button onClick={apply} disabled={busy || !dirty}
+          className="bg-turquoise-600 text-turquoise-50 rounded-md px-4 py-2 text-sm disabled:opacity-50">
+          {t.comparison.apply}
+        </button>
+        <button onClick={cancel} disabled={busy}
+          className="border border-turquoise-100 text-turquoise-700 rounded-md px-4 py-2 text-sm disabled:opacity-50">
+          {dirty ? t.common.cancel : t.common.close}
+        </button>
+        {dirty && <span className="text-xs text-turquoise-800/60">{t.comparison.unsavedChanges}</span>}
+      </div>
     </div>
   )
 }

@@ -40,6 +40,7 @@ export function ComparisonPlayground() {
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [filters, setFilters] = useState<Record<string, any>>({})
   const [showSettings, setShowSettings] = useState(false)
+  const [settingsDirty, setSettingsDirty] = useState(false)
   const [showTune, setShowTune] = useState(false)
   const [tuneTags, setTuneTags] = useState<string[]>([])
   const [tuneText, setTuneText] = useState('')
@@ -445,22 +446,25 @@ export function ComparisonPlayground() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <h1 className="text-xl font-medium text-turquoise-900">{t.comparison.title}</h1>
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
-          <button onClick={() => setShowTune((s) => !s)}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5">
+          {/* While Criteria settings has unsaved edits, the other actions are disabled so they
+              can't discard the in-progress changes (Apply or Cancel in the panel first). */}
+          <button onClick={() => setShowTune((s) => !s)} disabled={settingsDirty}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-40">
             {t.comparison.tune}
           </button>
-          <button onClick={() => setShowSettings((s) => !s)}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5">
+          <button onClick={() => setShowSettings((s) => !s)} disabled={settingsDirty}
+            title={settingsDirty ? t.comparison.unsavedChanges : undefined}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-40">
             {t.comparison.settings}
           </button>
-          <button onClick={repopulate} disabled={applying}
-            title={t.comparison.repopulateHint}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
+          <button onClick={repopulate} disabled={applying || settingsDirty}
+            title={settingsDirty ? t.comparison.unsavedChanges : t.comparison.repopulateHint}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-40 inline-flex items-center gap-2">
             {applying && <Spinner />}
             {t.comparison.repopulate}
           </button>
-          <button onClick={downloadReport} disabled={downloading || !candidates.length}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-2">
+          <button onClick={downloadReport} disabled={downloading || !candidates.length || settingsDirty}
+            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-40 inline-flex items-center gap-2">
             {downloading && <Spinner />}
             {t.comparison.downloadReport}
           </button>
@@ -497,7 +501,9 @@ export function ComparisonPlayground() {
 
       {showSettings && (
         <CriteriaSettings weights={weights} filters={filters} customCriteria={customCrit}
-          busy={applying} onApply={applySettings} />
+          busy={applying} onApply={applySettings}
+          onCancel={() => { setSettingsDirty(false); setShowSettings(false) }}
+          onDirtyChange={setSettingsDirty} />
       )}
 
       {/* Colour legend */}

@@ -286,6 +286,7 @@ export const fr = {
     apply: 'Appliquer',
     repopulate: 'Repeupler',
     repopulateHint: 'Reconstruire la liste avec vos critères et filtres actuels',
+    unsavedChanges: 'Modifications non enregistrées — appliquez ou annulez d’abord',
     showUnimportant: 'Afficher les autres critères',
     hideUnimportant: 'Masquer les autres critères',
     flagBadge: 'Ne correspond pas',
@@ -413,5 +414,6 @@ export const fr = {
     loading: 'Chargement…',
     save: 'Enregistrer',
     cancel: 'Annuler',
+    close: 'Fermer',
   },
 }

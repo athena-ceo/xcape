@@ -288,6 +288,7 @@ export const en: Dict = {
     apply: 'Apply',
     repopulate: 'Repopulate',
     repopulateHint: 'Rebuild the list with your current criteria and filters',
+    unsavedChanges: 'Unsaved changes — apply or cancel first',
     showUnimportant: 'Show other criteria',
     hideUnimportant: 'Hide other criteria',
     flagBadge: "Doesn't match",
@@ -415,5 +416,6 @@ export const en: Dict = {
     loading: 'Loading…',
     save: 'Save',
     cancel: 'Cancel',
+    close: 'Close',
   },
 }
