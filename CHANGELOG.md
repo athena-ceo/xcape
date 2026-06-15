@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Fix: custom-criterion weight/min edits silently reverted
+
+- Editing a **custom criterion's importance or threshold** (in Criteria settings or via the
+  inline stepper) now actually persists — including setting a weight to **0** to hide it.
+  The update mutated the JSON column in place, leaving old == new, so SQLAlchemy emitted no
+  UPDATE and the change reverted to its previous value on the next read (no error shown).
+  Fixed with a deep copy + `flag_modified`; added an API regression test.
+
 ### 2026-06-15 — Inline weight changes re-rank the full country pool
 
 - Adjusting a **built-in criterion's weight** with the inline stepper now **re-ranks every

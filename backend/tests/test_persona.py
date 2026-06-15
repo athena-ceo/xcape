@@ -115,3 +115,25 @@ def test_derive_endpoint(auth_client, db_session):
     body = r.json()
     assert body["key"] == "safety_community"
     assert body["persona"]["weights"]["inclusion"] >= 2
+
+
+def test_custom_criterion_weight_and_min_update_persists(auth_client, db_session):
+    """Regression: editing a custom criterion's weight/min must survive a re-read. An
+    in-place mutation of the JSON column used to leave old == new, so SQLAlchemy emitted no
+    UPDATE and the edit (including weight 0) silently reverted."""
+    from app.db.seed import seed
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/custom-criteria",
+                     json={"label": "IBM lab", "description": "presence of an IBM research lab"})
+    key = auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()[0]["key"]
+
+    for w in (3.0, 0.0, 2.5):  # 0 must persist too (it hides the row, not resets it)
+        auth_client.patch(f"/api/v1/searches/{sid}/custom-criteria/{key}", json={"weight": w})
+        got = auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()[0]
+        assert got["weight"] == w, f"weight {w} did not persist (got {got['weight']})"
+
+    auth_client.patch(f"/api/v1/searches/{sid}/custom-criteria/{key}", json={"min": 0.7})
+    assert auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()[0].get("min") == 0.7
+    auth_client.patch(f"/api/v1/searches/{sid}/custom-criteria/{key}", json={"min": None})
+    assert auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()[0].get("min") is None

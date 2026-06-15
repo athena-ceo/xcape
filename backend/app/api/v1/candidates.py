@@ -3,6 +3,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
@@ -287,7 +288,10 @@ def update_custom_criterion(
     """Update a custom criterion's importance (weight) and/or its hard-filter minimum
     (min, 0-1; null clears it), then repopulate so the change takes effect."""
     search = _owned(db, user, search_id)
-    defs = list(search.custom_criteria or [])
+    # Deep-copy the defs: mutating the ORM's loaded dicts in place would leave old == new,
+    # so SQLAlchemy would emit no UPDATE for this JSON column (the edit would silently
+    # revert). flag_modified additionally forces the column dirty to be safe.
+    defs = [dict(c) for c in (search.custom_criteria or [])]
     target = next((c for c in defs if c.get("key") == key), None)
     if target is None:
         raise HTTPException(status_code=404, detail="Custom criterion not found")
@@ -300,6 +304,7 @@ def update_custom_criterion(
         else:
             target["min"] = float(fields["min"])
     search.custom_criteria = defs
+    flag_modified(search, "custom_criteria")
     db.commit()
     # Mirror the weight/min edit onto the persisted copy (so it sticks across searches).
     prof = user.profile
@@ -314,6 +319,7 @@ def update_custom_criterion(
                 else:
                     c.pop("min", None)
         prof.custom_criteria = pc
+        flag_modified(prof, "custom_criteria")
         db.commit()
     shortlist_service.repopulate_board(db, user, search)
     return list_candidates(search_id, user=user, db=db)
