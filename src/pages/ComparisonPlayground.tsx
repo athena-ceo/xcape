@@ -371,6 +371,14 @@ export function ComparisonPlayground() {
   // Custom-criterion weights live on the per-search definition; built-ins on the profile.
   const customWeights = Object.fromEntries(customCrit.map((c) => [c.key, c.weight ?? 1]))
   const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
+  // A criterion you've set a hard filter on is relevant even at weight 0 — otherwise the
+  // category shows a "doesn't match" flag with no visible culprit (the filtered leaf is hidden).
+  const isFiltered = (key: string) => {
+    const v = (filters as Record<string, any>)[key]
+    return Array.isArray(v) ? v.length > 0 : !!v
+  }
+  // Leaves shown when "other criteria" is collapsed: weighted ones, plus any with an active filter.
+  const visibleLeaf = (key: string) => weightOf(key) > 0 || isFiltered(key)
   // Collapsed by default; the user's choice persists (see openCats / toggleCat).
   const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? false
   // Roll-up colour tier for a category column = weighted average of its WEIGHTED leaves'
@@ -449,12 +457,15 @@ export function ComparisonPlayground() {
         })()}
         {candidates.map((c) => {
           const pending = (c.pending || []).includes(key)
+          const viol = (c.filter_violations || []).includes(key)
           return (
-            <td key={c.id} className={`p-0 text-center ${pending ? '' : qualityClass(c.quality?.[key])}`}>
+            <td key={c.id}
+              className={`p-0 text-center ${pending ? '' : (viol ? 'bg-amber-100 text-amber-900' : qualityClass(c.quality?.[key]))}`}
+              title={viol ? `${t.comparison.flagTitle}: ${critLabel(key)}` : undefined}>
               <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
                 {pending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
-                  : cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}
+                  : <>{viol && '⚠ '}{cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}</>}
               </button>
             </td>
           )
@@ -580,8 +591,9 @@ export function ComparisonPlayground() {
           <tbody>
             {groups.map((g) => {
               // Hide weight-0 (unimportant) criteria unless the user reveals them; a category
-              // with nothing important is hidden entirely.
-              const vis = showZero ? g.leaves : g.leaves.filter((k) => weightOf(k) > 0)
+              // with nothing important is hidden entirely. Filtered leaves stay visible so a
+              // category flag always has a visible culprit row.
+              const vis = showZero ? g.leaves : g.leaves.filter(visibleLeaf)
               if (!vis.length) return null
               const open = isOpen(g)
               return (
@@ -611,7 +623,7 @@ export function ComparisonPlayground() {
               )
             })}
             {(() => {
-              const hidden = groups.reduce((n, g) => n + g.leaves.filter((k) => weightOf(k) === 0).length, 0)
+              const hidden = groups.reduce((n, g) => n + g.leaves.filter((k) => !visibleLeaf(k)).length, 0)
               if (!hidden) return null
               const cols = 1 + (baseline ? 1 : 0) + candidates.length
               return (

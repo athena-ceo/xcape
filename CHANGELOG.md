@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Filtered criteria always shown; the violating cell is flagged
+
+- A criterion you've set a **hard filter** on is now **always visible** in the comparison
+  table, even at weight 0. Previously a category could show a "⚠ doesn't match" flag while
+  the offending criterion was hidden under "other criteria", so there was no visible culprit
+  (e.g. a `climate = temperate` filter flagged the Lifestyle roll-up but the Climate row was
+  hidden).
+- The specific **leaf cell** that fails a filter now shows the ⚠ flag and amber highlight
+  (matching the category roll-up), so you can see exactly which value doesn't match.
+
 ### 2026-06-16 — `reseed-criteria` op to roll out registry changes
 
 - New `./xcape.sh reseed-criteria <dev|prod>` overwrites the editable criteria registry
