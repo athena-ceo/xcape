@@ -270,8 +270,10 @@ export function ComparisonPlayground() {
     await reloadCandidates()
   }
 
-  // Picking an answer sets that criterion's importance weight, which re-scores and
-  // re-ranks the candidates server-side.
+  // Changing a criterion's importance re-ranks the WHOLE country pool, so a higher weight
+  // can surface countries that now rank into the board (not just re-score the current five).
+  // Custom-criterion edits already repopulate server-side; built-ins need an explicit
+  // repopulate after the profile update (which on its own only re-scores the existing board).
   async function applyWeight(criterion: string, weight: number) {
     if (applying) return
     setApplying(true)
@@ -279,13 +281,14 @@ export function ComparisonPlayground() {
       if (customCrit.some((c) => c.key === criterion)) {
         // Custom-criterion weight lives on the per-search definition, not the profile.
         setCustomCrit((cc) => cc.map((c) => (c.key === criterion ? { ...c, weight } : c)))
-        await api.updateCustomCriterion(sid, criterion, { weight })
+        await api.updateCustomCriterion(sid, criterion, { weight })  // repopulates server-side
       } else {
         const next = { ...weights, [criterion]: weight }
         setWeights(next)
-        await api.updateProfile({ criteria_weights: next }) // triggers rescore
+        await api.updateProfile({ criteria_weights: next })
+        await api.repopulate(sid)  // re-rank the full pool, not just re-score the current board
       }
-      await reloadCandidates() // scores in the table update
+      await reloadCandidates() // board (countries + scores) updates
     } finally {
       setApplying(false)
     }

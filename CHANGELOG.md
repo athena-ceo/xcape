@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### 2026-06-15 — Inline weight changes re-rank the full country pool
+
+- Adjusting a **built-in criterion's weight** with the inline stepper now **re-ranks every
+  country**, so raising a weight can surface countries that newly rank onto the board —
+  previously it only re-scored the existing five (custom-criterion edits and the Repopulate
+  button already re-ranked, so this removes that inconsistency).
+- Note (not a bug): the board still tends to lead with well-rounded, accessible destinations
+  because the computed criteria (cost of living, visa ease, proximity) legitimately favour
+  them. All ~217 countries carry fresh, balanced AI criterion values — strong non-original
+  countries (Singapore, Luxembourg, Norway…) score competitively and rise when you weight
+  the criteria they excel at.
+
 ### 2026-06-15 — Criteria Settings: Apply / Cancel guard against losing edits
 
 - The **Criteria settings** panel now has explicit **Apply** and **Cancel** buttons, and shows
