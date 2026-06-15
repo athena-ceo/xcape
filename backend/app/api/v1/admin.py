@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.api.deps import require_admin
+from app.core.config import settings
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.ai_log import AIQueryLog
@@ -39,18 +40,117 @@ def put_criteria(body: dict, _: User = Depends(require_admin), db: Session = Dep
     if any(not k for k in keys) or len(keys) != len(set(keys)):
         raise HTTPException(status_code=400, detail="every node needs a unique 'key'")
     keyset = set(keys)
+    leaf_keys = {n["key"] for n in nodes if n.get("kind")}
     for n in nodes:
         parent = n.get("parent")
         if parent is not None and parent not in keyset:
             raise HTTPException(status_code=400, detail=f"node '{n['key']}' has unknown parent '{parent}'")
         if n.get("kind") not in (None, "objective", "computed"):
             raise HTTPException(status_code=400, detail=f"node '{n['key']}' has invalid kind")
+    # Personas (if present): unique keys, and every weight key must resolve to a leaf criterion.
+    personas = body.get("personas", [])
+    if not isinstance(personas, list):
+        raise HTTPException(status_code=400, detail="'personas' must be a list")
+    pkeys = [p.get("key") for p in personas]
+    if any(not k for k in pkeys) or len(pkeys) != len(set(pkeys)):
+        raise HTTPException(status_code=400, detail="every persona needs a unique 'key'")
+    for p in personas:
+        bad = [k for k in (p.get("weights") or {}) if k not in leaf_keys]
+        if bad:
+            raise HTTPException(status_code=400,
+                                detail=f"persona '{p['key']}' weights unknown criteria: {bad}")
     row = db.get(AppConfig, "criteria") or AppConfig(key="criteria")
     row.value = body
     db.add(row)
     db.commit()
     criteria_service.invalidate()
     return {"ok": True}
+
+
+class PersonaSuggestRequest(BaseModel):
+    prompt: str = ""
+
+
+@router.post("/personas/suggest")
+def suggest_personas(
+    body: PersonaSuggestRequest, _: User = Depends(require_admin), db: Session = Depends(get_db),
+):
+    """AI-author the persona set (admin-time only). Given the criteria catalog + the admin's
+    instructions, propose a list of personas (keys, labels, blurbs, match rules, weight
+    profiles). Returns the proposal for review — does NOT save; the admin edits then PUTs
+    /admin/criteria with personas embedded."""
+    from app.services import ai_client
+
+    leaves = [
+        {"key": n["key"], "about": n.get("ai_description") or n.get("label_en") or n["key"]}
+        for n in criteria_service.leaves()
+    ]
+    leaf_keys = [leaf["key"] for leaf in leaves]
+    reason_keys = criteria_service.reasons()
+    tag_keys = list(criteria_service.tags().keys())
+    schema = {
+        "type": "object",
+        "properties": {
+            "personas": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "key": {"type": "string"},
+                        "label_en": {"type": "string"}, "label_fr": {"type": "string"},
+                        "blurb_en": {"type": "string"}, "blurb_fr": {"type": "string"},
+                        "match": {
+                            "type": "object",
+                            "properties": {
+                                "reasons": {"type": "array", "items": {"type": "string", "enum": reason_keys}},
+                                "tags": {"type": "array", "items": {"type": "string", "enum": tag_keys}},
+                            },
+                            "required": ["reasons", "tags"], "additionalProperties": False,
+                        },
+                        "weights": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "key": {"type": "string", "enum": leaf_keys},
+                                    "weight": {"type": "number", "minimum": 0, "maximum": 3},
+                                },
+                                "required": ["key", "weight"], "additionalProperties": False,
+                            },
+                        },
+                    },
+                    "required": ["key", "label_en", "label_fr", "blurb_en", "blurb_fr", "match", "weights"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["personas"], "additionalProperties": False,
+    }
+    instr = (
+        "You design 'personas' (relocation archetypes) for a country-recommendation app. Each "
+        "persona has a snake_case key, EN/FR label + one-line blurb, a match rule (which "
+        "reasons-for-leaving and concern tags imply it), and a weight profile (importance 0-3 "
+        "for ONLY the criteria that critically discriminate this archetype — omit the rest, they "
+        "default to 0). Always include a 'neutral' fallback. Use only the given criteria keys.\n\n"
+        f"Reasons: {', '.join(reason_keys)}\nTags: {', '.join(tag_keys)}\n"
+        "Criteria (key — about):\n" + "\n".join(f"- {leaf['key']} — {leaf['about']}" for leaf in leaves)
+        + f"\n\nAdmin instructions: {body.prompt or '(none — produce a sensible default set)'}"
+    )
+    try:
+        data = ai_client.respond_json(
+            instr, schema, schema_name="personas", web_search=False,
+            model=settings.openai_model, kind="research", db=db, user_id=_.id,
+        )
+    except ai_client.AIUnavailable:
+        raise HTTPException(status_code=503, detail="AI unavailable")
+    # Normalise weights from the keyed array (strict-schema-friendly) to a {key: weight} map.
+    out = []
+    for p in data.get("personas", []):
+        p = dict(p)
+        p["weights"] = {w["key"]: w["weight"] for w in p.get("weights", []) if w.get("key") in set(leaf_keys)}
+        p["active"] = True
+        out.append(p)
+    return {"personas": out}
 
 
 # --- Places CRUD (deactivate, not delete) --------------------------------------------

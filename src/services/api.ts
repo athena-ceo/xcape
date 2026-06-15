@@ -162,6 +162,11 @@ export const api = {
   getAdminCriteria: () => request<any>('/admin/criteria'),
   putAdminCriteria: (registry: any) =>
     request<{ ok: boolean }>('/admin/criteria', { method: 'PUT', body: JSON.stringify(registry) }),
+  // Admin-time AI authoring of the persona set (returns a proposal; not saved).
+  suggestPersonas: (prompt: string) =>
+    request<{ personas: any[] }>('/admin/personas/suggest', {
+      method: 'POST', body: JSON.stringify({ prompt }),
+    }),
   createPlace: (body: any) =>
     request<any>('/admin/places', { method: 'POST', body: JSON.stringify(body) }),
   updatePlace: (id: number, body: any) =>

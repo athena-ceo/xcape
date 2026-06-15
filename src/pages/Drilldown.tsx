@@ -31,6 +31,8 @@ export function Drilldown() {
   const [loadingDetail, setLoadingDetail] = useState(true)
   const [loadingMedia, setLoadingMedia] = useState(true)
   const [searchId, setSearchId] = useState<number | null>(null)
+  const [weights, setWeights] = useState<Record<string, number>>({})
+  const [showZero, setShowZero] = useState(false)
 
   // Collapse state per category (persisted). Default collapsed except the clicked criterion's.
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
@@ -122,7 +124,16 @@ export function Drilldown() {
     api.getPlace(id).then(setPlace)
     api.getFacts(id).then(setFacts).catch(() => {})
     api.getMedia(id).then(setMedia).catch(() => {}).finally(() => setLoadingMedia(false))
+    api.getProfile().then((p: any) => setWeights(p?.criteria_weights ?? {})).catch(() => {})
   }, [id])
+
+  const weightOf = (key: string) => weights[key] ?? 0
+  // Edit a criterion's importance inline; persists to the profile (drives the comparison rank).
+  async function setWeight(key: string, v: number) {
+    const next = { ...weights, [key]: Math.max(0, Math.min(5, v)) }
+    setWeights(next)
+    await api.updateProfile({ criteria_weights: next }).catch(() => {})
+  }
 
   // Load the (instant) assembled detail, then progressively generate the pending criteria.
   // Re-runs when the search context resolves (so custom criteria are included).
@@ -193,10 +204,18 @@ export function Drilldown() {
     return (
       <div key={key} id={`criterion-${key}`}
         className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
-        <p className="text-sm font-medium text-turquoise-900 mb-1">
-          {d.label ?? (t.criteria as Record<string, string>)[key] ?? key}
-          {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
-        </p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-sm font-medium text-turquoise-900">
+            {d.label ?? (t.criteria as Record<string, string>)[key] ?? key}
+            {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
+          </p>
+          <label className="ml-auto flex items-center gap-1 text-xs text-turquoise-800/50">
+            {t.comparison.importance}
+            <input type="number" min={0} max={5} step={0.5} value={weightOf(key)}
+              onChange={(e) => setWeight(key, Number(e.target.value))}
+              className="w-12 border border-turquoise-100 rounded px-1 py-0.5 text-turquoise-800/70" />
+          </label>
+        </div>
         {d.pending ? (
           <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2">
             <Spinner /> {t.drilldown.generating}
@@ -280,8 +299,11 @@ export function Drilldown() {
       )}
       <div className="space-y-3 mb-6">
         {groups.map((g) => {
+          // Hide weight-0 (unimportant) criteria unless revealed; skip empty categories.
+          const vis = showZero ? g.keys : g.keys.filter((k) => weightOf(k) > 0)
+          if (!vis.length) return null
           const open = isOpen(g.key)
-          const pendingCount = g.keys.filter((k) => detailByKey[k]?.pending).length
+          const pendingCount = vis.filter((k) => detailByKey[k]?.pending).length
           return (
             <Fragment key={g.key}>
               <button onClick={() => toggleCat(g.key)}
@@ -289,12 +311,22 @@ export function Drilldown() {
                 <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>
                 <span className="font-medium text-turquoise-900">{g.label}</span>
                 {pendingCount > 0 && <Spinner />}
-                <span className="ml-auto text-xs text-turquoise-800/50">{g.keys.length}</span>
+                <span className="ml-auto text-xs text-turquoise-800/50">{vis.length}</span>
               </button>
-              {open && <div className="space-y-3 pl-1">{g.keys.map((k) => criterionBox(k))}</div>}
+              {open && <div className="space-y-3 pl-1">{vis.map((k) => criterionBox(k))}</div>}
             </Fragment>
           )
         })}
+        {(() => {
+          const hidden = groups.reduce((n, g) => n + g.keys.filter((k) => weightOf(k) === 0).length, 0)
+          if (!hidden) return null
+          return (
+            <button onClick={() => setShowZero((s) => !s)}
+              className="text-xs text-turquoise-600 hover:underline">
+              {showZero ? t.comparison.hideUnimportant : `${t.comparison.showUnimportant} (${hidden})`}
+            </button>
+          )
+        })()}
       </div>
 
       {/* Assistant — same conversation as the comparison page, with this country's context */}

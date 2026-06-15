@@ -6,9 +6,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useT } from '../i18n'
 import { api } from '../services/api'
 import { AdminCriteria } from './AdminCriteria'
+import { AdminPersonas } from './AdminPersonas'
 import { AdminPlaces } from './AdminPlaces'
 
-type Tab = 'users' | 'searches' | 'places' | 'ailog' | 'criteria'
+type Tab = 'users' | 'searches' | 'places' | 'ailog' | 'criteria' | 'personas'
 
 export function AdminDashboard() {
   const { t, lang } = useT()
@@ -21,7 +22,7 @@ export function AdminDashboard() {
   useEffect(() => {
     setQuery('')
     setSort({ key: '', dir: 1 })
-    if (tab === 'criteria' || tab === 'places') { setLoading(false); setRows([]); return }
+    if (tab === 'criteria' || tab === 'places' || tab === 'personas') { setLoading(false); setRows([]); return }
     setLoading(true)
     const fetcher = {
       users: api.getAdminUsers, searches: api.getAdminSearches,
@@ -73,6 +74,7 @@ export function AdminDashboard() {
       ['created_at', t.admin.colWhen, (r: any) => fmt(r.created_at, lang)],
     ],
     criteria: [],
+    personas: [],
   }[tab] as any), [tab, t, lang])
 
   const view = useMemo(() => {
@@ -93,7 +95,7 @@ export function AdminDashboard() {
   const tabs: [Tab, string][] = [
     ['users', t.admin.usersTitle], ['searches', t.admin.searchesTitle],
     ['places', t.admin.placesTitle], ['criteria', t.admin.criteriaTitle],
-    ['ailog', t.admin.aiLogTitle],
+    ['personas', t.admin.personasTitle], ['ailog', t.admin.aiLogTitle],
   ]
 
   return (
@@ -111,13 +113,15 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      {tab !== 'criteria' && tab !== 'places' && (
+      {tab !== 'criteria' && tab !== 'places' && tab !== 'personas' && (
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.admin.search}
           className="w-full sm:w-72 border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
       )}
 
       {tab === 'criteria' ? (
         <AdminCriteria />
+      ) : tab === 'personas' ? (
+        <AdminPersonas />
       ) : tab === 'places' ? (
         <AdminPlaces />
       ) : loading ? (
@@ -160,7 +164,7 @@ export function AdminDashboard() {
           </table>
         </div>
       )}
-      {tab !== 'criteria' && tab !== 'places' && (
+      {tab !== 'criteria' && tab !== 'places' && tab !== 'personas' && (
         <p className="text-xs text-turquoise-800/50 mt-2">{view.length}</p>
       )}
     </main>

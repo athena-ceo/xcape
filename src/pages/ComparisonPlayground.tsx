@@ -53,6 +53,7 @@ export function ComparisonPlayground() {
   const [tuning, setTuning] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [applying, setApplying] = useState(false)
+  const [showZero, setShowZero] = useState(false)  // reveal weight-0 (unimportant) criteria
 
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
@@ -374,11 +375,21 @@ export function ComparisonPlayground() {
         .slice(0, 8)
     : []
 
-  // One leaf criterion row (used inside each open category group).
+  // One leaf criterion row (used inside each open category group). The weight is shown and
+  // editable inline (reusing applyWeight, which persists + re-ranks).
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
-        <td className="p-3 pl-8 text-turquoise-800/70">{critLabel(key)}</td>
+        <td className="p-3 pl-8 text-turquoise-800/70">
+          <div className="flex items-center gap-2">
+            <span>{critLabel(key)}</span>
+            <input type="number" min={0} max={5} step={0.5} value={weightOf(key)}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => applyWeight(key, Math.max(0, Math.min(5, Number(e.target.value))))}
+              title={t.comparison.importance}
+              className="w-12 border border-turquoise-100 rounded px-1 py-0.5 text-xs text-turquoise-800/70" />
+          </div>
+        </td>
         {baseline && (() => {
           const bpending = (baseline.pending || []).includes(key)
           const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
@@ -519,6 +530,10 @@ export function ComparisonPlayground() {
           </thead>
           <tbody>
             {groups.map((g) => {
+              // Hide weight-0 (unimportant) criteria unless the user reveals them; a category
+              // with nothing important is hidden entirely.
+              const vis = showZero ? g.leaves : g.leaves.filter((k) => weightOf(k) > 0)
+              if (!vis.length) return null
               const open = isOpen(g)
               return (
                 <Fragment key={g.key}>
@@ -528,20 +543,35 @@ export function ComparisonPlayground() {
                       <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>{g.label}
                     </td>
                     {baseline && (
-                      <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
-                        {tierWord(rollupTier(baseline, g.leaves))}
+                      <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, vis)) || 'bg-turquoise-50'}`}>
+                        {tierWord(rollupTier(baseline, vis))}
                       </td>
                     )}
                     {candidates.map((c) => (
-                      <td key={c.id} className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(c, g.leaves))}`}>
-                        {tierWord(rollupTier(c, g.leaves))}
+                      <td key={c.id} className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(c, vis))}`}>
+                        {tierWord(rollupTier(c, vis))}
                       </td>
                     ))}
                   </tr>
-                  {open && g.leaves.map((key) => leafRow(key))}
+                  {open && vis.map((key) => leafRow(key))}
                 </Fragment>
               )
             })}
+            {(() => {
+              const hidden = groups.reduce((n, g) => n + g.leaves.filter((k) => weightOf(k) === 0).length, 0)
+              if (!hidden) return null
+              const cols = 1 + (baseline ? 1 : 0) + candidates.length
+              return (
+                <tr className="border-t border-turquoise-100">
+                  <td colSpan={cols} className="p-2 text-center">
+                    <button onClick={() => setShowZero((s) => !s)}
+                      className="text-xs text-turquoise-600 hover:underline">
+                      {showZero ? t.comparison.hideUnimportant : `${t.comparison.showUnimportant} (${hidden})`}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })()}
             <tr className="border-t border-turquoise-200 bg-turquoise-50">
               <td className="p-3 font-medium">{t.comparison.matchScore}</td>
               {baseline && <td className="p-3 text-center bg-turquoise-100/60 text-turquoise-800/40">—</td>}

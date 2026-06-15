@@ -22,7 +22,7 @@ from app.models.chat import ChatMessage
 from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
-from app.services import ai_client, chat_tools
+from app.services import ai_client, chat_tools, criteria
 
 SYSTEM_PROMPT = (
     "You are xCape's relocation assistant. Help the user choose a country/region/city to "
@@ -106,6 +106,15 @@ def _user_context(db: Session, user: User, search: Search, place_id: int | None 
                 lines.append(f"Speaks: {', '.join(known)}.")
         if p.criteria_weights:
             lines.append(f"Prioritises: {', '.join(p.criteria_weights.keys())}.")
+        persona = criteria.persona(getattr(p, "persona", None))
+        if persona:
+            loc = user.locale or "fr"
+            plabel = persona.get(f"label_{loc}") or persona.get("label_en") or persona["key"]
+            pblurb = persona.get(f"blurb_{loc}") or persona.get("blurb_en") or ""
+            top = sorted(persona.get("weights", {}).items(), key=lambda kv: -kv[1])[:5]
+            prio = ", ".join(criteria.label(k, loc) for k, _ in top)
+            lines.append(f"Persona: {plabel} — {pblurb} Tailor answers to this archetype; "
+                         f"its key priorities are: {prio}.")
 
     # Active hard filters (the user's non-negotiables) — the assistant must respect these.
     filter_descr = _active_filters(p, search)
