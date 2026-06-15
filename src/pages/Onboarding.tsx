@@ -159,6 +159,8 @@ export function Onboarding() {
       })
       const search = await api.createSearch(t.shortlist.title)
       await api.buildShortlist(search.id)
+      // Add the persona's specific criteria (e.g. per-community tolerance, asset-tax, pension visa).
+      await api.applyPersona(search.id).catch(() => {})
       // Free-text priorities → let the AI pick & weight extra criteria from them, so the
       // user's own words shape the comparison (best-effort; never blocks the flow).
       if (a.priorities_text.trim()) {

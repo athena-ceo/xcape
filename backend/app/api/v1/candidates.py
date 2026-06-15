@@ -302,6 +302,54 @@ def update_custom_criterion(
     return list_candidates(search_id, user=user, db=db)
 
 
+@router.post("/{search_id}/apply-persona", response_model=list[CandidateOut])
+def apply_persona(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """Add the user's persona's specific criteria to this search (e.g. asset-tax & banking for
+    asset_protection; pension-visa for retiree; per-community tolerance for safety_community,
+    expanded once per community the user flagged). Cache-first; they then evaluate via
+    /evaluate-pending like any custom criterion."""
+    search = _owned(db, user, search_id)
+    prof = user.profile
+    persona = criteria.persona(getattr(prof, "persona", None))
+    if persona is None:
+        return list_candidates(search_id, user=user, db=db)
+
+    locale = user.locale or "fr"
+    defs = list(search.custom_criteria or [])
+    have = {c.get("key") for c in defs}
+    comms = {c["key"]: c for c in criteria.communities()}
+    user_comms = (prof.minority_groups or []) if prof else []
+    added: list[str] = []
+
+    def _add(label: str, description: str, weight: float):
+        key = criterion_eval.slugify(label)
+        if not key or key in have:
+            return
+        defs.append({"key": key, "label": label, "description": description, "weight": weight})
+        have.add(key)
+        added.append(key)
+
+    for cc in persona.get("custom_criteria", []):
+        base = cc.get(f"label_{locale}") or cc.get("label_en") or cc.get("label") or "criterion"
+        desc = cc.get("description", "")
+        if cc.get("per_community"):
+            for ck in user_comms:
+                c = comms.get(ck)
+                clabel = (c.get(f"label_{locale}") or c.get("label_en") or ck) if c else ck
+                _add(f"{base} — {clabel}", desc.replace("{community}", clabel), 2.0)
+        else:
+            _add(base, desc, 1.5)
+
+    if added:
+        search.custom_criteria = defs
+        search.criteria_set = list({*(search.criteria_set or []), *added})
+        db.commit()
+        shortlist_service.rescore_candidates(db, user, search)
+    return list_candidates(search_id, user=user, db=db)
+
+
 @router.post("/{search_id}/suggest-criteria", response_model=list[CandidateOut])
 def suggest_criteria(
     search_id: int,

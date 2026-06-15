@@ -53,6 +53,35 @@ def test_public_registry_includes_personas():
     assert {"neutral", "safety_community", "retiree"} <= keys
 
 
+def test_apply_persona_adds_per_community_criteria(auth_client, db_session):
+    from app.db.seed import seed
+    seed(db_session)
+    auth_client.put("/api/v1/profile", json={
+        "persona": "safety_community", "minority_groups": ["jewish", "lgbtq"],
+    })
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/shortlist")
+    auth_client.post(f"/api/v1/searches/{sid}/apply-persona")
+    customs = auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()
+    # One per-community tolerance criterion for each flagged community.
+    assert len(customs) == 2
+    assert all("community" not in c["description"].lower() or "{community}" not in c["description"]
+               for c in customs)  # template was substituted
+
+
+def test_apply_persona_asset_protection_fixed_criteria(auth_client, db_session):
+    from app.db.seed import seed
+    seed(db_session)
+    auth_client.put("/api/v1/profile", json={"persona": "asset_protection"})
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/apply-persona")
+    customs = auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()
+    labels = " ".join(c["label"].lower() for c in customs)
+    assert len(customs) == 2  # wealth/inheritance tax + banking
+    # Labels come through in the user's locale (fr by default here).
+    assert ("impôt" in labels or "tax" in labels) and ("banqu" in labels or "bank" in labels)
+
+
 def test_derive_endpoint(auth_client, db_session):
     r = auth_client.post("/api/v1/persona/derive", json={"reasons": ["discrimination"], "priorities": []})
     assert r.status_code == 200, r.text

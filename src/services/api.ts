@@ -69,6 +69,9 @@ export const api = {
   // topping it up (flagging any that don't meet the filters).
   repopulate: (id: number) =>
     request<any[]>(`/searches/${id}/repopulate`, { method: 'POST' }),
+  // Add the user's persona's specific criteria (asset-tax, pension-visa, per-community tolerance…).
+  applyPersona: (id: number) =>
+    request<any[]>(`/searches/${id}/apply-persona`, { method: 'POST' }),
   updateCustomCriterion: (id: number, key: string, body: { weight?: number; min?: number | null }) =>
     request<any[]>(`/searches/${id}/custom-criteria/${encodeURIComponent(key)}`, {
       method: 'PATCH',
