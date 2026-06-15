@@ -1,9 +1,10 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 import { api } from '../services/api'
+import { useAuth } from '../store/auth'
 import { en } from './en'
 import { fr } from './fr'
 
@@ -30,6 +31,18 @@ function initialLang(): Language {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Language>(initialLang)
+  const token = useAuth((s) => s.token)
+
+  // Without an explicit local choice, follow the account's saved locale. This makes the
+  // language stick across devices / fresh browsers (and even if localStorage writes are
+  // blocked), instead of silently falling back to the French default.
+  useEffect(() => {
+    if (!token) return
+    try { if (localStorage.getItem(STORAGE_KEY)) return } catch { /* ignore */ }
+    api.me().then((me) => {
+      if (me?.locale === 'en' || me?.locale === 'fr') setLangState(me.locale)
+    }).catch(() => { /* non-blocking */ })
+  }, [token])
 
   // Persist the choice so it survives reloads AND so the server-side locale (used for the
   // PDF report, emails, etc.) matches what the user is reading. Best-effort on the server.
