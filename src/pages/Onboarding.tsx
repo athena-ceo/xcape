@@ -79,8 +79,8 @@ export function Onboarding() {
   const [persona, setPersona] = useState<Persona | null>(null)
   const [deriving, setDeriving] = useState(false)
 
-  // Pre-fill from the server: current country (detected at registration) and any
-  // previously saved language skills; default known languages to the UI locale.
+  // Pre-fill from the server ONCE on mount — never re-run, so an async locale change can't
+  // overwrite answers the user is in the middle of selecting (e.g. multiple communities).
   useEffect(() => {
     api.me().then((me) => {
       setA((cur) => ({
@@ -108,7 +108,7 @@ export function Onboarding() {
         willing_to_learn: p?.language_skills?.willing_to_learn ?? cur.willing_to_learn,
       }))
     }).catch(() => {})
-  }, [lang])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Steps are dynamic: the persona (derived after priorities) gates the optional steps.
   const STEPS = useMemo<StepId[]>(() => {
