@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.search import Search
 from app.models.user import User
 from app.schemas.search import CandidateOut, SearchCreate, SearchOut, SearchUpdate
-from app.services import board, comparison
+from app.services import board, comparison, custom_criteria
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
@@ -34,6 +34,7 @@ def create_search(
     search = Search(user_id=user.id, title=body.title)
     db.add(search)
     db.commit()
+    custom_criteria.merge_into_search(db, user, search)  # seed the user's persistent customs
     db.refresh(search)
     return search
 

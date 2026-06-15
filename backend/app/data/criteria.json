@@ -46,7 +46,7 @@
       "custom_criteria": [
         {"label_en": "Safety for my community", "label_fr": "Sécurité pour ma communauté",
          "description": "How safe, accepted and protected the {community} community is for residents — recent trends in hate incidents, legal protections and everyday climate. Cite trusted human-rights / community sources.",
-         "per_community": true}
+         "per_community": true, "category": "protection"}
       ]
     },
     {

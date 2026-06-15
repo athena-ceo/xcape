@@ -20,7 +20,8 @@ from app.schemas.search import (
     UpdateCustomCriterionRequest,
 )
 from app.services import (
-    ai_client, board, comparison, criteria, criteria_select, criterion_eval, place_research,
+    ai_client, board, comparison, criteria, criteria_select, criterion_eval,
+    custom_criteria, place_research,
 )
 from app.models.profile import Profile
 from app.services import shortlist as shortlist_service
@@ -52,6 +53,7 @@ def list_candidates(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     search = _owned(db, user, search_id)
+    custom_criteria.merge_into_search(db, user, search)  # self-heal: bring in persistent customs
     candidates = (
         db.query(Candidate)
         .filter(Candidate.search_id == search_id, Candidate.status == "active")
@@ -263,13 +265,14 @@ def add_custom_criterion(
     search = _owned(db, user, search_id)
     key = criterion_eval.slugify(body.label)
     defs = list(search.custom_criteria or [])
+    new_def = {"key": key, "label": body.label, "description": body.description, "weight": body.weight}
     if not any(c.get("key") == key for c in defs):
-        defs.append({"key": key, "label": body.label, "description": body.description,
-                     "weight": body.weight})
+        defs.append(new_def)
         search.custom_criteria = defs
     if key not in (search.criteria_set or []):
         search.criteria_set = [*(search.criteria_set or []), key]
     db.commit()
+    custom_criteria.persist_to_profile(db, user, [new_def])  # follow the user across searches
     return list_candidates(search_id, user=user, db=db)
 
 
@@ -298,6 +301,20 @@ def update_custom_criterion(
             target["min"] = float(fields["min"])
     search.custom_criteria = defs
     db.commit()
+    # Mirror the weight/min edit onto the persisted copy (so it sticks across searches).
+    prof = user.profile
+    if prof and prof.custom_criteria:
+        pc = [dict(c) for c in prof.custom_criteria]
+        for c in pc:
+            if c.get("key") == key:
+                if "weight" in target:
+                    c["weight"] = target["weight"]
+                if "min" in target:
+                    c["min"] = target["min"]
+                else:
+                    c.pop("min", None)
+        prof.custom_criteria = pc
+        db.commit()
     shortlist_service.repopulate_board(db, user, search)
     return list_candidates(search_id, user=user, db=db)
 
@@ -323,24 +340,29 @@ def apply_persona(
     user_comms = (prof.minority_groups or []) if prof else []
     added: list[str] = []
 
-    def _add(label: str, description: str, weight: float):
+    def _add(label: str, description: str, weight: float, category: str | None):
         key = criterion_eval.slugify(label)
         if not key or key in have:
             return
-        defs.append({"key": key, "label": label, "description": description, "weight": weight})
+        d = {"key": key, "label": label, "description": description, "weight": weight,
+             "source": "persona"}  # per-search (regenerated); not persisted to the profile
+        if category:
+            d["category"] = category  # file it under a built-in category, not "Your criteria"
+        defs.append(d)
         have.add(key)
         added.append(key)
 
     for cc in persona.get("custom_criteria", []):
         base = cc.get(f"label_{locale}") or cc.get("label_en") or cc.get("label") or "criterion"
         desc = cc.get("description", "")
+        category = cc.get("category")
         if cc.get("per_community"):
             for ck in user_comms:
                 c = comms.get(ck)
                 clabel = (c.get(f"label_{locale}") or c.get("label_en") or ck) if c else ck
-                _add(f"{base} — {clabel}", desc.replace("{community}", clabel), 2.0)
+                _add(f"{base} — {clabel}", desc.replace("{community}", clabel), 2.0, category)
         else:
-            _add(base, desc, 1.5)
+            _add(base, desc, 1.5, category)
 
     if added:
         search.custom_criteria = defs
@@ -373,16 +395,20 @@ def suggest_criteria(
     # Register suggested custom criteria (evaluated progressively via /evaluate-pending).
     defs = list(search.custom_criteria or [])
     keys = {c.get("key") for c in defs}
+    added: list[dict] = []
     for c in result["custom"]:
         key = criterion_eval.slugify(c["label"])
         if key in keys:
             continue
-        defs.append({"key": key, "label": c["label"], "description": c.get("description"), "weight": 1.0})
+        d = {"key": key, "label": c["label"], "description": c.get("description"), "weight": 1.0}
+        defs.append(d)
+        added.append(d)
         keys.add(key)
         if key not in (search.criteria_set or []):
             search.criteria_set = [*(search.criteria_set or []), key]
     search.custom_criteria = defs
     db.commit()
+    custom_criteria.persist_to_profile(db, user, added)  # the user's own words → persist for them
 
     shortlist_service.rescore_candidates(db, user, search)
     return list_candidates(search_id, user=user, db=db)

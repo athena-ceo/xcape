@@ -33,6 +33,7 @@ export function Drilldown() {
   const [searchId, setSearchId] = useState<number | null>(null)
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [customWeights, setCustomWeights] = useState<Record<string, number>>({})
+  const [customCats, setCustomCats] = useState<Record<string, string>>({})
   const [showZero, setShowZero] = useState(false)
 
   // Collapse state per category (persisted). Default collapsed except the clicked criterion's.
@@ -61,13 +62,20 @@ export function Drilldown() {
     const byKey = new Set(rows.map((r) => r.key))
     const cats = categories(reg)
     const inCats = new Set(cats.flatMap((c) => c.leaves))
+    // Custom criteria with a category join that built-in category; the rest go to "Your criteria".
     const out = cats
-      .map((c) => ({ key: c.key, label: labelOf(reg, c.key, lang), keys: c.leaves.filter((k) => byKey.has(k)) }))
+      .map((c) => ({
+        key: c.key, label: labelOf(reg, c.key, lang),
+        keys: [
+          ...c.leaves.filter((k) => byKey.has(k)),
+          ...rows.map((r) => r.key).filter((k) => byKey.has(k) && customCats[k] === c.key),
+        ],
+      }))
       .filter((g) => g.keys.length)
-    const extra = rows.map((r) => r.key).filter((k) => !inCats.has(k))
+    const extra = rows.map((r) => r.key).filter((k) => !inCats.has(k) && !customCats[k])
     if (extra.length) out.push({ key: '__custom', label: t.comparison.customGroup, keys: extra })
     return out
-  }, [detail, reg, lang, t])
+  }, [detail, reg, lang, t, customCats])
 
   const clickedCat = useMemo(() => {
     if (!clickedKey) return null
@@ -138,7 +146,10 @@ export function Drilldown() {
   useEffect(() => {
     if (searchId == null) return
     api.listCustomCriteria(searchId)
-      .then((list: any[]) => setCustomWeights(Object.fromEntries(list.map((c) => [c.key, c.weight ?? 1]))))
+      .then((list: any[]) => {
+        setCustomWeights(Object.fromEntries(list.map((c) => [c.key, c.weight ?? 1])))
+        setCustomCats(Object.fromEntries(list.filter((c) => c.category).map((c) => [c.key, c.category])))
+      })
       .catch(() => {})
   }, [searchId])
 

@@ -28,6 +28,10 @@ class Profile(Base):
     tenure: Mapped[str | None] = mapped_column(String(10), nullable=True)  # rent/buy
     climate_pref: Mapped[str | None] = mapped_column(String(20), nullable=True)
     language_skills: Mapped[dict | None] = mapped_column(JSON, default=dict)
+    # User-defined criteria that persist across the user's searches (each {key, label,
+    # description, weight, ...}). Seeded into every new search; persona-generated criteria
+    # are NOT stored here (they live per-search, regenerated from the persona/communities).
+    custom_criteria: Mapped[list | None] = mapped_column(JSON, default=list)
     must_haves: Mapped[list | None] = mapped_column(JSON, default=list)
     nice_to_haves: Mapped[list | None] = mapped_column(JSON, default=list)
     criteria_weights: Mapped[dict | None] = mapped_column(JSON, default=dict)

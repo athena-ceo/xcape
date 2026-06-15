@@ -82,6 +82,33 @@ def test_apply_persona_asset_protection_fixed_criteria(auth_client, db_session):
     assert ("impôt" in labels or "tax" in labels) and ("banqu" in labels or "bank" in labels)
 
 
+def test_custom_criteria_persist_across_searches(auth_client, db_session):
+    from app.db.seed import seed
+    seed(db_session)
+    s1 = auth_client.post("/api/v1/searches", json={"title": "A"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{s1}/custom-criteria",
+                     json={"label": "IBM lab", "description": "Does it have an IBM lab?"})
+    # A brand-new search inherits the user's persistent custom criteria.
+    s2 = auth_client.post("/api/v1/searches", json={"title": "B"}).json()["id"]
+    customs = auth_client.get(f"/api/v1/searches/{s2}/custom-criteria").json()
+    assert any(c["label"] == "IBM lab" for c in customs)
+
+
+def test_persona_criteria_carry_category_and_not_persisted(auth_client, db_session):
+    from app.db.seed import seed
+    seed(db_session)
+    auth_client.put("/api/v1/profile", json={"persona": "safety_community", "minority_groups": ["jewish"]})
+    s1 = auth_client.post("/api/v1/searches", json={"title": "A"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{s1}/apply-persona")
+    customs = auth_client.get(f"/api/v1/searches/{s1}/custom-criteria").json()
+    persona_c = [c for c in customs if c.get("source") == "persona"]
+    assert persona_c and all(c.get("category") == "protection" for c in persona_c)
+    # Persona criteria are per-search: a new search does NOT inherit them (no profile persistence).
+    s2 = auth_client.post("/api/v1/searches", json={"title": "B"}).json()["id"]
+    customs2 = auth_client.get(f"/api/v1/searches/{s2}/custom-criteria").json()
+    assert not any(c.get("source") == "persona" for c in customs2)
+
+
 def test_derive_endpoint(auth_client, db_session):
     r = auth_client.post("/api/v1/persona/derive", json={"reasons": ["discrimination"], "priorities": []})
     assert r.status_code == 200, r.text

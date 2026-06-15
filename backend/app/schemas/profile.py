@@ -17,6 +17,7 @@ class ProfileUpdate(BaseModel):
     language_skills: dict | None = None
     must_haves: list[str] | None = None
     nice_to_haves: list[str] | None = None
+    custom_criteria: list | None = None
     criteria_weights: dict | None = None
     filters: dict | None = None
     minority_groups: list[str] | None = None

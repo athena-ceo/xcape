@@ -32,7 +32,7 @@ export function ComparisonPlayground() {
 
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
-  const [customCrit, setCustomCrit] = useState<{ key: string; label: string; weight?: number; min?: number }[]>([])
+  const [customCrit, setCustomCrit] = useState<{ key: string; label: string; weight?: number; min?: number; category?: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
@@ -101,7 +101,7 @@ export function ComparisonPlayground() {
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
     setWeights(profile?.criteria_weights ?? {})
     setFilters(profile?.filters ?? {})
-    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label, weight: c.weight, min: c.min })))
+    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label, weight: c.weight, min: c.min, category: c.category })))
     await reloadCandidates()
   }
 
@@ -328,12 +328,21 @@ export function ComparisonPlayground() {
   // Criteria grouped for the table: registry categories + a synthetic group for the
   // search's custom criteria. Each group = {key, label, leaves[]}.
   const TIER_VALUE: Record<string, number> = { good: 1, ok: 0.6, bad: 0.3 }
+  // Custom criteria with a `category` are filed under that built-in category; the rest go to
+  // the catch-all "Your criteria" group.
+  const customByCat: Record<string, string[]> = {}
+  const customUngrouped: string[] = []
+  for (const c of customCrit) {
+    if (c.category) (customByCat[c.category] ??= []).push(c.key)
+    else customUngrouped.push(c.key)
+  }
   const groups = [
     ...categories(reg).map((c) => ({
-      key: c.key, label: labelOf(reg, c.key, lang), leaves: c.leaves,
+      key: c.key, label: labelOf(reg, c.key, lang),
+      leaves: [...c.leaves, ...(customByCat[c.key] ?? [])],
     })),
-    ...(customCrit.length
-      ? [{ key: '__custom', label: t.comparison.customGroup, leaves: customCrit.map((c) => c.key) }]
+    ...(customUngrouped.length
+      ? [{ key: '__custom', label: t.comparison.customGroup, leaves: customUngrouped }]
       : []),
   ]
   // Custom-criterion weights live on the per-search definition; built-ins on the profile.

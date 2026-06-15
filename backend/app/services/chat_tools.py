@@ -230,13 +230,15 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
             return {"ok": False, "error": "missing label"}, False
         key = criterion_eval.slugify(label)
         defs = list(search.custom_criteria or [])
+        new_def = {"key": key, "label": label, "description": args.get("description"), "weight": 1.0}
         if not any(c.get("key") == key for c in defs):
-            defs.append({"key": key, "label": label,
-                         "description": args.get("description"), "weight": 1.0})
+            defs.append(new_def)
             search.custom_criteria = defs
         if key not in (search.criteria_set or []):
             search.criteria_set = [*(search.criteria_set or []), key]
         db.commit()
+        from app.services import custom_criteria
+        custom_criteria.persist_to_profile(db, user, [new_def])  # follow the user across searches
         # Per-country evaluation fills in progressively via /evaluate-pending (non-blocking).
         return {"ok": True, "added_criterion": label}, True
 

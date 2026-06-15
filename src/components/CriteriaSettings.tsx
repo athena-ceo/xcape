@@ -10,7 +10,7 @@ const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
 const PRESETS: { key: string; w: number }[] = [
   { key: 'impIgnore', w: 0 }, { key: 'impLow', w: 0.5 }, { key: 'impNormal', w: 1 }, { key: 'impHigh', w: 2.5 },
 ]
-export interface CustomCrit { key: string; label: string; weight?: number; min?: number }
+export interface CustomCrit { key: string; label: string; weight?: number; min?: number; category?: string }
 export interface SettingsPayload {
   weights: Record<string, number>
   filters: Record<string, any>
