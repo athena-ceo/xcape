@@ -45,6 +45,7 @@ export const en: Dict = {
     saveAndView: 'Save and view my search',
     saving: 'Saving…',
     saved: 'Profile saved — ranking recomputed.',
+    personaNote: 'Changing your profile resets the criteria weights to that profile’s defaults.',
   },
   home: {
     heroTitle: 'What if your next home were somewhere else?',
@@ -156,6 +157,12 @@ export const en: Dict = {
       moreQ: 'Anything else?',
       moreHint: 'Describe in your own words any other priorities — we’ll turn them into criteria.',
       morePlaceholder: 'e.g. a strong startup scene and good international schools',
+    },
+    persona: {
+      q: 'Here’s what we’ll focus on',
+      hint: 'Based on your answers, we’ve set up a starting profile. You can change it — and fine-tune every weight later.',
+      focus: 'Focus criteria:',
+      change: 'Not quite right? Choose a different profile:',
     },
   },
   criteria: {

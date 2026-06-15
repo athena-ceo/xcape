@@ -49,6 +49,11 @@ export const api = {
   }) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
   getCriteria: () => request<any>('/criteria'),
+  // Rule-based persona from the first onboarding answers → {key, persona{...}}.
+  derivePersona: (reasons: string[], priorities: string[]) =>
+    request<{ key: string; persona: any }>('/persona/derive', {
+      method: 'POST', body: JSON.stringify({ reasons, priorities }),
+    }),
   getProfile: () => request('/profile'),
   updateProfile: (data: unknown) =>
     request('/profile', { method: 'PUT', body: JSON.stringify(data) }),

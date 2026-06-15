@@ -15,6 +15,7 @@ import {
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
+import { useCriteria, type Persona } from '../services/criteria'
 import { useAuth } from '../store/auth'
 
 interface Form {
@@ -33,6 +34,7 @@ interface Form {
   willing_to_learn: boolean | null
   priorities: string[]
   priorities_text: string
+  persona: string | null
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -45,7 +47,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function ProfilePage() {
-  const { t } = useT()
+  const { t, lang } = useT()
+  const reg = useCriteria()
   const navigate = useNavigate()
   const refreshAuth = useAuth((s) => s.refresh)
   const [f, setF] = useState<Form | null>(null)
@@ -71,6 +74,7 @@ export function ProfilePage() {
         willing_to_learn: p?.language_skills?.willing_to_learn ?? null,
         priorities: Object.keys(p?.criteria_weights ?? {}),
         priorities_text: p?.priorities_text ?? '',
+        persona: p?.persona ?? null,
       })
     })
   }, [])
@@ -78,6 +82,15 @@ export function ProfilePage() {
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setSaved(false)
     setF((cur) => (cur ? { ...cur, [key]: value } : cur))
+  }
+
+  const personaList: Persona[] = reg?.personas ?? []
+  // Initial weights from the chosen persona, with explicitly-picked priorities lifted.
+  function weightsFor(form: Form): Record<string, number> {
+    const pw = personaList.find((p) => p.key === form.persona)?.weights ?? {}
+    const cw: Record<string, number> = { ...pw }
+    for (const k of form.priorities) cw[k] = Math.max(pw[k] ?? 0, PRIORITY_WEIGHT)
+    return cw
   }
 
   async function save() {
@@ -99,7 +112,8 @@ export function ProfilePage() {
         tenure: f.tenure,
         climate_pref: f.climate_pref,
         language_skills: { known: f.known_languages, willing_to_learn: !!f.willing_to_learn },
-        criteria_weights: Object.fromEntries(f.priorities.map((k) => [k, PRIORITY_WEIGHT])),
+        criteria_weights: weightsFor(f),
+        persona: f.persona ?? undefined,
         priorities_text: f.priorities_text.trim(),
       })
       await refreshAuth() // re-read identity from the server
@@ -175,6 +189,20 @@ export function ProfilePage() {
             ))}
           </div>
         </Section>
+
+        {personaList.length > 0 && (
+          <Section title={t.onboarding.persona.q}>
+            <p className="text-sm text-turquoise-800/60 mb-3">{t.onboarding.persona.change}</p>
+            <select value={f.persona ?? ''} onChange={(e) => set('persona', e.target.value || null)}
+              className="w-full border border-turquoise-100 rounded-md px-3 py-2 text-sm">
+              <option value="">—</option>
+              {personaList.map((p) => (
+                <option key={p.key} value={p.key}>{(lang === 'fr' ? p.label_fr : p.label_en) || p.label_en}</option>
+              ))}
+            </select>
+            <p className="text-xs text-turquoise-800/50 mt-2">{t.profile.personaNote}</p>
+          </Section>
+        )}
 
         <Section title={t.onboarding.communities.q}>
           <p className="text-sm text-turquoise-800/60 mb-3">{t.onboarding.communities.hint}</p>

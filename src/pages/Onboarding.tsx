@@ -1,7 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Chip } from '../components/Chip'
@@ -15,6 +15,7 @@ import {
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
+import { labelOf, useCriteria, type Persona } from '../services/criteria'
 import { useAuth } from '../store/auth'
 
 type StepId =
@@ -22,19 +23,18 @@ type StepId =
   | 'citizenship'
   | 'household'
   | 'reasons'
+  | 'priorities'
+  | 'persona'
   | 'communities'
   | 'budget'
   | 'climate'
   | 'language'
-  | 'priorities'
 
-// Priorities come early (right after the reasons for leaving) so the profile of what
-// matters is captured up front. rent/buy (tenure) is not asked here — it only matters
-// for the detailed cost analysis; it stays editable in the profile page.
-const STEPS: StepId[] = [
-  'currentCountry', 'citizenship', 'household', 'reasons', 'priorities', 'communities',
-  'budget', 'climate', 'language',
-]
+// Universal steps (always asked); the persona is derived right after priorities, then it
+// gates which of the optional steps below are shown (persona.ask). 'language' is universal
+// (a practical concern for everyone) and shown last.
+const BASE_STEPS: StepId[] = ['currentCountry', 'citizenship', 'household', 'reasons', 'priorities']
+const GATED_STEPS: StepId[] = ['communities', 'budget', 'climate']
 
 interface Answers {
   current_country: string
@@ -70,11 +70,14 @@ const EMPTY: Answers = {
 
 export function Onboarding() {
   const { t, lang } = useT()
+  const reg = useCriteria()
   const navigate = useNavigate()
   const refreshAuth = useAuth((s) => s.refresh)
   const [index, setIndex] = useState(0)
   const [a, setA] = useState<Answers>(EMPTY)
   const [busy, setBusy] = useState(false)
+  const [persona, setPersona] = useState<Persona | null>(null)
+  const [deriving, setDeriving] = useState(false)
 
   // Pre-fill from the server: current country (detected at registration) and any
   // previously saved language skills; default known languages to the UI locale.
@@ -107,6 +110,12 @@ export function Onboarding() {
     }).catch(() => {})
   }, [lang])
 
+  // Steps are dynamic: the persona (derived after priorities) gates the optional steps.
+  const STEPS = useMemo<StepId[]>(() => {
+    if (!persona) return BASE_STEPS
+    const ask = persona.ask ?? GATED_STEPS
+    return [...BASE_STEPS, 'persona', ...GATED_STEPS.filter((g) => ask.includes(g)), 'language']
+  }, [persona])
   const step = STEPS[index]
   const isLast = index === STEPS.length - 1
 
@@ -115,6 +124,19 @@ export function Onboarding() {
     step === 'household' ? !!a.household_type
     : step === 'currentCountry' ? !!a.current_country.trim()
     : true
+
+  const personaList: Persona[] = reg?.personas ?? []
+  function personaLabel(p: Persona | null): string {
+    return p ? ((lang === 'fr' ? p.label_fr : p.label_en) || p.label_en) : ''
+  }
+  function personaBlurb(p: Persona | null): string {
+    return p ? ((lang === 'fr' ? p.blurb_fr : p.blurb_en) || p.blurb_en || '') : ''
+  }
+  // The criteria a persona will focus on (its highest weights), for the confirm screen.
+  function focusCriteria(p: Persona | null): string[] {
+    const w = p?.weights ?? {}
+    return Object.keys(w).sort((x, y) => (w[y] ?? 0) - (w[x] ?? 0)).slice(0, 5)
+  }
 
   async function finish() {
     setBusy(true)
@@ -130,8 +152,9 @@ export function Onboarding() {
         tenure: a.tenure,
         climate_pref: a.climate_pref,
         language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
-        criteria_weights: Object.fromEntries(a.priorities.map((k) => [k, PRIORITY_WEIGHT])),
+        criteria_weights: weightsFromPersona(),
         minority_groups: a.minority_groups,
+        persona: persona?.key,
         priorities_text: a.priorities_text.trim(),
       })
       const search = await api.createSearch(t.shortlist.title)
@@ -149,7 +172,30 @@ export function Onboarding() {
     }
   }
 
-  function onNext() {
+  // Initial weights = the persona's profile, with any explicitly-picked priorities lifted to
+  // at least PRIORITY_WEIGHT. Criteria the persona doesn't list stay absent (weight 0).
+  function weightsFromPersona(): Record<string, number> {
+    const pw = persona?.weights ?? {}
+    const cw: Record<string, number> = { ...pw }
+    for (const k of a.priorities) cw[k] = Math.max(pw[k] ?? 0, PRIORITY_WEIGHT)
+    return cw
+  }
+
+  async function onNext() {
+    // Leaving the priorities step: derive the persona, then move to the confirm step.
+    if (step === 'priorities') {
+      setDeriving(true)
+      try {
+        const d = await api.derivePersona(a.reasons_leaving, a.priorities)
+        setPersona(d.persona)
+      } catch {
+        setPersona(personaList.find((p) => p.key === 'neutral') ?? null)
+      } finally {
+        setDeriving(false)
+      }
+      setIndex((i) => i + 1)
+      return
+    }
     if (isLast) finish()
     else setIndex((i) => i + 1)
   }
@@ -329,6 +375,37 @@ export function Onboarding() {
             </>
           )}
 
+          {step === 'persona' && (
+            <>
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.persona.q}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.persona.hint}</p>
+              <div className="bg-turquoise-50 border border-turquoise-100 rounded-lg p-4 mb-4">
+                <p className="font-medium text-turquoise-900">{personaLabel(persona)}</p>
+                {personaBlurb(persona) && (
+                  <p className="text-sm text-turquoise-800/70 mt-1">{personaBlurb(persona)}</p>
+                )}
+                {focusCriteria(persona).length > 0 && (
+                  <p className="text-sm text-turquoise-800/70 mt-2">
+                    {t.onboarding.persona.focus}{' '}
+                    <span className="text-turquoise-900">
+                      {focusCriteria(persona).map((k) => labelOf(reg, k, lang)).join(', ')}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <label className="block text-sm text-turquoise-800/70 mb-1">{t.onboarding.persona.change}</label>
+              <select
+                value={persona?.key ?? ''}
+                onChange={(e) => setPersona(personaList.find((p) => p.key === e.target.value) ?? persona)}
+                className="w-full border border-turquoise-100 rounded-md px-3 py-2 text-sm"
+              >
+                {personaList.map((p) => (
+                  <option key={p.key} value={p.key}>{personaLabel(p)}</option>
+                ))}
+              </select>
+            </>
+          )}
+
           <div className="mt-6 flex items-center gap-3">
             {index > 0 && (
               <button onClick={() => setIndex((i) => i - 1)}
@@ -337,11 +414,11 @@ export function Onboarding() {
               </button>
             )}
             <button
-              disabled={!canAdvance || busy}
+              disabled={!canAdvance || busy || deriving}
               onClick={onNext}
               className="flex-1 bg-turquoise-600 text-turquoise-50 rounded-md py-2.5 disabled:opacity-50"
             >
-              {busy ? t.common.loading : isLast ? t.onboarding.finish : t.onboarding.continue}
+              {busy || deriving ? t.common.loading : isLast ? t.onboarding.finish : t.onboarding.continue}
             </button>
           </div>
         </div>

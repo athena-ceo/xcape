@@ -18,10 +18,22 @@ export interface CritNode {
   value_labels?: Record<string, { fr: string; en: string }>
   scale?: Record<string, number>
 }
+export interface Persona {
+  key: string
+  label_fr: string
+  label_en: string
+  blurb_fr?: string
+  blurb_en?: string
+  match?: { reasons?: string[]; tags?: string[] }
+  weights?: Record<string, number>
+  ask?: string[]
+  custom_criteria?: { label_en?: string; label_fr?: string; description?: string; per_community?: boolean }[]
+}
 export interface Registry {
   tags: Record<string, { label_fr: string; label_en: string; kind: string }>
   reason_tags: Record<string, string[]>
   communities: { key: string; label_fr: string; label_en: string }[]
+  personas?: Persona[]
   nodes: CritNode[]
 }
 

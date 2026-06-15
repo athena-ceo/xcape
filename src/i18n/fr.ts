@@ -43,6 +43,7 @@ export const fr = {
     saveAndView: 'Enregistrer et voir ma recherche',
     saving: 'Enregistrement…',
     saved: 'Profil enregistré — classement recalculé.',
+    personaNote: 'Changer de profil réinitialise les poids des critères aux valeurs par défaut de ce profil.',
   },
   home: {
     heroTitle: 'Et si votre prochain chez-vous était ailleurs ?',
@@ -154,6 +155,12 @@ export const fr = {
       moreQ: 'Autre chose ?',
       moreHint: 'Décrivez avec vos mots d’autres priorités — nous en ferons des critères.',
       morePlaceholder: 'ex. un écosystème start-up dynamique et de bonnes écoles internationales',
+    },
+    persona: {
+      q: 'Voici ce sur quoi nous allons nous concentrer',
+      hint: 'D’après vos réponses, nous avons préparé un profil de départ. Vous pouvez le changer — et ajuster chaque poids plus tard.',
+      focus: 'Critères prioritaires :',
+      change: 'Pas tout à fait ça ? Choisissez un autre profil :',
     },
   },
   criteria: {
