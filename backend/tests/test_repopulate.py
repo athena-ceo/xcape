@@ -61,6 +61,27 @@ def test_repopulate_excludes_filter_violators_and_advises(auth_client, db_sessio
     assert top["key"] == "visa" and top["admits"] == 6  # relaxing visa would admit the 6 hard ones
 
 
+def test_plain_reload_self_heals_to_drop_violators(auth_client, db_session):
+    """Setting a filter then just re-reading the board (no explicit repopulate) must already
+    exclude violators — otherwise a page reload shows the stale, pre-filter board."""
+    for i in range(2):
+        db_session.add(Place(kind="country", name=f"Easy{i}", iso_code=f"E{i}",
+                             attributes={"visa": "easy"}))
+    for i in range(6):
+        db_session.add(Place(kind="country", name=f"Hard{i}", iso_code=f"H{i}",
+                             attributes={"visa": "hard"}))
+    db_session.commit()
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/repopulate")  # board with no filter yet
+    auth_client.put("/api/v1/profile", json={"filters": {"visa": True}})  # filter set AFTER
+
+    # Plain GET (the page-load path) — must self-heal, not return the stale board.
+    cands = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+    selected = [c for c in cands if c["selected"]]
+    assert all("visa" not in c["filter_violations"] for c in selected), "violators must be dropped on reload"
+    assert len(selected) == 2
+
+
 def test_repopulate_reranks_to_full_board_and_keeps_filters(auth_client, db_session):
     """Repopulate re-ranks to a full board (best matches) and never clears the user's filters."""
     seed(db_session)

@@ -16,6 +16,10 @@
   qualify, it says so explicitly.
 - New `GET /searches/{id}/filter-advice` backs the banner. The initial shortlist also
   excludes violators (no more silent fall-back to the unfiltered pool).
+- **The board now self-heals on plain page load**: `GET /candidates` re-ranks if the stored
+  board still holds filter violators (e.g. a filter set in a previous session), so a reload
+  reflects the filters without needing an explicit Repopulate. This was the reason the
+  exclusion appeared not to work — the load path returned the stale board untouched.
 
 ### 2026-06-16 — Weight 0 ignores a criterion entirely (filter goes dormant)
 

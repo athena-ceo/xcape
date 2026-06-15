@@ -38,6 +38,31 @@ def _owned(db: Session, user: User, search_id: int) -> Search:
     return search
 
 
+def _board_violates_filters(db: Session, user: User, search: Search) -> bool:
+    """True if any currently-SELECTED country violates an active hard filter — meaning the
+    stored board is stale w.r.t. the filters and should be re-ranked (filters are exclusionary)."""
+    profile = user.profile
+    if not (profile and profile.filters):
+        return False
+    selected = (
+        db.query(Candidate)
+        .filter(Candidate.search_id == search.id, Candidate.status == "active",
+                Candidate.selected.is_(True))
+        .all()
+    )
+    if not selected:
+        return False
+    custom_defs = list(search.custom_criteria or [])
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+    evals = criterion_eval.values_for_places(db, [c.place_id for c in selected], eval_keys)
+    return any(
+        c.place and shortlist_service.filter_status(
+            c.place, profile, evals.get(c.place_id), custom_defs
+        )["violations"]
+        for c in selected
+    )
+
+
 def _selected_count(db: Session, search_id: int, exclude_id: int | None = None) -> int:
     q = db.query(Candidate).filter(
         Candidate.search_id == search_id,
@@ -55,6 +80,11 @@ def list_candidates(
 ):
     search = _owned(db, user, search_id)
     custom_criteria.merge_into_search(db, user, search)  # self-heal: bring in persistent customs
+    # Self-heal: hard filters are exclusionary, so if the stored board still holds countries
+    # that violate the current filters (set before this load), re-rank to drop them. Keeps a
+    # plain page load consistent without requiring an explicit Repopulate.
+    if _board_violates_filters(db, user, search):
+        shortlist_service.repopulate_board(db, user, search)
     candidates = (
         db.query(Candidate)
         .filter(Candidate.search_id == search_id, Candidate.status == "active")
