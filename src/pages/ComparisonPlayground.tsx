@@ -760,7 +760,7 @@ export function ComparisonPlayground() {
                     </td>
                     <td className="py-1.5 text-right">{r.quality}%</td>
                     <td className="py-1.5 text-right">×{r.weight}</td>
-                    <td className="py-1.5 text-right font-medium text-turquoise-700">{r.contribution} pts</td>
+                    <td className="py-1.5 text-right font-medium text-turquoise-700">+{r.contribution}%</td>
                   </tr>
                 ))}
               </tbody>

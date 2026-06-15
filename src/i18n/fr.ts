@@ -313,7 +313,7 @@ export const fr = {
     thinking: 'L’assistant réfléchit…',
     chatEmpty: 'Posez une question sur vos candidats — politique, sécurité, coût, visas…',
     explainTitle: 'Comment ce score est calculé',
-    explainIntro: 'Le score est la moyenne pondérée des critères qui comptent pour vous.',
+    explainIntro: 'Le score est le % d’une correspondance parfaite : la moyenne pondérée de la qualité de chaque critère (0–100 %, pondérée par son importance pour vous). Les contributions ci-dessous sont des points de pourcentage qui s’additionnent pour l’obtenir.',
     explainCriterion: 'Critère',
     explainQuality: 'Qualité',
     explainWeight: 'Poids',

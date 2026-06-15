@@ -315,7 +315,7 @@ export const en: Dict = {
     thinking: 'The assistant is thinking…',
     chatEmpty: 'Ask about your candidates — politics, safety, cost, visas…',
     explainTitle: 'How this score is calculated',
-    explainIntro: 'The score is the weighted average of the criteria that matter to you.',
+    explainIntro: 'The score is the % of a perfect match: the weighted average of each criterion’s quality (0–100%, weighted by how much it matters to you). The contributions below are percentage points that add up to it.',
     explainCriterion: 'Criterion',
     explainQuality: 'Quality',
     explainWeight: 'Weight',
