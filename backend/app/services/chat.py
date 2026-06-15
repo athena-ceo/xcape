@@ -31,6 +31,12 @@ SYSTEM_PROMPT = (
     "these are legitimate relocation concerns. Politely decline anything unrelated to the "
     "relocation search. Answer in the user's locale. Format your answer in Markdown: short "
     "paragraphs, and bullet lists or bold labels where they aid readability.\n\n"
+    "LIVE STATE — the user's shortlist, criteria and settings can change between messages "
+    "(they may repopulate the list, add/remove countries or edit criteria). The 'What we "
+    "know about this user' briefing below is regenerated every turn and is the ONLY source "
+    "of truth for the current shortlist and settings. Do NOT rely on countries or a "
+    "shortlist mentioned earlier in this conversation — they may be out of date; always use "
+    "the current briefing.\n\n"
     "IMPORTANT — you can change the search with tools (criteria importance, filters, "
     "adding/selecting countries, replacing the whole comparison set, custom criteria, "
     "rebuilding the shortlist). When the user asks you to change the search — re-rank, "
@@ -116,7 +122,10 @@ def _user_context(db: Session, user: User, search: Search, place_id: int | None 
     )
     picks = [f"{c.place.name} ({round(c.match_score)}%)" for c in cands if c.place and c.match_score]
     if picks:
-        lines.append("Shortlist being compared: " + ", ".join(picks) + ".")
+        lines.append("CURRENT shortlist being compared (live — supersedes any list mentioned "
+                     "earlier in the conversation): " + ", ".join(picks) + ".")
+    else:
+        lines.append("The shortlist is currently empty.")
 
     ctx = "What we know about this user:\n" + "\n".join(f"- {x}" for x in lines)
     if place_id is not None:
