@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, func, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -35,7 +35,7 @@ class Place(Base):
 
     # Deactivated places are kept but excluded from the shortlist pool / picker (admins
     # deactivate rather than delete).
-    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=func.true())
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     source: Mapped[str] = mapped_column(String(10), default="seed")  # seed/ai
     freshness_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
