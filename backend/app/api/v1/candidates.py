@@ -222,13 +222,17 @@ def add_criterion(
 
 @router.get("/{search_id}/report.pdf")
 def report_pdf(
-    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    search_id: int, lang: str | None = None,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """A PDF report of the current search: summary table + per-country details + profile."""
+    """A PDF report of the current search: summary table + per-country details + profile.
+
+    `lang` (optional) overrides the language so the report matches the UI the user is
+    viewing, even if their stored locale differs."""
     from app.services import report
 
     search = _owned(db, user, search_id)
-    pdf = report.build_report(db, user, search)
+    pdf = report.build_report(db, user, search, lang=lang)
     name = f"xcape-report-{search_id}.pdf"
     return Response(
         content=pdf,

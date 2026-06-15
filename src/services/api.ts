@@ -44,7 +44,8 @@ export const api = {
       first_name?: string; last_name?: string; current_country?: string; citizenships?: string[]
     }>('/auth/me'),
   updateMe: (body: {
-    first_name?: string; last_name?: string; current_country?: string; citizenships?: string[]
+    first_name?: string; last_name?: string; current_country?: string
+    citizenships?: string[]; locale?: string
   }) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
   getCriteria: () => request<any>('/criteria'),
@@ -101,9 +102,11 @@ export const api = {
       body: JSON.stringify({ tags, text }),
     }),
   // Fetch the PDF report as a blob (auth header) and trigger a browser download.
-  downloadReport: async (id: number) => {
+  // `lang` makes the PDF match the language the user is currently viewing.
+  downloadReport: async (id: number, lang?: string) => {
     const t = token()
-    const res = await fetch(`${API_URL}/api/v1/searches/${id}/report.pdf`, {
+    const qs = lang ? `?lang=${lang}` : ''
+    const res = await fetch(`${API_URL}/api/v1/searches/${id}/report.pdf${qs}`, {
       headers: t ? { Authorization: `Bearer ${t}` } : {},
     })
     if (!res.ok) throw new Error(`Report failed: ${res.status}`)

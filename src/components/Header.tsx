@@ -37,7 +37,7 @@ export function Header() {
   async function doReset(savePdf: boolean) {
     setWorking(true)
     try {
-      if (savePdf && resetSid != null) await api.downloadReport(resetSid)
+      if (savePdf && resetSid != null) await api.downloadReport(resetSid, lang)
       await api.resetAccount()
     } catch { /* proceed to onboarding regardless */ } finally {
       setWorking(false)

@@ -247,7 +247,7 @@ export function ComparisonPlayground() {
     if (downloading) return
     setDownloading(true)
     try {
-      await api.downloadReport(sid)
+      await api.downloadReport(sid, lang)
     } finally {
       setDownloading(false)
     }

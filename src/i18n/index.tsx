@@ -3,6 +3,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from 'react'
 
+import { api } from '../services/api'
 import { en } from './en'
 import { fr } from './fr'
 
@@ -19,9 +20,27 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
+const STORAGE_KEY = 'xcape_lang'
+
+// Default locale is French (per product decision); a saved choice wins.
+function initialLang(): Language {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  return saved === 'en' || saved === 'fr' ? saved : 'fr'
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
-  // Default locale is French (per product decision).
-  const [lang, setLang] = useState<Language>('fr')
+  const [lang, setLangState] = useState<Language>(initialLang)
+
+  // Persist the choice so it survives reloads AND so the server-side locale (used for the
+  // PDF report, emails, etc.) matches what the user is reading. Best-effort on the server.
+  function setLang(next: Language) {
+    setLangState(next)
+    try { localStorage.setItem(STORAGE_KEY, next) } catch { /* ignore */ }
+    if (localStorage.getItem('xcape_token')) {
+      api.updateMe({ locale: next }).catch(() => { /* non-blocking */ })
+    }
+  }
+
   return (
     <I18nContext.Provider value={{ lang, setLang, t: dictionaries[lang] }}>
       {children}

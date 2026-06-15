@@ -30,6 +30,7 @@ class UserUpdate(BaseModel):
     last_name: str | None = None
     current_country: str | None = None
     citizenships: list[str] | None = None
+    locale: str | None = None
 
 
 class AdminPasswordReset(BaseModel):

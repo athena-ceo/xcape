@@ -52,8 +52,11 @@ def _label(key: str, lang: str, custom: dict[str, str]) -> str:
     return criteria.label(key, lang)  # built-in labels come from the registry (one source)
 
 
-def build_report(db: Session, user: User, search: Search) -> bytes:
-    lang = (user.locale or "fr")[:2]
+def build_report(db: Session, user: User, search: Search, lang: str | None = None) -> bytes:
+    # Prefer an explicit lang (the UI the user is viewing) over their stored locale.
+    lang = (lang or user.locale or "fr")[:2]
+    if lang not in ("fr", "en"):
+        lang = "fr"
     tr = lambda k: _T[k][lang]  # noqa: E731
 
     profile = user.profile
