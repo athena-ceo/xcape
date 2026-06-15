@@ -16,7 +16,8 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <I18nProvider>
-      <BrowserRouter basename={basename}>
+      <BrowserRouter basename={basename}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <App />
       </BrowserRouter>
     </I18nProvider>
