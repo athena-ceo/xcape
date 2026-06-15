@@ -57,19 +57,16 @@ def test_repopulate_tops_up_with_flagged_when_few_qualify(auth_client, db_sessio
     assert len(flagged) == 3, "the 3 non-qualifying extras are flagged, not dropped"
 
 
-def test_repopulate_preserves_selection_and_filters(auth_client, db_session):
-    """Repopulate keeps the user's selected board and never clears their filters."""
+def test_repopulate_reranks_to_full_board_and_keeps_filters(auth_client, db_session):
+    """Repopulate re-ranks to a full board (best matches) and never clears the user's filters."""
     seed(db_session)
     auth_client.put("/api/v1/profile", json={"filters": {"visa": True}})
     sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
-    before = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
-    selected_before = {c["place_id"] for c in before if c["selected"]}
+    auth_client.post(f"/api/v1/searches/{sid}/shortlist")
 
     auth_client.post(f"/api/v1/searches/{sid}/repopulate")
     after = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
-    selected_after = {c["place_id"] for c in after if c["selected"]}
 
-    assert selected_before <= selected_after  # nothing dropped from the board
-    assert sum(1 for c in after if c["selected"]) == 5
+    assert sum(1 for c in after if c["selected"]) == 5  # board stays full after re-ranking
     # The filter survives a repopulate (stability).
     assert auth_client.get("/api/v1/profile").json()["filters"] == {"visa": True}

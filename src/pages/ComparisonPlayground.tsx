@@ -341,18 +341,26 @@ export function ComparisonPlayground() {
   const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
   // Collapsed by default; the user's choice persists (see openCats / toggleCat).
   const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? false
-  // Roll-up colour tier for a category column = weighted average of its leaves' tiers.
+  // Roll-up colour tier for a category column = weighted average of its WEIGHTED leaves'
+  // tiers. Weight-0 criteria are excluded (they don't affect the score), so the roll-up is
+  // identical whether or not "other criteria" are shown.
   function rollupTier(cand: any, leaves: string[]): string | undefined {
     let num = 0, den = 0
     for (const k of leaves) {
+      const w = weightOf(k)
+      if (w <= 0) continue
       const tier = cand.quality?.[k]
       if (!tier) continue
-      const w = weightOf(k) || 0.5
       num += TIER_VALUE[tier] * w; den += w
     }
     if (!den) return undefined
     const v = num / den
     return v >= 0.7 ? 'good' : v >= 0.45 ? 'ok' : 'bad'
+  }
+  // Which of a category's leaves this candidate fails a hard filter on (to flag in the roll-up).
+  function catViolations(cand: any, leaves: string[]): string[] {
+    const v: string[] = cand.filter_violations ?? []
+    return leaves.filter((k) => v.includes(k))
   }
 
   // Known countries matching the picker text (localized name substring), excluding ones
@@ -542,15 +550,19 @@ export function ComparisonPlayground() {
                       <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>{g.label}
                     </td>
                     {baseline && (
-                      <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, vis)) || 'bg-turquoise-50'}`}>
-                        {tierWord(rollupTier(baseline, vis))}
+                      <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
+                        {tierWord(rollupTier(baseline, g.leaves))}
                       </td>
                     )}
-                    {candidates.map((c) => (
-                      <td key={c.id} className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(c, vis))}`}>
-                        {tierWord(rollupTier(c, vis))}
-                      </td>
-                    ))}
+                    {candidates.map((c) => {
+                      const viol = catViolations(c, g.leaves)
+                      return (
+                        <td key={c.id} className={`p-2.5 text-center text-xs ${viol.length ? 'bg-amber-100 text-amber-900' : qualityClass(rollupTier(c, g.leaves))}`}
+                          title={viol.length ? `${t.comparison.flagTitle}: ${viol.map(critLabel).join(', ')}` : undefined}>
+                          {viol.length ? `⚠ ${tierWord(rollupTier(c, g.leaves))}` : tierWord(rollupTier(c, g.leaves))}
+                        </td>
+                      )
+                    })}
                   </tr>
                   {open && vis.map((key) => leafRow(key))}
                 </Fragment>

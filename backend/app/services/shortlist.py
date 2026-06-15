@@ -485,8 +485,8 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
 
 
 def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]:
-    """Rebuild the list respecting the current weights + hard filters, without throwing
-    away the user's curated board.
+    """Re-rank ALL countries against the current weights + hard filters; the board is the
+    best MAX_COMPARE of that ranking (NOTE: re-ranks rather than preserving the old board).
 
     - the user's currently-selected countries stay selected (re-scored; flagged in the UI
       if they now violate a filter — we never auto-remove them);
@@ -526,16 +526,13 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
         .filter(Candidate.search_id == search.id, Candidate.status == "active")
         .all()
     }
-    selected_ids = {pid for pid, c in existing.items() if c.selected}
 
-    # Keep current selections; top up to MAX_COMPARE from the best-ranked remainder.
-    final_selected = set(selected_ids)
-    for p, _s, _r, _t in scored:
-        if len(final_selected) >= MAX_COMPARE:
-            break
-        final_selected.add(p.id)
-    # Suggestion pool: best-ranked not-selected, up to SHORTLIST_SIZE.
-    suggestions = [p.id for p, _s, _r, _t in scored if p.id not in final_selected][:SHORTLIST_SIZE]
+    # Re-rank: the board is the best MAX_COMPARE by (qualified-first, then score) — so a hard
+    # filter actually re-ranks every country and surfaces those that pass, rather than keeping
+    # the previous board flagged. The next-best fill the suggestion pool.
+    ordered_ids = [p.id for p, _s, _r, _t in scored]
+    final_selected = set(ordered_ids[:MAX_COMPARE])
+    suggestions = ordered_ids[MAX_COMPARE:MAX_COMPARE + SHORTLIST_SIZE]
     target_ids = final_selected | set(suggestions)
 
     # Drop stale suggestions (anything not selected and no longer in the pool).
