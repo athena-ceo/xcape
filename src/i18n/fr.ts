@@ -287,6 +287,7 @@ export const fr = {
     repopulate: 'Repeupler',
     repopulateHint: 'Reconstruire la liste avec vos critères et filtres actuels',
     unsavedChanges: 'Modifications non enregistrées — appliquez ou annulez d’abord',
+    applyFailed: 'Impossible d’appliquer vos réglages. Veuillez réessayer.',
     showUnimportant: 'Afficher les autres critères',
     hideUnimportant: 'Masquer les autres critères',
     flagBadge: 'Ne correspond pas',

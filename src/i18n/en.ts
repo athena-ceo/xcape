@@ -289,6 +289,7 @@ export const en: Dict = {
     repopulate: 'Repopulate',
     repopulateHint: 'Rebuild the list with your current criteria and filters',
     unsavedChanges: 'Unsaved changes — apply or cancel first',
+    applyFailed: 'Could not apply your settings. Please try again.',
     showUnimportant: 'Show other criteria',
     hideUnimportant: 'Hide other criteria',
     flagBadge: "Doesn't match",

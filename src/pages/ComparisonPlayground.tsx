@@ -45,6 +45,7 @@ export function ComparisonPlayground() {
   // props, so its "dirty" baseline resets cleanly (re-enabling the toolbar) regardless of
   // how the server echoes the values back.
   const [settingsKey, setSettingsKey] = useState(0)
+  const [applyError, setApplyError] = useState<string | null>(null)
   const [showTune, setShowTune] = useState(false)
   const [tuneTags, setTuneTags] = useState<string[]>([])
   const [tuneText, setTuneText] = useState('')
@@ -300,13 +301,20 @@ export function ComparisonPlayground() {
   // and topping it up (flagging any that don't meet the filters).
   async function applySettings(payload: import('../components/CriteriaSettings').SettingsPayload) {
     setApplying(true)
+    setApplyError(null)
     try {
       await api.updateProfile({ criteria_weights: payload.weights, filters: payload.filters })
-      // Custom-criterion weight/threshold live per-search; push any that changed.
+      // Custom-criterion weight/threshold live per-search; push any that changed. A failure
+      // on one custom criterion (e.g. a stale key) must NOT abort the whole apply — the
+      // built-in weights/filters above are already saved and the board must still refresh.
       for (const c of payload.customCriteria) {
         const prev = customCrit.find((x) => x.key === c.key)
         if (!prev || prev.weight !== c.weight || prev.min !== c.min) {
-          await api.updateCustomCriterion(sid, c.key, { weight: c.weight, min: c.min ?? null })
+          try {
+            await api.updateCustomCriterion(sid, c.key, { weight: c.weight, min: c.min ?? null })
+          } catch (e) {
+            console.error('custom-criterion update failed', c.key, e)
+          }
         }
       }
       await api.repopulate(sid)
@@ -315,6 +323,10 @@ export function ComparisonPlayground() {
       // the toolbar) and keep it open so the user can see the changes took effect.
       setSettingsDirty(false)
       setSettingsKey((k) => k + 1)
+    } catch (e) {
+      // Surface the failure instead of silently leaving a stale board.
+      console.error('Apply settings failed', e)
+      setApplyError(t.comparison.applyFailed)
     } finally {
       setApplying(false)
     }
@@ -506,6 +518,11 @@ export function ComparisonPlayground() {
         </div>
       )}
 
+      {applyError && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {applyError}
+        </div>
+      )}
       {showSettings && (
         <CriteriaSettings key={settingsKey} weights={weights} filters={filters} customCriteria={customCrit}
           busy={applying} onApply={applySettings}
