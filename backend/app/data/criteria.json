@@ -34,6 +34,98 @@
     {"key": "immigrants", "label_fr": "Immigrés", "label_en": "Immigrants", "active": false}
   ],
 
+  "personas": [
+    {
+      "key": "safety_community",
+      "label_fr": "Sécurité de ma communauté", "label_en": "My community's safety",
+      "blurb_fr": "Vous partez par crainte pour votre communauté. On se concentre sur la tolérance, la sécurité et les droits.",
+      "blurb_en": "You're leaving out of fear for your community. We focus on tolerance, safety and rights.",
+      "match": {"reasons": ["discrimination", "safety"], "tags": ["discrimination", "fear"]},
+      "weights": {"inclusion": 3, "safety": 2.5, "political_stability": 2, "gender_equality": 1.5, "visa": 1, "language_ease": 1, "cost_of_living": 1, "healthcare": 0.5},
+      "ask": ["communities"],
+      "custom_criteria": [
+        {"label_en": "Safety for my community", "label_fr": "Sécurité pour ma communauté",
+         "description": "How safe, accepted and protected the {community} community is for residents — recent trends in hate incidents, legal protections and everyday climate. Cite trusted human-rights / community sources.",
+         "per_community": true}
+      ]
+    },
+    {
+      "key": "political_exile",
+      "label_fr": "Liberté politique", "label_en": "Political freedom",
+      "blurb_fr": "Vous fuyez le climat politique. On privilégie la stabilité, les droits et la sécurité.",
+      "blurb_en": "You're fleeing the political climate. We prioritise stability, rights and safety.",
+      "match": {"reasons": ["politics"], "tags": ["stability"]},
+      "weights": {"political_stability": 3, "safety": 2.5, "gender_equality": 1.5, "inclusion": 1, "visa": 1.5, "cost_of_living": 1, "language_ease": 1},
+      "ask": []
+    },
+    {
+      "key": "asset_protection",
+      "label_fr": "Protection du patrimoine", "label_en": "Asset protection",
+      "blurb_fr": "Vous protégez votre patrimoine. On se concentre sur la fiscalité, les conventions fiscales et la sécurité des avoirs.",
+      "blurb_en": "You're protecting your assets. We focus on taxation, tax treaties and asset security.",
+      "match": {"reasons": ["patrimoine", "economy", "cost"], "tags": ["financial", "tax"]},
+      "weights": {"tax": 3, "tax_treaty": 2.5, "asset_security": 2.5, "cost_of_living": 1.5, "political_stability": 1.5, "safety": 1, "visa": 1},
+      "ask": ["budget"],
+      "custom_criteria": [
+        {"label_en": "Wealth & inheritance tax", "label_fr": "Impôt sur la fortune et successions",
+         "description": "Wealth, inheritance and capital-gains taxation for a relocating high-net-worth resident, including exit-tax exposure. Cite official / tax-advisory sources."},
+        {"label_en": "Banking & asset protection", "label_fr": "Banque et protection des avoirs",
+         "description": "Banking access, account opening for non-citizens, asset-protection and financial-secrecy practices. Cite reputable financial sources."}
+      ]
+    },
+    {
+      "key": "retiree",
+      "label_fr": "Retraite", "label_en": "Retiree",
+      "blurb_fr": "Vous préparez votre retraite. On regarde le visa, le coût de la vie, la santé et le climat.",
+      "blurb_en": "You're relocating for retirement. We look at visa, cost of living, healthcare and climate.",
+      "match": {"reasons": ["retirement"], "tags": ["retirement"]},
+      "weights": {"visa": 2.5, "cost_of_living": 2.5, "healthcare": 3, "climate": 1.5, "safety": 1.5, "tax": 1, "language_ease": 1},
+      "ask": ["budget", "climate"],
+      "custom_criteria": [
+        {"label_en": "Retirement visa", "label_fr": "Visa retraite",
+         "description": "Retirement / pensioner visa pathways, minimum income or pension requirements, and ease of long-term residency for retirees. Cite official immigration sources."},
+        {"label_en": "Healthcare for retirees", "label_fr": "Santé pour les retraités",
+         "description": "Access to and cost of healthcare for older residents and retirees, including eligibility for the public system. Cite official / health sources."}
+      ]
+    },
+    {
+      "key": "professional",
+      "label_fr": "Carrière", "label_en": "Career",
+      "blurb_fr": "Vous partez pour le travail. On regarde le coût de la vie, la fiscalité, la langue et la mobilité.",
+      "blurb_en": "You're relocating for work. We look at cost of living, taxation, language and mobility.",
+      "match": {"reasons": ["career", "economy"], "tags": ["career"]},
+      "weights": {"cost_of_living": 2, "visa": 2, "tax": 1.5, "language_ease": 1.5, "internet": 1.5, "safety": 1, "healthcare": 1},
+      "ask": ["budget"]
+    },
+    {
+      "key": "family",
+      "label_fr": "Famille", "label_en": "Family",
+      "blurb_fr": "Vous déménagez en famille. On privilégie l'éducation, la santé, la sécurité et le coût de la vie.",
+      "blurb_en": "You're moving with family. We prioritise education, healthcare, safety and cost of living.",
+      "match": {"reasons": ["healthcare"], "tags": ["family", "health"]},
+      "weights": {"education": 2.5, "healthcare": 2.5, "safety": 2.5, "cost_of_living": 1.5, "culture": 1, "climate": 1, "inclusion": 1, "language_ease": 1, "visa": 1},
+      "ask": ["budget", "climate"]
+    },
+    {
+      "key": "climate_lifestyle",
+      "label_fr": "Climat et cadre de vie", "label_en": "Climate & lifestyle",
+      "blurb_fr": "Vous cherchez un meilleur cadre de vie. On regarde le climat, la nature, la culture et le coût.",
+      "blurb_en": "You're after a better quality of life. We look at climate, nature, culture and cost.",
+      "match": {"reasons": ["climate", "lifestyle"], "tags": ["climate", "lifestyle"]},
+      "weights": {"climate": 3, "nature": 2, "cost_of_living": 1.5, "culture": 1.5, "food": 1, "healthcare": 1, "safety": 1, "language_ease": 1, "visa": 1},
+      "ask": ["climate", "budget"]
+    },
+    {
+      "key": "neutral",
+      "label_fr": "Équilibré", "label_en": "Balanced",
+      "blurb_fr": "On équilibre tous les grands critères ; ajustez les poids à votre guise.",
+      "blurb_en": "We balance all the main criteria; adjust the weights however you like.",
+      "match": {"reasons": [], "tags": []},
+      "weights": {"safety": 1, "political_stability": 1, "inclusion": 0.6, "gender_equality": 0.4, "cost_of_living": 1, "tax": 0.5, "healthcare": 1, "climate": 0.8, "language_ease": 0.8, "visa": 0.7},
+      "ask": ["communities", "budget", "climate"]
+    }
+  ],
+
   "reason_tags": {
     "politics":       ["stability", "fear"],
     "economy":        ["cost", "financial", "tax"],

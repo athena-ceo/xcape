@@ -155,6 +155,43 @@ def community_keys() -> list[str]:
     return [c["key"] for c in communities()]
 
 
+def personas() -> list[dict]:
+    """Active personas (relocation archetypes) — the admin-editable initial seed."""
+    return [p for p in _registry().get("personas", []) if _is_active(p)]
+
+
+def persona(key: str | None) -> dict | None:
+    if not key:
+        return None
+    return next((p for p in personas() if p.get("key") == key), None)
+
+
+def persona_weights(key: str | None) -> dict[str, float]:
+    """A persona's criterion weight profile (only its critical criteria; the rest stay 0)."""
+    p = persona(key)
+    return {k: float(v) for k, v in (p.get("weights", {}) if p else {}).items()}
+
+
+def persona_for(reasons: list[str] | None, priorities: list[str] | None = None) -> str:
+    """Rule-based: pick the persona whose match rule best fits the user's reasons + priorities.
+    Score = (reason overlap) + (overlap of implied tags with the persona's match tags). Highest
+    wins; ties resolve by registry order; nothing matches → 'neutral' (the balanced fallback)."""
+    reason_set = set(reasons or [])
+    user_tags = set(tags_for_reasons(reasons))
+    lt = leaf_tags()
+    for p in (priorities or []):
+        user_tags.update(lt.get(p, []))
+    best_key, best_score = "neutral", 0
+    for p in personas():
+        if p.get("key") == "neutral":
+            continue
+        m = p.get("match", {})
+        score = len(reason_set & set(m.get("reasons", []))) + len(user_tags & set(m.get("tags", [])))
+        if score > best_score:
+            best_key, best_score = p["key"], score
+    return best_key
+
+
 def ai_description(key: str) -> str | None:
     n = node(key)
     return n.get("ai_description") if n else None
@@ -202,5 +239,6 @@ def public_registry() -> dict:
         "tags": tags(),
         "reason_tags": reason_tags(),
         "communities": communities(),
+        "personas": personas(),
         "nodes": [n for n in nodes() if n["key"] in keys],
     }

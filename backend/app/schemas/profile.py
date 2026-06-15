@@ -9,6 +9,7 @@ class ProfileUpdate(BaseModel):
     intends_children: bool | None = None
     origin_country: str | None = None
     reasons_leaving: list[str] | None = None
+    persona: str | None = None
     priorities_text: str | None = None
     budget_monthly: int | None = None
     tenure: str | None = None

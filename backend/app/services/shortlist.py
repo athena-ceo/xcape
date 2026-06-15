@@ -66,17 +66,24 @@ _REASON_LABELS: dict[str, dict[str, str]] = {
 
 
 def _effective_weights(profile: Profile | None) -> dict[str, float]:
-    weights = dict(criteria.default_weights())
     if not profile:
-        return weights
-    # Tag-driven prioritisation: the user's reasons/priorities map to tags, and any leaf
-    # carrying a selected tag is up-weighted — so e.g. "fear" lifts the whole protection
-    # cluster and "financial" the money cluster.
-    selected_tags = criteria.tags_for_reasons(profile.reasons_leaving)
-    if selected_tags:
-        for key, tags in criteria.leaf_tags().items():
-            if selected_tags.intersection(tags):
-                weights[key] = weights.get(key, 0.0) + _TAG_BOOST
+        return dict(criteria.default_weights())
+    # The user's persona (relocation archetype) supplies the base weight profile — only its
+    # critical criteria carry weight, the rest stay 0 (genuinely unimportant) so the ranking is
+    # discriminating. Without a persona, fall back to the flat defaults + tag-driven boosts.
+    persona_key = getattr(profile, "persona", None)
+    persona_w = criteria.persona_weights(persona_key)
+    if persona_w:
+        weights = dict(persona_w)
+    else:
+        weights = dict(criteria.default_weights())
+        # Tag-driven prioritisation: the user's reasons/priorities map to tags, and any leaf
+        # carrying a selected tag is up-weighted — so "fear" lifts the protection cluster, etc.
+        selected_tags = criteria.tags_for_reasons(profile.reasons_leaving)
+        if selected_tags:
+            for key, tags in criteria.leaf_tags().items():
+                if selected_tags.intersection(tags):
+                    weights[key] = weights.get(key, 0.0) + _TAG_BOOST
     if profile.household_type == "family":
         weights["healthcare"] = weights.get("healthcare", 0) + 0.5
         weights["safety"] = weights.get("safety", 0) + 0.5

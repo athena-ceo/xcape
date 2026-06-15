@@ -20,6 +20,8 @@ class Profile(Base):
     intends_children: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     origin_country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     reasons_leaving: Mapped[list | None] = mapped_column(JSON, default=list)
+    # Relocation archetype (registry persona key) — drives initial weights & onboarding questions.
+    persona: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # Free-text priorities (any number, beyond the preset chips) → AI criterion selection.
     priorities_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     budget_monthly: Mapped[int | None] = mapped_column(Integer, nullable=True)

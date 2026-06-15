@@ -1,0 +1,61 @@
+# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Proprietary and confidential — unauthorized copying or distribution is prohibited.
+
+from app.services import criteria
+from app.services.shortlist import _effective_weights
+
+
+class _Profile:
+    def __init__(self, persona=None, reasons=None):
+        self.persona = persona
+        self.reasons_leaving = reasons or []
+        self.household_type = None
+        self.intends_children = None
+        self.minority_groups = []
+        self.criteria_weights = {}
+
+
+def test_persona_for_matches_reasons():
+    assert criteria.persona_for(["discrimination"], []) == "safety_community"
+    assert criteria.persona_for(["politics"], []) == "political_exile"
+    assert criteria.persona_for(["patrimoine"], []) == "asset_protection"
+    assert criteria.persona_for(["retirement"], []) == "retiree"
+    assert criteria.persona_for(["career"], []) == "professional"
+    assert criteria.persona_for(["climate"], []) == "climate_lifestyle"
+    # economy implies financial/tax tags → asset_protection (not professional).
+    assert criteria.persona_for(["economy"], []) == "asset_protection"
+
+
+def test_persona_for_falls_back_to_neutral():
+    assert criteria.persona_for([], []) == "neutral"
+    assert criteria.persona_for(["something_unknown"], []) == "neutral"
+
+
+def test_persona_weights_profile_drives_effective_weights():
+    w = _effective_weights(_Profile(persona="asset_protection"))
+    # Persona's critical criteria carry weight…
+    assert w.get("tax", 0) >= 2.5 and w.get("asset_security", 0) >= 2.5
+    # …and a criterion the persona doesn't list is absent/zero (genuinely unimportant).
+    assert w.get("culture", 0) == 0
+    assert w.get("inclusion", 0) == 0
+
+
+def test_no_persona_uses_defaults():
+    w = _effective_weights(_Profile(persona=None))
+    # Falls back to the flat default profile (e.g. healthcare has a baseline weight).
+    assert w.get("healthcare", 0) > 0
+
+
+def test_public_registry_includes_personas():
+    reg = criteria.public_registry()
+    assert "personas" in reg
+    keys = {p["key"] for p in reg["personas"]}
+    assert {"neutral", "safety_community", "retiree"} <= keys
+
+
+def test_derive_endpoint(auth_client, db_session):
+    r = auth_client.post("/api/v1/persona/derive", json={"reasons": ["discrimination"], "priorities": []})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["key"] == "safety_community"
+    assert body["persona"]["weights"]["inclusion"] >= 2
