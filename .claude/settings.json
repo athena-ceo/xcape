@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(chmod +x /Users/harley/Development/xcape/xcape.sh)",
+      "Bash(python3 -m venv xcvenv)",
+      "Bash(./xcvenv/bin/pip install *)",
+      "Bash(./xcvenv/bin/python -m pytest tests -q)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(docker version *)",
+      "Bash(cp -n env.example .env)",
+      "Bash(docker compose *)",
+      "Bash(curl -fsS http://localhost:8030/health)",
+      "Bash(break)",
+      "Bash(backend/xcvenv/bin/python -m pytest backend/tests -q)",
+      "Bash(curl -fsS -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3030)",
+      "Bash(./xcape.sh start *)",
+      "Bash(curl -fsS -o /dev/null http://localhost:3030)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(bash -n xcape.sh)",
+      "Bash(VITE_BASE_PATH=/xcape/ VITE_API_URL=https://apps.athenadecisions.com/xcape npm run build)",
+      "Bash(chmod +x scripts/smoke_test.py)",
+      "Bash(SMOKE_BASE_URL=http://localhost:8030 python3 scripts/smoke_test.py)",
+      "Bash(backend/xcvenv/bin/pip install *)",
+      "Bash(VITE_BASE_PATH=/xcape/ npm run build)",
+      "Bash(which rsvg-convert *)",
+      "Bash(./xcape.sh make-admin *)",
+      "Bash(./xcvenv/bin/python -m pytest tests/test_admin.py -q)",
+      "Bash(./xcape.sh reset-password *)",
+      "Bash(./xcape.sh purge-test-users *)",
+      "Bash(python -m pytest -q)",
+      "Bash(python3 -m pytest -q)",
+      "Bash(./xcvenv/bin/python -m pytest -q)"
+    ]
+  }
+}
