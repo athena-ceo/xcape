@@ -221,6 +221,12 @@ def _criterion_value(
         if willing:
             return min(1.0, base + 0.2)
         return round(base * 0.7, 3)
+    # Objective (AI-scored) criteria: the AI eval is authoritative. Without one, do NOT trust
+    # the coarse seed bucket (high=1.0) — it's on a far more optimistic scale than real evals
+    # (~0.5 avg) and would let an un-evaluated country leap to the top. Treat it as a neutral
+    # provisional value until a real eval lands.
+    if key in criteria.objective_keys():
+        return 0.5
     scale = criteria.scales().get(key, {})
     return scale.get(str(attrs.get(key, "")).lower(), 0.5)
 

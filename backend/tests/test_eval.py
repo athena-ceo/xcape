@@ -30,8 +30,10 @@ def test_eval_value_preferred_over_bucket():
     p = _Profile()
     # With a cached eval, the numeric score wins over the coarse bucket.
     assert _criterion_value("safety", place.attributes, p, place, {"safety": 0.9}) == 0.9
-    # Without an eval, fall back to the bucket.
-    assert _criterion_value("safety", place.attributes, p, place, {}) == 0.15
+    # Without an eval, an objective criterion is neutral/provisional — the coarse, optimistic
+    # seed bucket is NOT trusted (it's on a far rosier scale than real evals and would let an
+    # un-evaluated country leap to the top).
+    assert _criterion_value("safety", place.attributes, p, place, {}) == 0.5
 
 
 def test_objective_value_neutral_when_no_eval_and_no_bucket():

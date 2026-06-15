@@ -81,12 +81,14 @@ def test_inclusion_filter_excludes_unwelcoming():
     assert not passes_filters(Place(kind="country", name="M", attributes=MIXED), p)
 
 
-def test_gender_culture_food_use_ordinal_scale():
+def test_gender_culture_food_are_eval_driven_not_bucket():
+    # gender_equality, culture and food are AI-scored (objective): the cached eval is
+    # authoritative, and a coarse seed bucket alone is not trusted (neutral until evaluated).
     attrs = {"gender_equality": "high", "culture": "medium", "food": "low"}
     p = _Profile()
-    assert _criterion_value("gender_equality", attrs, p) == 1.0
-    assert _criterion_value("culture", attrs, p) == 0.6
-    assert _criterion_value("food", attrs, p) == 0.3
+    assert _criterion_value("gender_equality", attrs, p, None, {"gender_equality": 0.9}) == 0.9
+    assert _criterion_value("gender_equality", attrs, p) == 0.5  # bucket ignored → neutral
+    assert _criterion_value("food", attrs, p) == 0.5
 
 
 def test_candidate_quality_includes_new_criteria():
