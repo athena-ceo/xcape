@@ -102,6 +102,16 @@ def list_candidates(
     return candidates
 
 
+@router.get("/{search_id}/filter-advice")
+def filter_advice(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """How the active hard filters constrain the pool: how many countries qualify and which
+    single filter to relax (highest-scoring otherwise-excluded country first)."""
+    search = _owned(db, user, search_id)
+    return shortlist_service.filter_advice(db, user, search)
+
+
 @router.post("/{search_id}/candidates", response_model=CandidateOut, status_code=201)
 def add_candidate(
     search_id: int,

@@ -78,6 +78,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
   listCandidates: (id: number) => request<any[]>(`/searches/${id}/candidates`),
+  filterAdvice: (id: number) => request<{
+    qualified: number; board_size: number
+    suggestions: { key: string; admits: number; best_score: number; best_country: string | null }[]
+  }>(`/searches/${id}/filter-advice`),
   addCandidate: (id: number, body: { place_id?: number; place_name?: string }) =>
     request<any>(`/searches/${id}/candidates`, { method: 'POST', body: JSON.stringify(body) }),
   removeCandidate: (id: number, candidateId: number) =>

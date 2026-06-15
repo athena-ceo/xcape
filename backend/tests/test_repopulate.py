@@ -33,9 +33,9 @@ def test_custom_criterion_min_is_a_filter():
     assert sl.passes_filters(place, profile, evals={"surfing": 0.9}, custom_defs=defs)
 
 
-def test_repopulate_tops_up_with_flagged_when_few_qualify(auth_client, db_session):
-    """When a strict filter leaves fewer than 5 qualifying countries, the board is still
-    filled to 5 — the non-qualifying extras flagged rather than silently dropped."""
+def test_repopulate_excludes_filter_violators_and_advises(auth_client, db_session):
+    """Hard filters are exclusionary: violating countries are dropped from the board (not
+    kept-and-flagged), and filter-advice reports how many qualify + what to relax."""
     # Controlled pool (no seed): only 2 countries are easy to settle in.
     for i in range(2):
         db_session.add(Place(kind="country", name=f"Easy{i}", iso_code=f"E{i}",
@@ -52,9 +52,13 @@ def test_repopulate_tops_up_with_flagged_when_few_qualify(auth_client, db_sessio
 
     cands = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
     selected = [c for c in cands if c["selected"]]
-    assert len(selected) == 5, "board should be topped up to 5 despite the strict filter"
-    flagged = [c for c in selected if "visa" in c["filter_violations"]]
-    assert len(flagged) == 3, "the 3 non-qualifying extras are flagged, not dropped"
+    assert len(selected) == 2, "only the 2 visa-qualifying countries appear (violators dropped)"
+    assert all("visa" not in c["filter_violations"] for c in selected)
+
+    advice = auth_client.get(f"/api/v1/searches/{sid}/filter-advice").json()
+    assert advice["qualified"] == 2
+    top = advice["suggestions"][0]
+    assert top["key"] == "visa" and top["admits"] == 6  # relaxing visa would admit the 6 hard ones
 
 
 def test_repopulate_reranks_to_full_board_and_keeps_filters(auth_client, db_session):

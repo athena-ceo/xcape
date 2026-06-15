@@ -46,6 +46,7 @@ export function ComparisonPlayground() {
   // how the server echoes the values back.
   const [settingsKey, setSettingsKey] = useState(0)
   const [applyError, setApplyError] = useState<string | null>(null)
+  const [advice, setAdvice] = useState<{ qualified: number; board_size: number; suggestions: { key: string; admits: number; best_score: number; best_country: string | null }[] } | null>(null)
   const [showTune, setShowTune] = useState(false)
   const [tuneTags, setTuneTags] = useState<string[]>([])
   const [tuneText, setTuneText] = useState('')
@@ -68,6 +69,8 @@ export function ComparisonPlayground() {
   // Re-read candidates from the server (the source of truth).
   async function reloadCandidates() {
     applyCandidates(await api.listCandidates(sid))
+    // Refresh the filter diagnostics (how many qualify, what to relax) alongside the board.
+    api.filterAdvice(sid).then(setAdvice).catch(() => {})
   }
 
   // Fill not-yet-evaluated (country × criterion) cells a few at a time, re-rendering after
@@ -532,6 +535,29 @@ export function ComparisonPlayground() {
           {applyError}
         </div>
       )}
+      {advice && advice.qualified < advice.board_size && (() => {
+        const s = advice.suggestions[0]
+        const lead = advice.qualified === 0
+          ? t.comparison.filterNoneMatch
+          : t.comparison.filterFewMatch.replace('{n}', String(advice.qualified))
+        const hint = s
+          ? t.comparison.filterRelaxHint
+              .replace('{filter}', critLabel(s.key))
+              .replace('{n}', String(s.admits))
+              .replace('{country}', s.best_country ?? '')
+              .replace('{score}', String(Math.round(s.best_score)))
+          : ''
+        return (
+          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-medium">{lead}</span>
+            {hint && <span>{hint}</span>}
+            <button onClick={() => setShowSettings(true)}
+              className="ml-auto underline underline-offset-2 hover:no-underline">
+              {t.comparison.adjustFilters}
+            </button>
+          </div>
+        )
+      })()}
       {showSettings && (
         <CriteriaSettings key={settingsKey} weights={weights} filters={filters} customCriteria={customCrit}
           busy={applying} onApply={applySettings}

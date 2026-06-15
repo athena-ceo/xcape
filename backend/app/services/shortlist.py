@@ -459,17 +459,19 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
     weights = _effective_weights(profile)
 
     countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
-    # Apply hard filters (e.g. "must speak a language I know"); if filters exclude
-    # everything, fall back to the unfiltered pool so the user still sees options. (The
-    # board's top-up-with-flagged-extras behaviour lives in repopulate_board, used when the
-    # user edits criteria later.)
-    qualified = [p for p in countries if passes_filters(p, profile)]
-    pool = qualified or countries
+    custom_defs = list(search.custom_criteria or [])
     # Batch-load the cached AI evals for the whole pool so the seed-sparse countries score
     # on real values (one query, not one per country).
     evals_by_place = criterion_eval.values_for_places(
-        db, [p.id for p in pool], criteria.objective_keys()
+        db, [p.id for p in countries], criteria.objective_keys()
     )
+    # Hard filters are exclusionary: only non-violating countries are eligible (pending evals
+    # are kept — not yet judged). If nothing qualifies, the board is empty and the UI prompts
+    # the user to relax constraints (filter_advice). Filter editing later goes via repopulate.
+    pool = [
+        p for p in countries
+        if not filter_status(p, profile, evals_by_place.get(p.id), custom_defs)["violations"]
+    ]
     scored = sorted(
         ((p, *_score_place(p, weights, profile, evals_by_place.get(p.id))) for p in pool),
         key=lambda t: t[1],
@@ -501,14 +503,11 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
     """Re-rank ALL countries against the current weights + hard filters; the board is the
     best MAX_COMPARE of that ranking (NOTE: re-ranks rather than preserving the old board).
 
-    - the user's currently-selected countries stay selected (re-scored; flagged in the UI
-      if they now violate a filter — we never auto-remove them);
-    - the selected board is topped up to MAX_COMPARE from the best candidates, preferring
-      filter-qualifying ones, then pending, then (flagged) violating — so a strict filter
-      still yields a full board instead of an empty one;
-    - the unselected suggestion pool is refreshed to SHORTLIST_SIZE from the current
-      ranking. Idempotent and non-destructive of selections, so it's safe to call again
-      after async custom/objective evals land (the progressive-fill iteration).
+    Hard filters are EXCLUSIONARY: a country that violates any active filter is dropped from
+    the board and the suggestion pool entirely, and replaced by the best non-violating ones
+    by score. Eligible = tier 0 (qualified) and tier 1 (pending eval, not yet judged). If
+    nothing is eligible the board is left empty; the UI surfaces a relaxation suggestion via
+    `filter_advice`. Idempotent — safe to re-run after async evals land (progressive fill).
     """
     from app.services import criteria, criterion_eval  # avoid circular import at module load
 
@@ -540,12 +539,12 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
         .all()
     }
 
-    # Re-rank: the board is the best MAX_COMPARE by (qualified-first, then score) — so a hard
-    # filter actually re-ranks every country and surfaces those that pass, rather than keeping
-    # the previous board flagged. The next-best fill the suggestion pool.
-    ordered_ids = [p.id for p, _s, _r, _t in scored]
-    final_selected = set(ordered_ids[:MAX_COMPARE])
-    suggestions = ordered_ids[MAX_COMPARE:MAX_COMPARE + SHORTLIST_SIZE]
+    # The board is the best MAX_COMPARE non-violating countries by score; violating ones
+    # (tier 2) are excluded entirely so a hard filter actually removes failing countries and
+    # surfaces passing ones. The next-best non-violating fill the suggestion pool.
+    eligible_ids = [p.id for p, _s, _r, t in scored if t != 2]
+    final_selected = set(eligible_ids[:MAX_COMPARE])
+    suggestions = eligible_ids[MAX_COMPARE:MAX_COMPARE + SHORTLIST_SIZE]
     target_ids = final_selected | set(suggestions)
 
     # Drop stale suggestions (anything not selected and no longer in the pool).
@@ -580,3 +579,51 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
     for cand in candidates:
         db.refresh(cand)
     return candidates
+
+
+def filter_advice(db: Session, user: User, search: Search) -> dict:
+    """Diagnose how the active hard filters constrain the pool, to tell the user when (and what)
+    to relax. Returns:
+      - `qualified`: how many countries pass every active filter;
+      - `board_size`: the target board size (MAX_COMPARE);
+      - `suggestions`: per single-filter relaxation, the countries it ALONE blocks — i.e. that
+        would qualify if just that filter were dropped — with the count and the best such
+        country by score. Sorted best-score first (then count), so the top suggestion admits the
+        highest-scoring otherwise-excluded country.
+    """
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
+
+    profile = user.profile
+    weights = _effective_weights(profile)
+    custom_defs = list(search.custom_criteria or [])
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+
+    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+
+    qualified = 0
+    blockers: dict[str, dict] = {}
+    for p in countries:
+        evals = evals_by_place.get(p.id)
+        st = filter_status(p, profile, evals, custom_defs)
+        if not st["violations"] and not st["pending"]:
+            qualified += 1
+        # A country blocked by exactly one filter would qualify if that filter were relaxed.
+        if len(st["violations"]) == 1 and not st["pending"]:
+            key = st["violations"][0]
+            score, _ = _score_place(p, weights, profile, evals)
+            rec = blockers.setdefault(key, {"admits": 0, "best_score": -1.0, "best_country": None})
+            rec["admits"] += 1
+            if score > rec["best_score"]:
+                rec["best_score"] = round(score, 1)
+                rec["best_country"] = p.name
+
+    suggestions = [
+        {"key": k, "admits": r["admits"], "best_score": r["best_score"], "best_country": r["best_country"]}
+        for k, r in blockers.items()
+    ]
+    suggestions.sort(key=lambda s: (-s["best_score"], -s["admits"]))
+    return {"qualified": qualified, "board_size": MAX_COMPARE, "suggestions": suggestions}

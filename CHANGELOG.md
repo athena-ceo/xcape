@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Hard filters exclude violators; advice on what to relax
+
+- A hard filter now **removes** every country that violates it from the board and replaces
+  it with the best **passing** countries by score — filters are exclusionary, as expected,
+  rather than keeping violators on the board with a flag.
+- When fewer than a full board qualify, a banner reports how many match and suggests the
+  single most useful filter to relax — the one admitting the **highest-scoring** otherwise-
+  excluded country (with how many it would add), with an "Adjust filters" shortcut. If none
+  qualify, it says so explicitly.
+- New `GET /searches/{id}/filter-advice` backs the banner. The initial shortlist also
+  excludes violators (no more silent fall-back to the unfiltered pool).
+
 ### 2026-06-16 — Weight 0 ignores a criterion entirely (filter goes dormant)
 
 - A criterion with **importance 0 is now ignored completely — its hard filter no longer
