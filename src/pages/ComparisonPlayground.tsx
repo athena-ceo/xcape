@@ -24,15 +24,10 @@ export function ComparisonPlayground() {
   const evaluatingRef = useRef(false)
   const [places, setPlaces] = useState<Record<number, any>>({})
   // Category expand/collapse, persisted across refreshes; collapsed by default.
-  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem('xcape_open_cats') || '{}') } catch { return {} }
-  })
+  // Categories start collapsed on every load; toggling is in-session only.
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>({})
   function toggleCat(key: string, open: boolean) {
-    setOpenCats((o) => {
-      const next = { ...o, [key]: !open }
-      try { localStorage.setItem('xcape_open_cats', JSON.stringify(next)) } catch { /* ignore */ }
-      return next
-    })
+    setOpenCats((o) => ({ ...o, [key]: !open }))
   }
 
   const [newCountry, setNewCountry] = useState('')
@@ -375,19 +370,32 @@ export function ComparisonPlayground() {
         .slice(0, 8)
     : []
 
-  // One leaf criterion row (used inside each open category group). The weight is shown and
-  // editable inline (reusing applyWeight, which persists + re-ranks).
+  // A compact −/value/+ weight stepper (capped 0–5, half-steps), reused by each criterion row.
+  const WEIGHT_MAX = 5
+  function weightControl(key: string) {
+    const w = weightOf(key)
+    const set = (v: number) => applyWeight(key, Math.max(0, Math.min(WEIGHT_MAX, Math.round(v * 2) / 2)))
+    return (
+      <span className="inline-flex items-center rounded border border-turquoise-100 text-xs shrink-0"
+        title={t.comparison.importance}>
+        <button type="button" aria-label="−" disabled={w <= 0} onClick={() => set(w - 0.5)}
+          className="px-1.5 py-0.5 text-turquoise-600 disabled:opacity-30 hover:bg-turquoise-50">−</button>
+        <span className="w-6 text-center tabular-nums text-turquoise-800/70">{w}</span>
+        <button type="button" aria-label="+" disabled={w >= WEIGHT_MAX} onClick={() => set(w + 0.5)}
+          className="px-1.5 py-0.5 text-turquoise-600 disabled:opacity-30 hover:bg-turquoise-50">+</button>
+      </span>
+    )
+  }
+
+  // One leaf criterion row (used inside each open category group). The weight stepper sits
+  // to the left of the label (reusing applyWeight, which persists + re-ranks).
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
         <td className="p-3 pl-8 text-turquoise-800/70">
           <div className="flex items-center gap-2">
+            {weightControl(key)}
             <span>{critLabel(key)}</span>
-            <input type="number" min={0} max={5} step={0.5} value={weightOf(key)}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => applyWeight(key, Math.max(0, Math.min(5, Number(e.target.value))))}
-              title={t.comparison.importance}
-              className="w-12 border border-turquoise-100 rounded px-1 py-0.5 text-xs text-turquoise-800/70" />
           </div>
         </td>
         {baseline && (() => {

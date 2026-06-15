@@ -402,6 +402,11 @@ def evaluate_pending(
     # One definition map for built-in + custom criteria — evaluated through one path.
     defs = criteria.definitions(search.custom_criteria or [])
     eval_keys = list(defs.keys())
+    # Only spend AI on criteria the user actually weights (> 0) — same gate board.criteria_view
+    # uses to mark cells pending, so the progressive drain doesn't loop on ignored criteria.
+    eff = shortlist_service._effective_weights(user.profile)
+    custom_w = {c["key"]: float(c.get("weight", 1.0)) for c in (search.custom_criteria or []) if c.get("key")}
+    weight_of = {**eff, **custom_w}
 
     # Selected (on-board) candidates first, then the rest; the baseline (current country)
     # last so its cells fill too — no blanks in any column.
@@ -427,6 +432,8 @@ def evaluate_pending(
                 break
             if key in have or attrs.get(key):
                 continue  # already evaluated, or has a usable seed bucket — no AI call
+            if weight_of.get(key, 0) <= 0:
+                continue  # unimportant to this user — don't spend an AI call on it
             ev = criterion_eval.evaluate(db, place, key, d["label"], d.get("description"), user_id=user.id)
             if ev is not None:
                 made += 1

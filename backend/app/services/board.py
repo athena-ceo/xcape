@@ -25,19 +25,31 @@ def criteria_view(
     rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
     evals = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
 
-    # Colour tier for EVERY criterion (built-in + custom) computed the same way — from its
-    # 0-1 value (eval, else seed bucket, else neutral). No built-in/custom branch.
+    # "Worth evaluating" = the user actually weights it. We only spend AI on (and mark pending)
+    # criteria with weight > 0, so an unimportant criterion never triggers a slow web-search
+    # call. The evaluator (/evaluate-pending) uses the same gate, so the drain terminates.
+    eff = sl._effective_weights(profile)
+    cw = {c["key"]: float(c.get("weight", 1.0)) for c in (custom_defs or []) if c.get("key")}
+    weight_of = {**eff, **cw}
+    computed = set(criteria.computed_keys())
+
+    def has_value(k: str) -> bool:
+        return (k in rows) or bool(attrs.get(k)) or (k in computed)
+
+    # Colour tier per criterion from its 0-1 value; an objective/custom criterion with no value
+    # yet shows a tier only if it's weighted (it'll be evaluated) — otherwise it's left blank.
     all_keys = list(criteria.criteria_keys()) + custom_keys
-    quality = {k: sl.quality_tier(sl._criterion_value(k, attrs, profile, place, evals)) for k in all_keys}
-    # Templated reason for computed criteria; eval-based (score + justification) wherever a
-    # cached evaluation exists; a "pending" marker for any criterion with no value yet.
+    quality = {
+        k: sl.quality_tier(sl._criterion_value(k, attrs, profile, place, evals))
+        for k in all_keys if has_value(k) or weight_of.get(k, 0) > 0
+    }
     reasons = {k: comparison.criterion_reason(place, profile, k) for k in criteria.criteria_keys()}
     pending: list[str] = []
     for key in eval_keys:
         ev = rows.get(key)
         if ev is not None:
             reasons[key] = criterion_eval.reason_from_eval(ev)
-        elif not attrs.get(key):  # no eval and no seed bucket → still being evaluated
+        elif not attrs.get(key) and weight_of.get(key, 0) > 0:  # worth evaluating → in progress
             reasons[key] = {"code": "custom_pending"}
             pending.append(key)
     return {"quality": quality, "reasons": reasons, "pending": pending}
