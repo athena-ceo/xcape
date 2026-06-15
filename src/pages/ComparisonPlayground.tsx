@@ -735,7 +735,7 @@ export function ComparisonPlayground() {
                 {(explain.data.rows ?? []).map((r: any) => (
                   <tr key={r.key} className="border-b border-turquoise-50">
                     <td className="py-1.5">
-                      {(t.criteria as Record<string, string>)[r.key] ?? r.key}
+                      {critLabel(r.key)}
                       {r.prioritized && (
                         <span className="ml-1 text-xs text-turquoise-600">({t.comparison.explainPrioritized})</span>
                       )}
