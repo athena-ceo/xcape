@@ -91,6 +91,12 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ selected }),
     }),
+  // Explicitly banish a country (override "out") — leaves the board and the excluded bar.
+  excludeCandidate: (id: number, candidateId: number) =>
+    request<any>(`/searches/${id}/candidates/${candidateId}/exclude`, { method: 'POST' }),
+  // Clear a pin/exclusion (override null) — back to the neutral ranked pool.
+  restoreCandidate: (id: number, candidateId: number) =>
+    request<any>(`/searches/${id}/candidates/${candidateId}/restore`, { method: 'POST' }),
   scoreExplanation: (id: number, candidateId: number) =>
     request<{ score: number; weight_total: number; rows: any[] }>(
       `/searches/${id}/candidates/${candidateId}/explanation`,

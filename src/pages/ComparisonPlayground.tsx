@@ -20,6 +20,7 @@ export function ComparisonPlayground() {
   const sid = Number(searchId)
   const [candidates, setCandidates] = useState<any[]>([])
   const [suggestions, setSuggestions] = useState<any[]>([])
+  const [excluded, setExcluded] = useState<any[]>([])
   const [evaluating, setEvaluating] = useState(false)
   const evaluatingRef = useRef(false)
   const [places, setPlaces] = useState<Record<number, any>>({})
@@ -58,11 +59,13 @@ export function ComparisonPlayground() {
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
   const [why, setWhy] = useState<{ placeId: number; name: string; key: string; value: any; text: string; score?: number | null } | null>(null)
-  // Split a candidate list into the board (selected) and the suggestion pool, and kick off
-  // progressive evaluation if any cells are still pending.
+  // Split a candidate list into the board (selected), the suggestion pool (ranked, not on the
+  // board) and the user-excluded bar (override "out"), then kick off progressive evaluation if
+  // any cells are still pending.
   function applyCandidates(cands: any[]) {
-    setCandidates(cands.filter((c) => c.selected))
-    setSuggestions(cands.filter((c) => !c.selected))
+    setCandidates(cands.filter((c) => c.selected && c.override !== 'out'))
+    setSuggestions(cands.filter((c) => !c.selected && c.override !== 'out'))
+    setExcluded(cands.filter((c) => c.override === 'out'))
     if (cands.some((c) => (c.pending || []).length)) void drainPending()
   }
 
@@ -83,8 +86,9 @@ export function ComparisonPlayground() {
     try {
       for (let i = 0; i < 200; i++) {
         const cands = await api.evaluatePending(sid, 2)
-        setCandidates(cands.filter((c) => c.selected))
-        setSuggestions(cands.filter((c) => !c.selected))
+        setCandidates(cands.filter((c) => c.selected && c.override !== 'out'))
+        setSuggestions(cands.filter((c) => !c.selected && c.override !== 'out'))
+        setExcluded(cands.filter((c) => c.override === 'out'))
         const b: any = await api.getBaseline(sid).catch(() => null)
         if (b) setBaseline(b)
         const anyPending = cands.some((c) => (c.pending || []).length) || !!(b?.pending?.length)
@@ -259,10 +263,17 @@ export function ComparisonPlayground() {
     }
   }
 
-  // "×" removes a country from the comparison board by unselecting it — it stays in the
-  // shortlist for reselection.
+  // "×" explicitly excludes a country: it leaves the board and won't be re-added by score or
+  // filters (it lands in the "excluded" bar). This is a user override — it survives repopulate.
   async function removeCountry(candidateId: number) {
-    await api.setSelected(sid, candidateId, false)
+    await api.excludeCandidate(sid, candidateId)
+    await reloadCandidates()
+  }
+
+  // Restore an excluded country to the neutral ranked pool (back into "suggestions"); the user
+  // then re-adds it to the board if they want it.
+  async function restoreCountry(candidateId: number) {
+    await api.restoreCandidate(sid, candidateId)
     await reloadCandidates()
   }
 
@@ -597,12 +608,20 @@ export function ComparisonPlayground() {
                   <button onClick={() => removeCountry(c.id)}
                     title={t.comparison.remove}
                     className="ml-2 text-turquoise-800/40 hover:text-red-600">×</button>
-                  {!!c.filter_violations?.length && (
-                    <div className="mt-1">
-                      <span className="inline-block text-[10px] font-normal rounded-full bg-amber-100 text-amber-800 px-2 py-0.5"
-                        title={`${t.comparison.flagTitle}: ${c.filter_violations.map(critLabel).join(', ')}`}>
-                        ⚠ {t.comparison.flagBadge}
-                      </span>
+                  {(c.override === 'in' || !!c.filter_violations?.length) && (
+                    <div className="mt-1 flex flex-wrap justify-center gap-1">
+                      {c.override === 'in' && (
+                        <span className="inline-block text-[10px] font-normal rounded-full bg-turquoise-100 text-turquoise-700 px-2 py-0.5"
+                          title={t.comparison.pinnedTitle}>
+                          📌 {t.comparison.pinnedBadge}
+                        </span>
+                      )}
+                      {!!c.filter_violations?.length && (
+                        <span className="inline-block text-[10px] font-normal rounded-full bg-amber-100 text-amber-800 px-2 py-0.5"
+                          title={`${t.comparison.flagTitle}: ${c.filter_violations.map(critLabel).join(', ')}`}>
+                          ⚠ {t.comparison.flagBadge}
+                        </span>
+                      )}
                     </div>
                   )}
                 </th>
@@ -675,6 +694,28 @@ export function ComparisonPlayground() {
           </tbody>
         </table>
       </div>
+
+      {/* Excluded countries — explicitly removed by the user; one click restores them to the pool. */}
+      {excluded.length > 0 && (
+        <div className="mb-4 rounded-md border border-turquoise-100 bg-turquoise-50/40 px-3 py-2">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1.5">
+            <span className="text-xs font-medium text-turquoise-800/80">
+              {t.comparison.excludedTitle} ({excluded.length})
+            </span>
+            <span className="text-[11px] text-turquoise-800/50">{t.comparison.excludedHint}</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {excluded.map((c) => (
+              <button key={c.id} onClick={() => restoreCountry(c.id)}
+                title={t.comparison.restore}
+                className="text-xs rounded-full border border-turquoise-100 bg-white px-2.5 py-1 text-turquoise-800/70 hover:bg-turquoise-50 inline-flex items-center gap-1.5">
+                <span className="line-through decoration-turquoise-800/30">{placeName(places[c.place_id], lang)}</span>
+                <span className="text-turquoise-600">↺</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {evaluating && <div className="mb-4"><Waiting /></div>}
 

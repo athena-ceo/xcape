@@ -508,6 +508,12 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
     by score. Eligible = tier 0 (qualified) and tier 1 (pending eval, not yet judged). If
     nothing is eligible the board is left empty; the UI surfaces a relaxation suggestion via
     `filter_advice`. Idempotent — safe to re-run after async evals land (progressive fill).
+
+    EXPLICIT USER OVERRIDES WIN over filters + score (see Candidate.override):
+      - "in" (pinned): kept on the board regardless of tier — even a filter violator stays,
+        flagged in the UI. Pins take board slots first; score fills the rest.
+      - "out" (excluded): never re-enters the board or suggestions, and its row is preserved
+        (not deleted) so the "excluded" bar survives a repopulate.
     """
     from app.services import criteria, criterion_eval  # avoid circular import at module load
 
@@ -538,16 +544,27 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
         .filter(Candidate.search_id == search.id, Candidate.status == "active")
         .all()
     }
+    # Explicit user overrides (see Candidate.override) take precedence over the ranking.
+    pinned_ids = {pid for pid, c in existing.items() if c.override == "in"}
+    excluded_ids = {pid for pid, c in existing.items() if c.override == "out"}
 
-    # The board is the best MAX_COMPARE non-violating countries by score; violating ones
-    # (tier 2) are excluded entirely so a hard filter actually removes failing countries and
-    # surfaces passing ones. The next-best non-violating fill the suggestion pool.
-    eligible_ids = [p.id for p, _s, _r, t in scored if t != 2]
-    final_selected = set(eligible_ids[:MAX_COMPARE])
-    suggestions = eligible_ids[MAX_COMPARE:MAX_COMPARE + SHORTLIST_SIZE]
-    target_ids = final_selected | set(suggestions)
+    # The board is: the user's pinned countries first (in score order, any tier), then the
+    # best non-violating countries by score fill the remaining slots. Violating, non-pinned
+    # countries (tier 2) and user-excluded ones are dropped; the next-best non-violating,
+    # non-excluded fill the suggestion pool.
+    pinned_ranked = [p.id for p, _s, _r, _t in scored if p.id in pinned_ids][:MAX_COMPARE]
+    eligible_ids = [
+        p.id for p, _s, _r, t in scored
+        if t != 2 and p.id not in excluded_ids and p.id not in pinned_ids
+    ]
+    slots = MAX_COMPARE - len(pinned_ranked)
+    final_selected = set(pinned_ranked) | set(eligible_ids[:slots])
+    suggestions = eligible_ids[slots:slots + SHORTLIST_SIZE]
+    # Keep pinned + excluded rows alive so the overrides (and the "excluded" bar) survive.
+    target_ids = final_selected | set(suggestions) | pinned_ids | excluded_ids
 
-    # Drop stale suggestions (anything not selected and no longer in the pool).
+    # Drop stale suggestions (anything not selected and no longer in the pool); never an
+    # explicit override — those rows are preserved by being in target_ids above.
     for pid, cand in existing.items():
         if pid not in target_ids:
             db.delete(cand)

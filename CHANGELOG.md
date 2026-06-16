@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Explicit add/remove of a country overrides filters; excluded bar
+
+- **Adding a country pins it.** A country you add (even one that violates a hard filter, e.g.
+  Israel under a strict visa filter) now stays on the board: it's marked as an explicit
+  override (`Candidate.override = "in"`) so self-heal-on-load and repopulate keep it instead
+  of silently dropping it. It still shows the amber ⚠ flag on the criterion it misses, plus a
+  📌 "Added by you" badge so the intent is clear.
+- **Removing a country excludes it.** The × button now banishes the country (`override =
+  "out"`) instead of merely unselecting it, so scoring/filters/repopulate never re-add it
+  (previously a removed country like Portugal would reappear on the next re-rank).
+- **New "Excluded" bar** under the comparison table lists everything you removed, with a
+  one-click restore that returns it to the neutral ranked pool.
+- New endpoints `POST /searches/{id}/candidates/{cid}/exclude` and `…/restore`; `CandidateOut`
+  now carries `override`. Migration `0018_candidate_override` adds the nullable column.
+
 ### 2026-06-16 — Deploy seeding is insert-only; `reseed-data` to force a refresh
 
 - `seed` (and therefore `deploy prod`) is now **insert-only**: it bootstraps a fresh DB and

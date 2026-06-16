@@ -37,6 +37,7 @@ class CandidateOut(BaseModel):
     place_id: int
     status: str
     selected: bool = False
+    override: str | None = None  # "in" pinned / "out" excluded by the user / None neutral
     match_score: float | None = None
     match_reasons: list[str] = []
     per_criterion: dict

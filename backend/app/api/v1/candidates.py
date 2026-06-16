@@ -40,7 +40,11 @@ def _owned(db: Session, user: User, search_id: int) -> Search:
 
 def _board_violates_filters(db: Session, user: User, search: Search) -> bool:
     """True if any currently-SELECTED country violates an active hard filter — meaning the
-    stored board is stale w.r.t. the filters and should be re-ranked (filters are exclusionary)."""
+    stored board is stale w.r.t. the filters and should be re-ranked (filters are exclusionary).
+
+    Pinned countries (override == "in") are skipped: the user accepted that violation on
+    purpose, so it must not trigger a self-heal that would otherwise churn the board on
+    every load."""
     profile = user.profile
     if not (profile and profile.filters):
         return False
@@ -50,6 +54,7 @@ def _board_violates_filters(db: Session, user: User, search: Search) -> bool:
                 Candidate.selected.is_(True))
         .all()
     )
+    selected = [c for c in selected if c.override != "in"]  # pinned violations are intentional
     if not selected:
         return False
     custom_defs = list(search.custom_criteria or [])
@@ -172,17 +177,25 @@ def add_candidate(
         .first()
     )
     if existing:
+        # Explicit add is a user override: pin it on the board even if it violates a hard
+        # filter, and un-banish it if it had been excluded.
         existing.status = "active"
+        existing.override = "in"
+        if not existing.selected and _selected_count(db, search_id, exclude_id=existing.id) < MAX_COMPARE:
+            existing.selected = True
         db.commit()
+        shortlist_service.rescore_candidates(db, user, search)
         db.refresh(existing)
         return existing
 
-    # A freshly added country joins the comparison if there's still room (<= 5).
+    # A freshly added country joins the comparison if there's still room (<= 5). It's pinned
+    # ("in") so the user's explicit choice survives filters, self-heal and repopulate.
     candidate = Candidate(
         search_id=search_id,
         place_id=place.id,
         per_criterion=place.attributes or {},
         selected=_selected_count(db, search_id) < MAX_COMPARE,
+        override="in",
     )
     db.add(candidate)
     db.commit()
@@ -227,6 +240,46 @@ def set_selected(
                 status_code=409, detail=f"At most {MAX_COMPARE} countries can be compared"
             )
     candidate.selected = body.selected
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+@router.post("/{search_id}/candidates/{candidate_id}/exclude", response_model=CandidateOut)
+def exclude_candidate(
+    search_id: int,
+    candidate_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Explicitly banish a country: it leaves the board and never re-enters via score/filters
+    (override == "out"). Its row is kept so it shows in the "excluded" bar for restore."""
+    _owned(db, user, search_id)
+    candidate = db.get(Candidate, candidate_id)
+    if candidate is None or candidate.search_id != search_id:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    candidate.override = "out"
+    candidate.selected = False
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+@router.post("/{search_id}/candidates/{candidate_id}/restore", response_model=CandidateOut)
+def restore_candidate(
+    search_id: int,
+    candidate_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Clear an explicit override (pin or exclusion): the country returns to the neutral pool,
+    re-ranked by filters + score. It does NOT auto-join the board — the user re-adds it."""
+    _owned(db, user, search_id)
+    candidate = db.get(Candidate, candidate_id)
+    if candidate is None or candidate.search_id != search_id:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    candidate.override = None
+    candidate.selected = False
     db.commit()
     db.refresh(candidate)
     return candidate
