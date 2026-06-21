@@ -303,6 +303,37 @@ export function ComparisonPlayground() {
     }
   }
 
+  // Inline hard-filter on a built-in criterion straight from the table (tier '' | 'ok' | 'good').
+  // Custom criteria use their per-search `min` instead (edited in Criteria settings).
+  async function applyFilter(criterion: string, tier: string) {
+    if (applying) return
+    setApplying(true)
+    try {
+      const next = { ...filters }
+      if (tier) next[criterion] = tier; else delete next[criterion]
+      setFilters(next)
+      await api.updateProfile({ filters: next })
+      await api.repopulate(sid)  // filters are exclusionary → re-rank the pool
+      await reloadCandidates()
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  // Inline filter for a CUSTOM criterion = its per-search min threshold.
+  async function applyCustomMin(criterion: string, tier: string) {
+    if (applying) return
+    setApplying(true)
+    try {
+      const min = tier === 'good' ? 0.7 : tier === 'ok' ? 0.45 : null
+      setCustomCrit((cc) => cc.map((c) => (c.key === criterion ? { ...c, min: min ?? undefined } : c)))
+      await api.updateCustomCriterion(sid, criterion, { min })  // repopulates server-side
+      await reloadCandidates()
+    } finally {
+      setApplying(false)
+    }
+  }
+
   async function showExplanation(candidate: any) {
     const data = await api.scoreExplanation(sid, candidate.id)
     setExplain({ candidate, data })
@@ -441,15 +472,42 @@ export function ComparisonPlayground() {
     )
   }
 
-  // One leaf criterion row (used inside each open category group). The weight stepper sits
-  // to the left of the label (reusing applyWeight, which persists + re-ranks).
+  // Inline hard-filter control (Any / ≥ OK / ≥ Good), the filter analog of the weight stepper.
+  // Skipped for the bespoke filters (climate/visa/language/inclusion) — those stay in Criteria
+  // settings. Built-ins set profile filters; custom criteria set their per-search min.
+  const SPECIAL_FILTER_KEYS = new Set(['climate', 'visa', 'language_ease', 'inclusion'])
+  function filterTierOf(key: string): string {
+    const cust = customCrit.find((c) => c.key === key)
+    if (cust) return cust.min != null && cust.min >= 0.7 ? 'good' : cust.min != null && cust.min > 0 ? 'ok' : ''
+    const v = (filters as Record<string, any>)[key]
+    return v === 'good' || v === 'ok' ? v : ''
+  }
+  function filterControl(key: string) {
+    if (SPECIAL_FILTER_KEYS.has(key)) return null
+    const tier = filterTierOf(key)
+    const isCustom = customCrit.some((c) => c.key === key)
+    return (
+      <select value={tier} title={t.comparison.filter} disabled={applying}
+        onChange={(e) => (isCustom ? applyCustomMin(key, e.target.value) : applyFilter(key, e.target.value))}
+        className={`text-xs rounded border px-1 py-0.5 shrink-0 ${
+          tier ? 'border-turquoise-400 text-turquoise-700 bg-turquoise-50' : 'border-turquoise-100 text-turquoise-800/50'}`}>
+        <option value="">{t.comparison.minAny}</option>
+        <option value="ok">{t.comparison.minOk}</option>
+        <option value="good">{t.comparison.minGood}</option>
+      </select>
+    )
+  }
+
+  // One leaf criterion row (used inside each open category group). The weight stepper + filter
+  // sit to the left of the label (reusing applyWeight / applyFilter, which persist + re-rank).
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
         <td className="p-3 pl-8 text-turquoise-800/70">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {weightControl(key)}
             <span>{critLabel(key)}</span>
+            <span className="ml-auto">{filterControl(key)}</span>
           </div>
         </td>
         {baseline && (() => {
@@ -616,10 +674,20 @@ export function ComparisonPlayground() {
               const open = isOpen(g)
               return (
                 <Fragment key={g.key}>
-                  <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none"
+                  <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none hover:bg-turquoise-100/70"
                     onClick={() => toggleCat(g.key, open)}>
                     <td className="p-2.5 font-medium text-turquoise-900">
-                      <span className="inline-block w-4 text-turquoise-600">{open ? '▾' : '▸'}</span>{g.label}
+                      <span className="inline-flex items-center gap-2">
+                        <span className="inline-grid place-items-center w-5 h-5 rounded border border-turquoise-300 text-turquoise-600 text-xs">
+                          {open ? '▾' : '▸'}
+                        </span>
+                        {g.label}
+                        {!open && (
+                          <span className="text-xs font-normal text-turquoise-600/70">
+                            {vis.length} · {t.comparison.expandHint}
+                          </span>
+                        )}
+                      </span>
                     </td>
                     {baseline && (
                       <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>

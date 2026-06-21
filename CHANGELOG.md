@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Discoverable category expand + inline criterion filters
+
+- **Categories read as expandable**: a boxed ▸/▾ chevron, a row hover state, and a "N · open"
+  cue on collapsed categories — so it's clear you open one to see (and tune) its criteria.
+- **Filter criteria inline**, the analog of the inline weight stepper: each criterion row has an
+  Any / ≥ OK / ≥ Good filter selector (built-ins set a profile filter, custom criteria set their
+  per-search min; both re-rank immediately). Bespoke filters (climate/visa/language/inclusion)
+  stay in Criteria settings. The interaction hint now mentions opening categories.
+
 ### 2026-06-16 — Onboarding: pick a persona directly (no guessing)
 
 - Onboarding now **leads with a persona picker** — a list of profiles with their descriptions
