@@ -284,7 +284,7 @@ export const fr = {
     minOk: 'Au moins correct',
     minGood: 'Seulement bon',
     apply: 'Appliquer',
-    repopulate: 'Repeupler',
+    repopulate: 'Actualiser la liste',
     repopulateHint: 'Reconstruire la liste avec vos critères et filtres actuels',
     unsavedChanges: 'Modifications non enregistrées — appliquez ou annulez d’abord',
     applyFailed: 'Impossible d’appliquer vos réglages. Veuillez réessayer.',

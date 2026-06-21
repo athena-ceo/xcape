@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.search import Search
 from app.models.user import User
 from app.schemas.search import CandidateOut, SearchCreate, SearchOut, SearchUpdate
-from app.services import board, comparison, custom_criteria
+from app.services import board, comparison, criteria, criterion_eval, custom_criteria
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
@@ -94,7 +94,17 @@ def baseline(
     if place is None:
         return None
     profile = user.profile
-    view = board.criteria_view(db, place, profile, search.custom_criteria or [])
+    custom_defs = search.custom_criteria or []
+    view = board.criteria_view(db, place, profile, custom_defs)
+    # Score the home country on the same weights as the candidates, so the user can see whether
+    # "stay where you are" actually beats the alternatives (requested in user testing).
+    weights = shortlist_service._effective_weights(profile)
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+    evals = criterion_eval.values_for_place(db, place.id, eval_keys)
+    score, _ = shortlist_service._score_place(place, weights, profile, evals)
     return {
         "id": place.id,
         "name": place.name,
@@ -104,4 +114,5 @@ def baseline(
         "reasons": view["reasons"],
         "per_criterion": place.attributes or {},
         "pending": view["pending"],
+        "match_score": score,
     }

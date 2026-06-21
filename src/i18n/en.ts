@@ -286,7 +286,7 @@ export const en: Dict = {
     minOk: 'At least OK',
     minGood: 'Only good',
     apply: 'Apply',
-    repopulate: 'Repopulate',
+    repopulate: 'Refresh list',
     repopulateHint: 'Rebuild the list with your current criteria and filters',
     unsavedChanges: 'Unsaved changes — apply or cancel first',
     applyFailed: 'Could not apply your settings. Please try again.',

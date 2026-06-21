@@ -456,7 +456,7 @@ export function ComparisonPlayground() {
           const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
           return (
             <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
-              <button onClick={() => openWhy(bcol, key)} className="block w-full p-3 hover:underline cursor-pointer">
+              <button onClick={() => openWhy(bcol, key)} className="block w-full p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                 {bpending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : cellValue(key, baseline.attributes, baseline.quality?.[key])}
@@ -471,7 +471,7 @@ export function ComparisonPlayground() {
             <td key={c.id}
               className={`p-0 text-center ${pending ? '' : (viol ? 'bg-amber-100 text-amber-900' : qualityClass(c.quality?.[key]))}`}
               title={viol ? `${t.comparison.flagTitle}: ${critLabel(key)}` : undefined}>
-              <button onClick={() => openWhy(c, key)} className="block w-full p-3 hover:underline cursor-pointer">
+              <button onClick={() => openWhy(c, key)} className="block w-full p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                 {pending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : <>{viol && '⚠ '}{cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}</>}
@@ -669,7 +669,22 @@ export function ComparisonPlayground() {
               return (
                 <tr className="border-t border-turquoise-100">
                   <td colSpan={cols} className="p-2 text-center">
-                    <button onClick={() => setShowZero((s) => !s)}
+                    <button onClick={() => {
+                        const next = !showZero
+                        setShowZero(next)
+                        // Reveal the rows: weight-0 criteria live inside category groups, so
+                        // expand the groups that contain them — otherwise nothing visibly
+                        // changes (a real point of confusion in user testing).
+                        if (next) {
+                          setOpenCats((o) => {
+                            const m = { ...o }
+                            for (const g of groups) {
+                              if (g.leaves.some((k) => !visibleLeaf(k))) m[g.key] = true
+                            }
+                            return m
+                          })
+                        }
+                      }}
                       className="text-xs text-turquoise-600 hover:underline">
                       {showZero ? t.comparison.hideUnimportant : `${t.comparison.showUnimportant} (${hidden})`}
                     </button>
@@ -679,7 +694,11 @@ export function ComparisonPlayground() {
             })()}
             <tr className="border-t border-turquoise-200 bg-turquoise-50">
               <td className="p-3 font-medium">{t.comparison.matchScore}</td>
-              {baseline && <td className="p-3 text-center bg-turquoise-100/60 text-turquoise-800/40">—</td>}
+              {baseline && (
+                <td className="p-3 text-center bg-turquoise-100/60 font-medium text-turquoise-700">
+                  {baseline.match_score != null ? `${Math.round(baseline.match_score)}%` : '—'}
+                </td>
+              )}
               {candidates.map((c) => (
                 <td key={c.id} className="p-3 text-center font-medium text-turquoise-600">
                   {c.match_score != null ? (
