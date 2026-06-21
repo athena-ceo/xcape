@@ -22,8 +22,13 @@ def test_persona_for_matches_reasons():
     assert criteria.persona_for(["retirement"], []) == "retiree"
     assert criteria.persona_for(["career"], []) == "professional"
     assert criteria.persona_for(["climate"], []) == "climate_lifestyle"
-    # economy implies financial/tax tags → asset_protection (not professional).
-    assert criteria.persona_for(["economy"], []) == "asset_protection"
+    # economy is about the job market / affordability → professional, NOT asset_protection
+    # (asset_protection is reserved for explicit wealth/tax intent — "patrimoine").
+    assert criteria.persona_for(["economy"], []) == "professional"
+    # A frugal family's mix (cost of living + quality of life + economy) must NOT be read as
+    # wealth protection — that was the reported mis-classification.
+    assert criteria.persona_for(["cost", "lifestyle", "economy"], []) == "climate_lifestyle"
+    assert criteria.persona_for(["cost"], []) != "asset_protection"
 
 
 def test_persona_for_falls_back_to_neutral():

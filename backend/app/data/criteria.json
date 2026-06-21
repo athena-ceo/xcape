@@ -51,7 +51,7 @@
     },
     {
       "key": "political_exile",
-      "label_fr": "Liberté politique", "label_en": "Political freedom",
+      "label_fr": "Stabilité politique et libertés", "label_en": "Political stability & freedoms",
       "blurb_fr": "Vous fuyez le climat politique. On privilégie la stabilité, les droits et la sécurité.",
       "blurb_en": "You're fleeing the political climate. We prioritise stability, rights and safety.",
       "match": {"reasons": ["politics"], "tags": ["stability"]},
@@ -63,7 +63,7 @@
       "label_fr": "Protection du patrimoine", "label_en": "Asset protection",
       "blurb_fr": "Vous protégez votre patrimoine. On se concentre sur la fiscalité, les conventions fiscales et la sécurité des avoirs.",
       "blurb_en": "You're protecting your assets. We focus on taxation, tax treaties and asset security.",
-      "match": {"reasons": ["patrimoine", "economy", "cost"], "tags": ["financial", "tax"]},
+      "match": {"reasons": ["patrimoine"], "tags": ["financial", "tax"]},
       "weights": {"tax": 3, "tax_treaty": 2.5, "asset_security": 2.5, "cost_of_living": 1.5, "political_stability": 1.5, "safety": 1, "visa": 1},
       "ask": ["budget"],
       "custom_criteria": [
@@ -111,7 +111,7 @@
       "label_fr": "Climat et cadre de vie", "label_en": "Climate & lifestyle",
       "blurb_fr": "Vous cherchez un meilleur cadre de vie. On regarde le climat, la nature, la culture et le coût.",
       "blurb_en": "You're after a better quality of life. We look at climate, nature, culture and cost.",
-      "match": {"reasons": ["climate", "lifestyle"], "tags": ["climate", "lifestyle"]},
+      "match": {"reasons": ["climate", "lifestyle", "cost"], "tags": ["climate", "lifestyle"]},
       "weights": {"climate": 3, "nature": 2, "cost_of_living": 1.5, "culture": 1.5, "food": 1, "healthcare": 1, "safety": 1, "language_ease": 1, "visa": 1},
       "ask": ["climate", "budget"]
     },
@@ -128,13 +128,13 @@
 
   "reason_tags": {
     "politics":       ["stability", "fear"],
-    "economy":        ["cost", "financial", "tax"],
+    "economy":        ["cost", "career"],
     "safety":         ["safety", "fear"],
     "discrimination": ["discrimination", "fear"],
     "patrimoine":     ["financial", "tax"],
-    "retirement":     ["retirement", "financial", "health"],
+    "retirement":     ["retirement", "health"],
     "climate":        ["climate"],
-    "cost":           ["cost", "financial"],
+    "cost":           ["cost"],
     "healthcare":     ["health"],
     "lifestyle":      ["lifestyle"],
     "career":         ["career"]
