@@ -8,6 +8,7 @@ import { Header } from './components/Header'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { ComparisonPlayground } from './pages/ComparisonPlayground'
 import { Drilldown } from './pages/Drilldown'
+import { ExplorePage } from './pages/ExplorePage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { Onboarding } from './pages/Onboarding'
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/search" element={<RequireAuth><SearchRedirect /></RequireAuth>} />
         <Route path="/shortlist/:searchId" element={<RequireAuth><ShortlistRedirect /></RequireAuth>} />
         <Route path="/compare/:searchId" element={<RequireAuth><ComparisonPlayground /></RequireAuth>} />
+        <Route path="/explore/:searchId" element={<RequireAuth><ExplorePage /></RequireAuth>} />
         <Route path="/drilldown/:placeId" element={<RequireAuth><Drilldown /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />

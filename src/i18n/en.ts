@@ -337,6 +337,18 @@ export const en: Dict = {
     region: 'Region',
     area: 'Area',
   },
+  explore: {
+    title: 'All countries',
+    exploreAll: 'Explore all countries',
+    backToBoard: 'Back to board',
+    searchPlaceholder: 'Filter by name…',
+    sortByScore: 'Sort: best match',
+    sortByName: 'Sort: name',
+    showExcluded: 'Show excluded',
+    loading: 'Ranking countries…',
+    addToBoard: 'Add to board',
+    onBoard: 'On board',
+  },
   trend: {
     level: 'Level',
     trendLabel: 'Trend',

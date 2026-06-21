@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Explore: full ranked country list (also the mobile results view)
+
+- New **Explore** route (`/explore/:searchId`, reached via "Explore all countries" below the
+  board): a read-only ranked list of EVERY country against your current weights/filters —
+  name + match score + short reasons, text-filter + sort (best match / name), add-to-board and
+  drill-down per row. Filter-passing by default with a "Show excluded (N)" toggle that lists
+  violators with the localized reason. Doubles as the mobile-friendly results view (a list, not
+  a wide matrix). New `GET /searches/{id}/explore` (rank_all) — read-only, no board mutation.
+
 ### 2026-06-16 — Service criteria: quality + access sub-scores, filter on one
 
 - Healthcare & education now use a **service lens**: the eval returns a headline score plus

@@ -810,6 +810,13 @@ export function ComparisonPlayground() {
         </div>
       </div>
 
+      {/* Quiet entry to the full ranked list (progressive disclosure — keeps the board minimal). */}
+      <div className="mb-5">
+        <Link to={`/explore/${sid}`} className="text-sm text-turquoise-600 hover:underline">
+          {t.explore.exploreAll} →
+        </Link>
+      </div>
+
       {/* Chat — shared conversation with the drill-down page (same searchId). */}
       <ChatPanel searchId={sid} onChanged={reload} />
 

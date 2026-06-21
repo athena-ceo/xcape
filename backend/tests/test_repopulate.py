@@ -95,3 +95,22 @@ def test_repopulate_reranks_to_full_board_and_keeps_filters(auth_client, db_sess
     assert sum(1 for c in after if c["selected"]) == 5  # board stays full after re-ranking
     # The filter survives a repopulate (stability).
     assert auth_client.get("/api/v1/profile").json()["filters"] == {"visa": True}
+
+
+def test_explore_ranks_all_countries_readonly(auth_client, db_session):
+    """Explore returns every country ranked best-first, flags board members, and does NOT
+    change the board (read-only)."""
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/shortlist")
+    before = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+
+    rows = auth_client.get(f"/api/v1/searches/{sid}/explore").json()
+    assert len(rows) > 50  # the whole seeded country set, not just the board
+    scores = [r["score"] for r in rows]
+    assert scores == sorted(scores, reverse=True)  # ranked best-first
+    assert any(r["on_board"] for r in rows)        # current board flagged
+    assert all({"place_id", "name", "score", "violations", "on_board"} <= set(r) for r in rows)
+
+    after = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+    assert len(after) == len(before)  # explore didn't mutate the board

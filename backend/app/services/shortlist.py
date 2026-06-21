@@ -599,6 +599,45 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
     return candidates
 
 
+def rank_all(db: Session, user: User, search: Search) -> list[dict]:
+    """Read-only full ranking of EVERY active country for this search (no board mutation) —
+    backs the Explore view. Each row: score (0-100), short reasons, filter violations/pending,
+    and whether it's already on the board. Sorted best score first."""
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
+
+    profile = user.profile
+    weights = _effective_weights(profile)
+    custom_defs = list(search.custom_criteria or [])
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+
+    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+    on_board = {
+        c.place_id
+        for c in db.query(Candidate).filter(
+            Candidate.search_id == search.id, Candidate.status == "active",
+            Candidate.selected.is_(True),
+        ).all()
+    }
+
+    rows: list[dict] = []
+    for p in countries:
+        evals = evals_by_place.get(p.id)
+        score, reasons = _score_place(p, weights, profile, evals)
+        st = filter_status(p, profile, evals, custom_defs)
+        rows.append({
+            "place_id": p.id, "name": p.name, "iso_code": p.iso_code,
+            "score": round(score), "reasons": reasons,
+            "violations": st["violations"], "pending": st["pending"],
+            "on_board": p.id in on_board,
+        })
+    rows.sort(key=lambda r: r["score"], reverse=True)
+    return rows
+
+
 def filter_advice(db: Session, user: User, search: Search) -> dict:
     """Diagnose how the active hard filters constrain the pool, to tell the user when (and what)
     to relax. Returns:

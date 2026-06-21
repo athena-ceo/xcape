@@ -137,6 +137,16 @@ def list_candidates(
     return candidates
 
 
+@router.get("/{search_id}/explore")
+def explore(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Read-only full ranking of every country for this search (Explore view) — does not
+    change the board."""
+    search = _owned(db, user, search_id)
+    return shortlist_service.rank_all(db, user, search)
+
+
 @router.get("/{search_id}/filter-advice")
 def filter_advice(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)

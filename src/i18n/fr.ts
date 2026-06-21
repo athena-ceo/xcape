@@ -334,6 +334,18 @@ export const fr = {
     region: 'Région',
     area: 'Superficie',
   },
+  explore: {
+    title: 'Tous les pays',
+    exploreAll: 'Explorer tous les pays',
+    backToBoard: 'Retour au tableau',
+    searchPlaceholder: 'Filtrer par nom…',
+    sortByScore: 'Tri : meilleure adéquation',
+    sortByName: 'Tri : nom',
+    showExcluded: 'Afficher les exclus',
+    loading: 'Classement des pays…',
+    addToBoard: 'Ajouter au tableau',
+    onBoard: 'Dans le tableau',
+  },
   trend: {
     level: 'Niveau',
     trendLabel: 'Tendance',
