@@ -55,6 +55,7 @@ export function ComparisonPlayground() {
   const [downloading, setDownloading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [showZero, setShowZero] = useState(false)  // reveal weight-0 (unimportant) criteria
+  const [sortMode, setSortMode] = useState<'category' | 'importance'>('category')
 
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
@@ -84,6 +85,7 @@ export function ComparisonPlayground() {
     evaluatingRef.current = true
     setEvaluating(true)
     try {
+      let prevPending = Infinity
       for (let i = 0; i < 200; i++) {
         const cands = await api.evaluatePending(sid, 2)
         setCandidates(cands.filter((c) => c.selected && c.override !== 'out'))
@@ -91,8 +93,14 @@ export function ComparisonPlayground() {
         setExcluded(cands.filter((c) => c.override === 'out'))
         const b: any = await api.getBaseline(sid).catch(() => null)
         if (b) setBaseline(b)
-        const anyPending = cands.some((c) => (c.pending || []).length) || !!(b?.pending?.length)
-        if (!anyPending) break
+        const pendingCount = cands.reduce((n, c) => n + (c.pending?.length || 0), 0)
+          + (b?.pending?.length || 0)
+        if (pendingCount === 0) break
+        // No-progress guard: if a round clears nothing (a cell that can't be evaluated — AI
+        // failure, unresolvable criterion), stop instead of spinning for 200 slow rounds with
+        // the spinner stuck on. Those cells get retried on the next user action.
+        if (pendingCount >= prevPending) break
+        prevPending = pendingCount
       }
       // Once the late objective/custom evals have landed, re-apply hard filters so the
       // board re-flags / tops up against now-known values (the iteration). Non-destructive.
@@ -389,6 +397,12 @@ export function ComparisonPlayground() {
   // Custom-criterion weights live on the per-search definition; built-ins on the profile.
   const customWeights = Object.fromEntries(customCrit.map((c) => [c.key, c.weight ?? 1]))
   const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
+  // "Sort by importance" floats the heaviest-weighted categories (and leaves within them) up;
+  // default keeps the registry/category order.
+  const groupWeight = (g: { leaves: string[] }) => g.leaves.reduce((s, k) => s + Math.max(0, weightOf(k)), 0)
+  const orderedGroups = sortMode === 'importance'
+    ? [...groups].sort((a, b) => groupWeight(b) - groupWeight(a))
+    : groups
   // Weight-0 criteria are ignored entirely (score AND filter — see filter_status), so they're
   // simply hidden behind "other criteria"; a dormant filter never produces a violation flag.
   const visibleLeaf = (key: string) => weightOf(key) > 0
@@ -580,12 +594,20 @@ export function ComparisonPlayground() {
           onDirtyChange={setSettingsDirty} />
       )}
 
-      {/* Colour legend */}
-      <div className="flex items-center gap-4 text-xs text-turquoise-800/70 mb-2">
+      {/* Colour legend + criteria sort */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-turquoise-800/70 mb-2">
         <span>{t.comparison.legend}:</span>
         <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800">{t.comparison.legendGood}</span>
         <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900">{t.comparison.legendWeak}</span>
         <span className="px-2 py-0.5 rounded bg-red-50 text-red-800">{t.comparison.legendNogo}</span>
+        <label className="ml-auto flex items-center gap-1.5">
+          {t.comparison.sortLabel}:
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as 'category' | 'importance')}
+            className="border border-turquoise-100 rounded px-1.5 py-0.5">
+            <option value="category">{t.comparison.sortCategory}</option>
+            <option value="importance">{t.comparison.sortImportance}</option>
+          </select>
+        </label>
       </div>
 
       {/* Interaction hint */}
@@ -633,11 +655,12 @@ export function ComparisonPlayground() {
             </tr>
           </thead>
           <tbody>
-            {groups.map((g) => {
+            {orderedGroups.map((g) => {
               // Hide weight-0 (unimportant) criteria unless the user reveals them; a category
               // with nothing important is hidden entirely. Filtered leaves stay visible so a
               // category flag always has a visible culprit row.
-              const vis = showZero ? g.leaves : g.leaves.filter(visibleLeaf)
+              let vis = showZero ? g.leaves : g.leaves.filter(visibleLeaf)
+              if (sortMode === 'importance') vis = [...vis].sort((a, b) => weightOf(b) - weightOf(a))
               if (!vis.length) return null
               const open = isOpen(g)
               return (

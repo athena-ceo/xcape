@@ -13,6 +13,7 @@ export const CLIMATE_KEYS = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as
 export const PRIORITY_KEYS = [
   'cost_of_living', 'healthcare', 'safety', 'political_stability', 'inclusion',
   'gender_equality', 'climate', 'language_ease', 'culture', 'food', 'tax', 'visa', 'nature',
+  'proximity',  // closeness to the country of origin — a frequently-wanted criterion
 ] as const
 // Fallback community list (used only if the registry hasn't loaded yet) — the live set
 // comes from the criteria registry (active communities). Drives the inclusion criterion.

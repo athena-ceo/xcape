@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Fix never-ending spinner; board sort + proximity criterion
+
+- **Hung "Recherche…" spinner fixed.** The progressive-fill loop only stopped when nothing was
+  pending; a cell that couldn't be evaluated (AI failure / unresolvable) kept it spinning for
+  up to 200 slow rounds. Added a no-progress guard: if a round clears nothing, it stops (the
+  cell is retried on the next action).
+- **Sort criteria by importance.** The comparison table has a "Sort: by category / by
+  importance" control; importance floats the heaviest categories and criteria to the top.
+- **Proximity to country of origin** is now a selectable proposed criterion in onboarding and
+  the profile (it was a hidden computed criterion).
+
 ### 2026-06-16 — Robust AI JSON parsing (long jobs survive a bad reply)
 
 - `ai_client.respond_json` no longer crashes on a truncated/invalid model response: it retries
