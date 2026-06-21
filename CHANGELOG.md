@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Service criteria: quality + access sub-scores, filter on one
+
+- Healthcare & education now use a **service lens**: the eval returns a headline score plus
+  separate **quality** and **access** sub-scores (e.g. Germany healthcare 78 = quality 86,
+  access 65), stored in `meta` and shown in the drill-down. The headline blends both, so a
+  world-class service newcomers can't easily get no longer scores top.
+- You can **filter on one component** — e.g. require healthcare *access* ≥ good regardless of
+  quality — via a `key:component` filter (`healthcare:access`). Surfaced as an Overall/Quality/
+  Access selector in Criteria settings; it follows the parent criterion's weight (dormant at
+  weight 0) like any filter. Eval prompt v7.
+
 ### 2026-06-16 — Structured incident-trend data (level + trajectory)
 
 - Trend-sensitive criteria (`safety`, `political_stability`, and the per-community "Safety for

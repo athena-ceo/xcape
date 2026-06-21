@@ -156,3 +156,23 @@ def test_weight_zero_makes_hard_filter_dormant():
     # Weight 0 → criterion ignored → filter dormant → no violation.
     prof.criteria_weights = {"climate": 0}
     assert "climate" not in filter_status(place, prof)["violations"]
+
+
+def test_component_filter_targets_service_subscore():
+    """A `healthcare:access` filter checks the access sub-score independently of the headline,
+    and follows the parent criterion's weight for dormancy."""
+    from app.models.place import Place
+    from app.models.profile import Profile
+    from app.services.shortlist import filter_status
+
+    place = Place(kind="country", name="X", attributes={})
+    prof = Profile(filters={"healthcare:access": "good"}, criteria_weights={"healthcare": 2.0},
+                   reasons_leaving=[], household_type="single", minority_groups=[])
+    evals = {"healthcare": 0.9, "healthcare:access": 0.3, "healthcare:quality": 0.95}
+    # Great headline + quality, but access is poor → the component filter flags it.
+    assert "healthcare:access" in filter_status(place, prof, evals)["violations"]
+    evals["healthcare:access"] = 0.8
+    assert "healthcare:access" not in filter_status(place, prof, evals)["violations"]
+    # Weight 0 on the parent → the component filter goes dormant too.
+    prof.criteria_weights = {"healthcare": 0}
+    assert "healthcare:access" not in filter_status(place, prof, {"healthcare:access": 0.3})["violations"]

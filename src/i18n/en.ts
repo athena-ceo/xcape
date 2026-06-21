@@ -274,6 +274,7 @@ export const en: Dict = {
     repopulate: 'Refresh list',
     repopulateHint: 'Rebuild the list with your current criteria and filters',
     unsavedChanges: 'Unsaved changes — apply or cancel first',
+    componentOverall: 'Overall',
     applyFailed: 'Could not apply your settings. Please try again.',
     filterIgnoredZero: 'Ignored — importance is 0',
     filterNoneMatch: 'No countries match all your active filters.',
@@ -339,6 +340,7 @@ export const en: Dict = {
   trend: {
     level: 'Level',
     trendLabel: 'Trend',
+    quality: 'Quality', access: 'Access',
     high: 'high', moderate: 'moderate', low: 'low',
     improving: 'improving', stable: 'stable', worsening: 'worsening',
   },

@@ -271,6 +271,7 @@ export const fr = {
     repopulate: 'Actualiser la liste',
     repopulateHint: 'Reconstruire la liste avec vos critères et filtres actuels',
     unsavedChanges: 'Modifications non enregistrées — appliquez ou annulez d’abord',
+    componentOverall: 'Global',
     applyFailed: 'Impossible d’appliquer vos réglages. Veuillez réessayer.',
     filterIgnoredZero: 'Ignoré — importance à 0',
     filterNoneMatch: 'Aucun pays ne satisfait tous vos filtres actifs.',
@@ -336,6 +337,7 @@ export const fr = {
   trend: {
     level: 'Niveau',
     trendLabel: 'Tendance',
+    quality: 'Qualité', access: 'Accès',
     high: 'élevé', moderate: 'modéré', low: 'faible',
     improving: 'en amélioration', stable: 'stable', worsening: 'en dégradation',
   },

@@ -8,6 +8,9 @@ import { useT } from '../i18n'
 import { categories, labelOf, nodeOf, useCriteria } from '../services/criteria'
 
 const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
+// Service criteria expose quality vs newcomer-access sub-scores you can filter on separately.
+const SERVICE_KEYS = ['healthcare', 'education']
+const SERVICE_COMPONENTS = ['quality', 'access'] as const
 const PRESETS: { key: string; w: number }[] = [
   { key: 'impIgnore', w: 0 }, { key: 'impLow', w: 0.5 }, { key: 'impNormal', w: 1 }, { key: 'impHigh', w: 2.5 },
 ]
@@ -82,7 +85,25 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
   // A filter is "set" when its value is truthy / a non-empty list.
   function filterActive(key: string): boolean {
     const v = f[key]
-    return Array.isArray(v) ? v.length > 0 : !!v
+    if (Array.isArray(v) ? v.length > 0 : !!v) return true
+    return SERVICE_KEYS.includes(key) && SERVICE_COMPONENTS.some((c) => !!f[`${key}:${c}`])
+  }
+  // Service criteria can be filtered on the whole thing or just one component (e.g. require
+  // healthcare ACCESS ≥ good regardless of quality). Stored as filters[`${key}:${component}`].
+  function serviceComp(base: string): string {
+    return SERVICE_COMPONENTS.find((c) => f[`${base}:${c}`]) ?? ''
+  }
+  function serviceTier(base: string): string {
+    const comp = serviceComp(base)
+    const v = f[comp ? `${base}:${comp}` : base]
+    return v === 'good' || v === 'ok' ? v : ''
+  }
+  function setService(base: string, comp: string, tier: string) {
+    const next = { ...f }
+    delete next[base]
+    for (const c of SERVICE_COMPONENTS) delete next[`${base}:${c}`]
+    if (tier) next[comp ? `${base}:${comp}` : base] = tier
+    setF(next)
   }
   // Generic threshold: '' (any) | 'ok' | 'good', stored as a tier word in filters[key].
   function genericThreshold(key: string): string {
@@ -157,6 +178,17 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
             {t.onboarding.climate[c]}
           </button>
         ))}
+      </div>
+    )
+    if (SERVICE_KEYS.includes(key)) return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <select value={serviceComp(key)} onChange={(e) => setService(key, e.target.value, serviceTier(key))}
+          className="border border-turquoise-100 rounded px-2 py-1 text-sm">
+          <option value="">{t.comparison.componentOverall}</option>
+          <option value="quality">{(t.trend as Record<string, string>).quality}</option>
+          <option value="access">{(t.trend as Record<string, string>).access}</option>
+        </select>
+        {thresholdSelect(serviceTier(key), (v) => setService(key, serviceComp(key), v))}
       </div>
     )
     // Every other criterion: a generic minimum threshold.

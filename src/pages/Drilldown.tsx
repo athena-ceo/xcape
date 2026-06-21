@@ -256,6 +256,20 @@ export function Drilldown() {
     )
   }
 
+  // Service criteria (healthcare, education) — show the quality vs newcomer-access split.
+  function serviceLine(meta: any) {
+    const tt = t.trend as Record<string, string>
+    const chip = (lbl: string, v: number) => (
+      <span className="text-turquoise-800/70">{lbl}: <span className="font-medium text-turquoise-900">{v}/100</span></span>
+    )
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        {meta.quality != null && chip(tt.quality, meta.quality)}
+        {meta.access != null && chip(tt.access, meta.access)}
+      </div>
+    )
+  }
+
   function criterionBox(key: string) {
     const d = detailByKey[key]
     if (!d) return null
@@ -286,7 +300,8 @@ export function Drilldown() {
             {d.summary ? cleanSummary(d.summary) : t.drilldown.assessmentPending}
           </p>
         )}
-        {d.meta && trendLine(d.meta)}
+        {d.meta && (d.meta.trend ? trendLine(d.meta)
+          : (d.meta.quality != null || d.meta.access != null) ? serviceLine(d.meta) : null)}
         {Array.isArray(d.sources) && d.sources.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>

@@ -34,17 +34,22 @@ STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=..
 # cached evals. Together with the criterion's label+description+lens it forms each row's
 # prompt_fp; a mismatch marks the row stale so the next evaluate-all (or lazy refresh)
 # regenerates it.
-EVAL_PROMPT_VERSION = "6"  # v6: summary hygiene (no score echo) + level/score consistency
+EVAL_PROMPT_VERSION = "7"  # v7: service lens (quality + access sub-scores) for healthcare/education
 
 # Criteria judged through the ACCESS lens — for these, what matters is whether a FOREIGN
 # RESIDENT can actually qualify for / reach / afford the thing (eligibility, waiting periods,
 # cost to non-citizens, legal hurdles). Everything else uses the EXPERIENCE lens (quality of
 # the thing as a newcomer lives it). Includes the access-oriented persona custom criteria.
 ACCESS_LENS_KEYS = {
-    "tax", "tax_treaty", "asset_security", "healthcare", "education",
+    "tax", "tax_treaty", "asset_security",
     "custom_banking_asset_protection", "custom_wealth_inheritance_tax",
-    "custom_retirement_visa", "custom_healthcare_for_retirees",
+    "custom_retirement_visa",
 }
+# SERVICE lens — services with a real quality-vs-newcomer-access split. The eval returns both
+# `quality` and `access` (0-100) sub-scores; the headline score blends them, and either
+# sub-score can be filtered on independently via a `key:component` filter (see shortlist).
+SERVICE_LENS_KEYS = {"healthcare", "education", "custom_healthcare_for_retirees"}
+SERVICE_COMPONENTS = ("quality", "access")
 # TREND lens — for these the trajectory matters as much as the current level, so we capture
 # structured {level, trend, window, metric} (e.g. anti-community incidents rising/falling).
 TREND_LENS_KEYS = {"safety", "political_stability"}
@@ -52,8 +57,10 @@ _COMMUNITY_SAFETY_PREFIX = "custom_safety_for_my_community"  # per-community cri
 
 
 def lens_for(key: str) -> str:
-    """Which evaluation lens a criterion uses: 'access' (can a newcomer get it), 'trend' (level
-    + trajectory, e.g. incident trends), or 'experience' (how good it is to live with)."""
+    """Which evaluation lens a criterion uses: 'service' (quality + access sub-scores), 'access'
+    (can a newcomer get it), 'trend' (level + trajectory), or 'experience' (lived quality)."""
+    if key in SERVICE_LENS_KEYS:
+        return "service"
     if key in TREND_LENS_KEYS or key.startswith(_COMMUNITY_SAFETY_PREFIX):
         return "trend"
     return "access" if key in ACCESS_LENS_KEYS else "experience"
@@ -128,6 +135,24 @@ def _eval_schema() -> dict:
     }
 
 
+def _service_schema() -> dict:
+    """Eval schema for service-lens criteria (healthcare, education): a headline score plus
+    separate quality and access sub-scores, so each can be shown and filtered independently."""
+    return {
+        "type": "object",
+        "properties": {
+            "score": {"type": "integer", "minimum": 0, "maximum": 100},
+            "quality": {"type": "integer", "minimum": 0, "maximum": 100},  # intrinsic quality
+            "access": {"type": "integer", "minimum": 0, "maximum": 100},   # ease for a newcomer
+            "summary_fr": {"type": "string"},
+            "summary_en": {"type": "string"},
+            "sources": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["score", "quality", "access", "summary_fr", "summary_en", "sources"],
+        "additionalProperties": False,
+    }
+
+
 def _trend_schema() -> dict:
     """Eval schema for trend-lens criteria: adds structured level/trend/window/metric so the
     trajectory (e.g. anti-community incidents rising vs falling) is first-class data, not buried
@@ -171,7 +196,15 @@ def evaluate(
     # Origin-neutral on purpose: these evals are a SHARED cross-user cache, so they must not
     # bake in any one user's home country / citizenship. Per-user framing (relocating FROM X)
     # lives in the chatbot context instead.
-    if lens == "access":
+    if lens == "service":
+        focus = (
+            "Report TWO sub-scores 0-100: quality (the intrinsic quality of the service for "
+            "residents) and access (how easily a FOREIGN RESIDENT / newcomer can actually obtain "
+            "it — eligibility, qualifying or waiting period, cost to non-citizens, language). The "
+            "headline score (0-100) is the newcomer's overall usefulness, reflecting BOTH (a "
+            "world-class service that newcomers can't readily get should NOT score top)."
+        )
+    elif lens == "access":
         focus = (
             "Score 0 (poor) to 100 (excellent) specifically for how well a FOREIGN RESIDENT can "
             "actually ACCESS and benefit from it: eligibility and legal/visa requirements, any "
@@ -196,7 +229,10 @@ def evaluate(
             "faces (e.g. language or lack of local networks). Judge the lived quality, not "
             "bureaucratic eligibility."
         )
-    schema = _trend_schema() if lens == "trend" else _eval_schema()
+    schema = (_trend_schema() if lens == "trend"
+              else _service_schema() if lens == "service" else _eval_schema())
+    schema_name = ("criterion_eval_trend" if lens == "trend"
+                   else "criterion_eval_service" if lens == "service" else "criterion_eval")
     try:
         data = ai_client.respond_json(
             f"Assess {place.name} for someone who has moved there as a FOREIGN RESIDENT — a "
@@ -208,7 +244,7 @@ def evaluate(
             f"the score. Use web search and favour the most recent data (2025–2026). Put sources "
             f"ONLY in the sources array as bare https URLs.",
             schema,
-            schema_name="criterion_eval_trend" if lens == "trend" else "criterion_eval",
+            schema_name=schema_name,
             web_search=True,
             model=settings.openai_chat_model,  # lightweight scoring → use the faster model
             kind="custom",
@@ -219,10 +255,12 @@ def evaluate(
         return None
 
     score = data.get("score")
-    # Structured trend fields (trend lens only) → stored in meta for first-class display/use.
+    # Structured extras → stored in meta for first-class display + component filtering.
     meta = None
     if lens == "trend":
         meta = {k: data.get(k) for k in ("level", "trend", "window", "metric") if data.get(k)}
+    elif lens == "service":
+        meta = {k: data.get(k) for k in SERVICE_COMPONENTS if data.get(k) is not None}
     if existing:  # refresh in place
         existing.score = score
         existing.level = level_from_score(score)
@@ -302,13 +340,29 @@ def levels_for_place(db: Session, place_id: int, keys: list[str]) -> dict[str, s
     return {k: r.level for k, r in _rows_for_place(db, place_id, keys).items()}
 
 
+def _emit_values(out: dict[str, float], r: PlaceCustomEval) -> None:
+    """Add a row's 0-1 value under its key, plus any service sub-components as `key:component`
+    (e.g. healthcare:access) so a filter can target one component through the normal path."""
+    out[r.key] = value_of(r)
+    m = r.meta or {}
+    for comp in SERVICE_COMPONENTS:
+        v = m.get(comp)
+        if isinstance(v, (int, float)):
+            out[f"{r.key}:{comp}"] = max(0.0, min(1.0, v / 100))
+
+
 def values_for_place(db: Session, place_id: int, keys: list[str]) -> dict[str, float]:
-    """Map of {key: 0-1 value} for a place — used for ranking (score-based)."""
-    return {k: value_of(r) for k, r in _rows_for_place(db, place_id, keys).items()}
+    """Map of {key: 0-1 value} for a place (incl. `key:component` sub-values) — used for
+    ranking and component filtering."""
+    out: dict[str, float] = {}
+    for r in _rows_for_place(db, place_id, keys).values():
+        _emit_values(out, r)
+    return out
 
 
 def values_for_places(db: Session, place_ids: list[int], keys: list[str]) -> dict[int, dict[str, float]]:
-    """Batch {place_id: {key: 0-1 value}} for scoring a whole pool in one query."""
+    """Batch {place_id: {key: 0-1 value}} for scoring a whole pool in one query (incl. service
+    `key:component` sub-values for component filters)."""
     if not place_ids or not keys:
         return {}
     rows = (
@@ -318,7 +372,7 @@ def values_for_places(db: Session, place_ids: list[int], keys: list[str]) -> dic
     )
     out: dict[int, dict[str, float]] = {}
     for r in rows:
-        out.setdefault(r.place_id, {})[r.key] = value_of(r)
+        _emit_values(out.setdefault(r.place_id, {}), r)
     return out
 
 

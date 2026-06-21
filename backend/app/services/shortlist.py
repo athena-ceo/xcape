@@ -291,7 +291,8 @@ def filter_status(
     custom_w = {c["key"]: float(c.get("weight", 1.0)) for c in (custom_defs or []) if c.get("key")}
 
     def _active(key: str) -> bool:
-        return (custom_w[key] if key in custom_w else weights.get(key, 0.0)) > 0
+        base = key.split(":", 1)[0]  # a component filter (healthcare:access) follows its parent
+        return (custom_w[base] if base in custom_w else weights.get(base, 0.0)) > 0
 
     for key, fval in filters.items():
         if fval in (None, "", False) or (isinstance(fval, list) and not fval):
