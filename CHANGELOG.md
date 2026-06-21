@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — User-feedback round: trustworthy defaults, less tweaking
+
+- **Persona derivation fixed**: cost-of-living / economic reasons are no longer read as wealth
+  protection (a frugal family was being classed as "asset protection"). `economy`→career,
+  `cost`→affordability; `asset_protection` is reserved for explicit "patrimoine".
+- **Persona key criteria are exclude-bad filters by default** — countries rated À éviter on a
+  persona's critical criteria drop off automatically (e.g. Malaysia for Jewish-community
+  safety), so the first result is plausible with no manual setup. Loosen via the relax banner.
+- **Onboarding resets stale filters** (and applies the persona's), fixing carried-over criteria
+  for returning users.
+- **Two new personas** — "Aventure entrepreneuriale", "Élargir mes horizons" — in the picker.
+  Relabels: "Stabilité politique et libertés" (was "Liberté politique"); Visa →
+  "Facilité d'installation (visa)".
+- **Board**: "Show other criteria" now expands the relevant category rows (was a no-op to the
+  eye); the home country gets an overall score (so "stay put" is a visible conclusion);
+  criteria values carry a persistent dotted underline (clearly clickable); "Repeupler" →
+  "Actualiser la liste".
+
 ### 2026-06-16 — Explicit add/remove of a country overrides filters; excluded bar
 
 - **Adding a country pins it.** A country you add (even one that violates a hard filter, e.g.
