@@ -85,6 +85,7 @@ def list_candidates(
 ):
     search = _owned(db, user, search_id)
     custom_criteria.merge_into_search(db, user, search)  # self-heal: bring in persistent customs
+    custom_criteria.heal_categories(db, search)  # community-safety → Safety & protection category
     # Self-heal: hard filters are exclusionary, so if the stored board still holds countries
     # that violate the current filters (set before this load), re-rank to drop them. Keeps a
     # plain page load consistent without requiring an explicit Repopulate.
@@ -361,8 +362,9 @@ def report_pdf(
 def list_custom_criteria(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """The search's user-defined criteria: [{key, label, description, weight}]."""
+    """The search's user-defined criteria: [{key, label, description, weight, category}]."""
     search = _owned(db, user, search_id)
+    custom_criteria.heal_categories(db, search)  # community-safety → Safety & protection category
     return search.custom_criteria or []
 
 

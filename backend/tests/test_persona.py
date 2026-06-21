@@ -150,3 +150,17 @@ def test_persona_filters_default_to_exclude_bad():
     f = criteria.persona_filters("safety_community")
     assert f.get("safety") == "ok" and f.get("inclusion") == "ok"
     assert criteria.persona_filters("neutral") == {}  # neutral imposes no hard filters
+
+
+def test_community_safety_heals_to_protection_category(auth_client, db_session):
+    """An older per-community safety def with no category is healed to 'protection' on read,
+    so it groups with Safety & protection (not 'Your criteria')."""
+    from app.models.search import Search
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    s = db_session.get(Search, sid)
+    s.custom_criteria = [{"key": "custom_safety_for_my_community_jewish",
+                          "label": "Safety for my community — Jewish", "weight": 2.0}]  # no category
+    db_session.commit()
+    customs = auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()
+    c = next(x for x in customs if x["key"].startswith("custom_safety_for_my_community"))
+    assert c["category"] == "protection"

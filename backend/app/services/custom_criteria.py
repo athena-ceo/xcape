@@ -12,10 +12,34 @@ persisted here.
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.profile import Profile
 from app.models.search import Search
 from app.models.user import User
+
+# Per-community safety criteria belong under the Safety & protection category, not "Your
+# criteria". Newer ones carry category="protection"; older stored defs may not.
+_COMMUNITY_PREFIX = "custom_safety_for_my_community"
+
+
+def heal_categories(db: Session, search: Search) -> None:
+    """Self-heal stored custom-criteria defs: give per-community safety criteria the
+    'protection' category if an older def is missing it, so they group with Safety & security
+    in the board and drill-down (not under 'Your criteria')."""
+    defs = list(search.custom_criteria or [])
+    changed = False
+    healed = []
+    for c in defs:
+        c = dict(c)
+        if c.get("key", "").startswith(_COMMUNITY_PREFIX) and not c.get("category"):
+            c["category"] = "protection"
+            changed = True
+        healed.append(c)
+    if changed:
+        search.custom_criteria = healed
+        flag_modified(search, "custom_criteria")
+        db.commit()
 
 
 def _profile(db: Session, user: User) -> Profile:

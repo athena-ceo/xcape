@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Community-safety criteria stay under Safety & protection
+
+- Per-community safety criteria (e.g. "Safety for my community — …") now reliably group under
+  **Safety & protection** in both the comparison board and the drill-down, not under "Your
+  criteria". Newer ones already carried `category: protection`; **older stored defs lacking it
+  are now self-healed on read** (`custom_criteria.heal_categories`), so existing searches fix
+  themselves.
+
 ### 2026-06-16 — Fix never-ending spinner; board sort + proximity criterion
 
 - **Hung "Recherche…" spinner fixed.** The progressive-fill loop only stopped when nothing was
