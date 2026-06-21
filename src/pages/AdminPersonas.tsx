@@ -34,6 +34,12 @@ export function AdminPersonas() {
     if (val > 0) w[key] = val; else delete w[key]
     setP(i, { weights: w })
   }
+  // `filters` = criteria that default to an "exclude-bad" hard filter for this persona.
+  function toggleFilter(i: number, key: string, on: boolean) {
+    const f = new Set<string>(personas[i].filters || [])
+    if (on) f.add(key); else f.delete(key)
+    setP(i, { filters: [...f] })
+  }
   function addPersona() {
     personas.push({ key: 'new_persona', label_en: '', label_fr: '', blurb_en: '', blurb_fr: '',
                     match: { reasons: [], tags: [] }, weights: {}, ask: [], active: true })
@@ -114,6 +120,18 @@ export function AdminPersonas() {
                   <input type="number" min={0} max={3} step={0.5} value={p.weights?.[k] ?? 0}
                     onChange={(e) => setWeight(i, k, Number(e.target.value))}
                     className="w-12 border border-turquoise-100 rounded px-1 py-0.5" />
+                  <span className="text-turquoise-800/60 truncate">{k}</span>
+                </label>
+              ))}
+            </div>
+            {/* Default hard filters: criteria where a country rated "À éviter" is excluded. */}
+            <p className="text-xs text-turquoise-800/60 mt-2 mb-1">{t.adminPersonas.filters}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+              {leafKeys.map((k) => (
+                <label key={k} className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" className="accent-turquoise-600"
+                    checked={(p.filters || []).includes(k)}
+                    onChange={(e) => toggleFilter(i, k, e.target.checked)} />
                   <span className="text-turquoise-800/60 truncate">{k}</span>
                 </label>
               ))}

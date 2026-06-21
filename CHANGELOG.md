@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Admin: set a persona's default filters
+
+- The Admin → Personas editor now has a **"Default filters"** section (a checkbox per criterion)
+  to choose which criteria a persona auto-applies as exclude-"À éviter" hard filters — the
+  `persona.filters` list that was only editable by hand-editing criteria.json. `PUT /admin/criteria`
+  validates that filter keys resolve to real criteria, like weights.
+
 ### 2026-06-16 — Community-safety criteria stay under Safety & protection
 
 - Per-community safety criteria (e.g. "Safety for my community — …") now reliably group under

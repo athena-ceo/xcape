@@ -406,6 +406,7 @@ export const en: Dict = {
     matchReasons: 'Match reasons',
     matchTags: 'Match tags',
     weights: 'Criterion weights (0–3)',
+    filters: 'Default filters (exclude “À éviter”)',
     add: 'Add persona',
     save: 'Save personas',
   },

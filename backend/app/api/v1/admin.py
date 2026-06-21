@@ -59,6 +59,10 @@ def put_criteria(body: dict, _: User = Depends(require_admin), db: Session = Dep
         if bad:
             raise HTTPException(status_code=400,
                                 detail=f"persona '{p['key']}' weights unknown criteria: {bad}")
+        badf = [k for k in (p.get("filters") or []) if k not in leaf_keys]
+        if badf:
+            raise HTTPException(status_code=400,
+                                detail=f"persona '{p['key']}' filters unknown criteria: {badf}")
     row = db.get(AppConfig, "criteria") or AppConfig(key="criteria")
     row.value = body
     db.add(row)

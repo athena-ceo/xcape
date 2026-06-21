@@ -403,6 +403,7 @@ export const fr = {
     matchReasons: 'Raisons (correspondance)',
     matchTags: 'Tags (correspondance)',
     weights: 'Poids des critères (0–3)',
+    filters: 'Filtres par défaut (exclure « À éviter »)',
     add: 'Ajouter un profil',
     save: 'Enregistrer les profils',
   },
