@@ -238,7 +238,10 @@ export function Drilldown() {
         className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-sm font-medium text-turquoise-900">
-            {d.label ?? (t.criteria as Record<string, string>)[key] ?? key}
+            {/* Prefer the registry's localized label (covers every built-in criterion, e.g.
+                tax_treaty → "Conventions fiscales"); fall back to a custom criterion's own
+                label, then the raw key. */}
+            {(() => { const l = labelOf(reg, key, lang); return l !== key ? l : (d.label ?? key) })()}
             {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
           </p>
           <label className="ml-auto flex items-center gap-1 text-xs text-turquoise-800/50">
