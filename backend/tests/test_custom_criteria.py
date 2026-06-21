@@ -48,3 +48,19 @@ def test_custom_criterion_contributes_to_score():
     good, _ = _score_place(place, weights, p, {"custom_x": 0.95})
     bad, _ = _score_place(place, weights, p, {"custom_x": 0.2})
     assert good > bad
+
+
+def test_prompt_fingerprint_changes_on_prompt_or_wording():
+    from app.services import criterion_eval as ce
+    base = ce.prompt_fingerprint("Healthcare", "access for foreign residents")
+    assert base == ce.prompt_fingerprint("Healthcare", "access for foreign residents")  # stable
+    assert base != ce.prompt_fingerprint("Healthcare", "something different")  # description change
+    assert base != ce.prompt_fingerprint("Health", "access for foreign residents")  # label change
+
+
+def test_fresh_requires_matching_fingerprint():
+    from app.models.custom_eval import PlaceCustomEval
+    from app.services import criterion_eval as ce
+    ev = PlaceCustomEval(prompt_fp="abc123", freshness_at=None)
+    assert ce._fresh(ev, "abc123", 0) is True
+    assert ce._fresh(ev, "different", 0) is False  # prompt changed → stale → re-evaluate

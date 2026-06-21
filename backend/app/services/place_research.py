@@ -68,6 +68,11 @@ _SYSTEM = (
     "society's general tolerance toward minorities overall."
 )
 
+# Bump when the per-criterion DETAIL prompt below changes in a way that should invalidate the
+# cached explanation text. Entries are stamped with this; detail_map ignores entries from an
+# older version, so they're treated as missing and regenerated on the next drilldown.
+DETAIL_PROMPT_VERSION = "2"  # v2: explain access for a foreign resident, not generic facts
+
 
 def _place_schema() -> dict:
     attr_props: dict = {k: {"type": "string", "enum": v} for k, v in _ENUMS.items()}
@@ -170,82 +175,16 @@ def fill_criterion(db: Session, place: Place, key: str, *, user_id: int | None =
     return value
 
 
-_DETAIL_CRITERIA = [
-    "cost_of_living", "climate", "language_ease", "healthcare", "education",
-    "safety", "political_stability", "inclusion", "gender_equality", "tax", "visa",
-    "culture", "food",
-]
-
-
-def _detail_schema() -> dict:
-    return {
-        "type": "object",
-        "properties": {
-            "criteria": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "key": {"type": "string", "enum": _DETAIL_CRITERIA},
-                        "summary_fr": {"type": "string"},
-                        "summary_en": {"type": "string"},
-                        "sources": {"type": "array", "items": {"type": "string"}},
-                    },
-                    "required": ["key", "summary_fr", "summary_en", "sources"],
-                    "additionalProperties": False,
-                },
-            }
-        },
-        "required": ["criteria"],
-        "additionalProperties": False,
-    }
-
-
-def fetch_criteria_detail(
-    db: Session, place: Place, *, lang: str = "fr", user_id: int | None = None
-) -> dict:
-    """Per-criterion detail with sources, generated in BOTH languages in one call and
-    cached, so switching language is instant (no re-fetch / dynamic translation).
-    Returns the requested language projected to a {key, summary, sources} list.
-    """
-    cache = place.criteria_detail or {}
-    if "criteria" not in cache:  # not yet cached in the bilingual format
-        cache = ai_client.respond_json(
-            f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
-            f"explanation for each of these criteria: {', '.join(_DETAIL_CRITERIA)}. Provide "
-            f"BOTH a French version (summary_fr) and an English version (summary_en). Use web "
-            f"search for current facts. Put sources ONLY in the sources array, each a plain bare "
-            f"URL (https://… , no Markdown, no link text, no tracking params like utm_source). "
-            f"Do NOT put any URL or 'Sources:' note inside the summaries.",
-            _detail_schema(),
-            schema_name="criteria_detail",
-            web_search=True,
-            system=_SYSTEM,
-            kind="research",
-            db=db,
-            user_id=user_id,
-        )
-        place.criteria_detail = cache
-        db.commit()
-
-    out = []
-    for item in cache.get("criteria", []):
-        summary = item.get(f"summary_{lang}") or item.get("summary_en") or item.get("summary_fr", "")
-        out.append({"key": item["key"], "summary": summary, "sources": item.get("sources", [])})
-    return {"criteria": out}
-
-
 def detail_map(place: Place) -> dict[str, dict]:
     """Normalize `place.criteria_detail` to a per-key map {key: {summary_fr, summary_en,
     sources}}, accepting BOTH the new per-key shape and the legacy bulk `{"criteria":[...]}`
     blob (per-key entries win). The single reader of cached per-criterion detail text."""
     raw = place.criteria_detail or {}
     out: dict[str, dict] = {}
-    for item in raw.get("criteria", []) or []:  # legacy bulk shape
-        if isinstance(item, dict) and item.get("key"):
-            out[item["key"]] = item
-    for key, val in raw.items():  # new per-key shape (wins)
-        if key != "criteria" and isinstance(val, dict):
+    # Only entries produced by the CURRENT prompt version count; older/unversioned ones are
+    # treated as absent so a prompt change transparently regenerates them.
+    for key, val in raw.items():
+        if key != "criteria" and isinstance(val, dict) and val.get("v") == DETAIL_PROMPT_VERSION:
             out[key] = val
     return out
 
@@ -276,10 +215,13 @@ def criterion_detail_one(
     label = criteria.label(key, "en")
     try:
         data = ai_client.respond_json(
-            f"For someone relocating to {place.name}, write a concise, factual 1-2 sentence "
-            f"explanation of \"{label}\" there (from a resident's point of view). Provide BOTH "
-            f"a French version (summary_fr) and an English version (summary_en). Use web search "
-            f"for current facts. Put sources ONLY in the sources array, each a plain bare URL "
+            f"For someone moving to {place.name} as a FOREIGN RESIDENT (a newcomer, not a "
+            f"native citizen), write a concise, factual 1-2 sentence explanation of \"{label}\" "
+            f"focused on how a newcomer actually accesses or experiences it — eligibility, "
+            f"qualifying/waiting periods, cost to non-citizens, and practical or legal hurdles — "
+            f"not just generic facts about the country. Provide BOTH a French version "
+            f"(summary_fr) and an English version (summary_en). Use web search for current "
+            f"facts. Put sources ONLY in the sources array, each a plain bare URL "
             f"(https://…, no Markdown, no tracking params). Do NOT put URLs inside the summaries.",
             _one_detail_schema(),
             schema_name="criterion_detail",
@@ -293,7 +235,7 @@ def criterion_detail_one(
     except ai_client.AIUnavailable:
         return None
     entry = {"summary_fr": data.get("summary_fr"), "summary_en": data.get("summary_en"),
-             "sources": data.get("sources", [])}
+             "sources": data.get("sources", []), "v": DETAIL_PROMPT_VERSION}
     # Reassign a new dict so SQLAlchemy detects the JSON change; preserve any existing entries.
     cache = dict(place.criteria_detail or {})
     cache[key] = entry

@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Foreign-resident-access prompts; prompt-versioned eval cache
+
+- **AI prompts now judge access for a FOREIGN RESIDENT**, not generic domestic quality — for
+  every criterion (healthcare, education, banking, …) the score and the drill-down text reflect
+  eligibility, qualifying/waiting periods, cost to non-citizens, language and legal hurdles for
+  a newcomer. (Eval prompt in `criterion_eval`, detail prompt in `place_research`.)
+- **Prompt changes auto-dirty the cache.** Each cached eval stores a `prompt_fp` fingerprint of
+  (prompt version + criterion label + description); when the prompt or wording changes the
+  fingerprint changes, so `evaluate-all` (and lazy refresh) regenerate exactly the affected
+  rows — no manual cache-clearing, and a plain deploy still clobbers nothing. The fingerprint
+  round-trips through `export-evals` / seed. Drill-down detail text is versioned the same way
+  (entries from an older prompt are ignored and regenerated). Migration `0019_eval_prompt_fp`.
+- Removed dead legacy bulk-detail code (`fetch_criteria_detail` + helpers).
+- Removed the redundant `criteria` i18n dictionary; criterion labels come solely from the
+  registry now (drill-down, profile and onboarding all resolve via `labelOf`).
+
 ### 2026-06-16 — User-feedback round: trustworthy defaults, less tweaking
 
 - **Persona derivation fixed**: cost-of-living / economic reasons are no longer read as wealth

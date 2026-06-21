@@ -33,6 +33,10 @@ class PlaceCustomEval(Base):
     summary_fr: Mapped[str | None] = mapped_column(String, nullable=True)
     summary_en: Mapped[str | None] = mapped_column(String, nullable=True)
     sources: Mapped[list | None] = mapped_column(JSON, default=list)
+    # Fingerprint of the prompt (template version + label + description) that produced this
+    # row. When the prompt changes, the fingerprint changes, so the row is treated as stale and
+    # re-evaluated — a prompt edit automatically dirties exactly the entries it affects.
+    prompt_fp: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
     freshness_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

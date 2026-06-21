@@ -15,6 +15,7 @@ criterion's evaluation, not just custom ones.)
 
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -28,6 +29,18 @@ from app.services import ai_client, criteria
 # 0-1 fallback values for the colour tier when an old row has no numeric score.
 _LEVEL_VALUE = {"good": 1.0, "ok": 0.6, "bad": 0.3}
 STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=...)
+
+# Bump when the evaluation PROMPT/template below changes in a way that should invalidate
+# cached evals. Together with the criterion's label+description it forms each row's prompt_fp;
+# a mismatch marks the row stale so the next evaluate-all (or lazy refresh) regenerates it.
+EVAL_PROMPT_VERSION = "2"  # v2: judge access for a FOREIGN RESIDENT, not generic domestic quality
+
+
+def prompt_fingerprint(label: str, description: str | None) -> str:
+    """Short stable hash of (template version, label, description) — the invariant part of the
+    prompt (place name excluded). Changes whenever the prompt or this criterion's wording does."""
+    raw = f"{EVAL_PROMPT_VERSION}\x1f{label}\x1f{description or ''}"
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
 def slugify(label: str) -> str:
@@ -60,6 +73,12 @@ def _is_stale(ev: PlaceCustomEval, stale_days: int) -> bool:
     return ts < cutoff
 
 
+def _fresh(ev: PlaceCustomEval, fp: str, stale_days: int) -> bool:
+    """A cached eval is fresh when it isn't time-stale AND was produced by the current prompt
+    (its fingerprint matches). A prompt change flips fp, marking the row for regeneration."""
+    return ev.prompt_fp == fp and not _is_stale(ev, stale_days)
+
+
 def _eval_schema() -> dict:
     return {
         "type": "object",
@@ -85,17 +104,22 @@ def evaluate(
         .filter(PlaceCustomEval.place_id == place.id, PlaceCustomEval.key == key)
         .first()
     )
-    if existing and not force and not _is_stale(existing, stale_days):
+    fp = prompt_fingerprint(label, description)
+    if existing and not force and _fresh(existing, fp, stale_days):
         return existing
 
     # The short label is the column name; the (optional) description explains what to judge.
     criterion = label + (f": {description}" if description else "")
     try:
         data = ai_client.respond_json(
-            f"For someone relocating to {place.name}, rate how well it satisfies this "
-            f"criterion: \"{criterion}\". Give a score from 0 (poor) to 100 (excellent) "
-            f"from the resident's point of view, plus a concise 1-2 sentence justification "
-            f"in French (summary_fr) and English (summary_en). Use web search for current "
+            f"Assess {place.name} for someone moving there as a FOREIGN RESIDENT — a newcomer "
+            f"(not a native citizen) — on this criterion: \"{criterion}\". Score 0 (poor) to "
+            f"100 (excellent) specifically for how well a foreign resident can actually ACCESS "
+            f"and benefit from it: eligibility and legal/visa requirements, any qualifying or "
+            f"waiting period, cost to non-citizens / new arrivals, language barriers, and "
+            f"practical hurdles — NOT just the general domestic quality for locals. Add a "
+            f"concise 1-2 sentence justification in French (summary_fr) and English "
+            f"(summary_en), written from that newcomer's standpoint. Use web search for current "
             f"facts. Put sources ONLY in the sources array as bare https URLs.",
             _eval_schema(),
             schema_name="criterion_eval",
@@ -116,6 +140,7 @@ def evaluate(
         existing.summary_fr = data.get("summary_fr")
         existing.summary_en = data.get("summary_en")
         existing.sources = data.get("sources", [])
+        existing.prompt_fp = fp
         existing.freshness_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing)
@@ -125,7 +150,7 @@ def evaluate(
         place_id=place.id, key=key, label=label, score=score,
         level=level_from_score(score),
         summary_fr=data.get("summary_fr"), summary_en=data.get("summary_en"),
-        sources=data.get("sources", []),
+        sources=data.get("sources", []), prompt_fp=fp,
     )
     db.add(ev)
     db.commit()
@@ -150,14 +175,17 @@ def populate(db: Session, places: list[Place], keys: list[str], *,
             d = defs.get(key)
             if d is None:
                 continue  # not an AI-evaluable criterion
-            if respect_buckets and not force and attrs.get(key):
-                continue
             before = (
                 db.query(PlaceCustomEval)
                 .filter(PlaceCustomEval.place_id == place.id, PlaceCustomEval.key == key)
                 .first()
             )
-            if before and not force and not _is_stale(before, stale_days):
+            fp = prompt_fingerprint(d["label"], d.get("description"))
+            if before and not force and _fresh(before, fp, stale_days):
+                continue  # already current for this prompt
+            # No eval yet AND only a coarse seed bucket present → leave it (bounds cost) unless
+            # forced. A version-stale existing row (above) is always refreshed.
+            if before is None and respect_buckets and not force and attrs.get(key):
                 continue
             ev = evaluate(db, place, key, d["label"], d.get("description"),
                           force=force, stale_days=stale_days)

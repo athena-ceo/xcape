@@ -42,6 +42,7 @@ def main() -> None:
                 "summary_fr": e.summary_fr,
                 "summary_en": e.summary_en,
                 "sources": e.sources or [],
+                "prompt_fp": e.prompt_fp,
             })
         OUT_FILE.write_text(json.dumps({"evals": out}, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"Exported {len(out)} evaluations to {OUT_FILE.name}.")
