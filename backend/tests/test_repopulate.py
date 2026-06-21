@@ -114,3 +114,18 @@ def test_explore_ranks_all_countries_readonly(auth_client, db_session):
 
     after = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
     assert len(after) == len(before)  # explore didn't mutate the board
+
+
+def test_wildcards_off_board_with_standouts(auth_client, db_session):
+    """Wildcards are off-board 'sparks': never a current board pick, capped, each with a
+    standout criterion the user weights."""
+    seed(db_session)
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/shortlist")
+    board = {c["place_id"] for c in auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+             if c["selected"]}
+
+    wild = auth_client.get(f"/api/v1/searches/{sid}/wildcards").json()
+    assert len(wild) <= 3
+    assert all(w["place_id"] not in board for w in wild)          # never a board pick
+    assert all(w.get("standout_key") and w.get("standout_value", 0) >= 70 for w in wild)

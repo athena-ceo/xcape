@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Explore Phase 2: wildcards (idea sparks)
+
+- The Explore view now shows a clearly-labelled **"✨ Sparks"** strip — a few off-board
+  **dark-horse** countries (not recommendations): countries you don't already see that
+  genuinely excel on a criterion you weight (standout ≥ 70), with a non-terrible overall fit.
+  Each card shows "Strong on {criterion}" + score and links to the drill-down; a **Shuffle**
+  control reshuffles. `GET /searches/{id}/wildcards`.
+
 ### 2026-06-16 — Explore: full ranked country list (also the mobile results view)
 
 - New **Explore** route (`/explore/:searchId`, reached via "Explore all countries" below the

@@ -17,6 +17,8 @@ AI-based discrimination refines this list later (build phase 3).
 
 from __future__ import annotations
 
+import random
+
 from sqlalchemy.orm import Session
 
 from app.models.candidate import Candidate
@@ -636,6 +638,54 @@ def rank_all(db: Session, user: User, search: Search) -> list[dict]:
         })
     rows.sort(key=lambda r: r["score"], reverse=True)
     return rows
+
+
+def wildcards(db: Session, user: User, search: Search, n: int = 3) -> list[dict]:
+    """A few "spark" countries to provoke ideas — NOT recommendations. Dark horses: countries
+    not on the board that genuinely EXCEL on a criterion the user weights (a standout ≥ 0.7),
+    with a non-terrible overall score. Randomised each call (reshuffle), so the strip varies."""
+    from app.services import criteria, criterion_eval  # avoid circular import at module load
+
+    profile = user.profile
+    weights = _effective_weights(profile)
+    custom_defs = list(search.custom_criteria or [])
+    for c in custom_defs:
+        if c.get("key"):
+            weights[c["key"]] = float(c.get("weight", 1.0))
+    weighted = [k for k, w in weights.items() if w > 0]
+    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
+
+    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+    # Skip what the user already sees or rejected: board picks + explicitly excluded.
+    skip = {
+        c.place_id
+        for c in db.query(Candidate).filter(
+            Candidate.search_id == search.id, Candidate.status == "active").all()
+        if c.selected or c.override == "out"
+    }
+
+    pool: list[dict] = []
+    for p in countries:
+        if p.id in skip:
+            continue
+        evals = evals_by_place.get(p.id)
+        score, _ = _score_place(p, weights, profile, evals)
+        if score < 40:  # don't surface genuinely poor fits as "ideas"
+            continue
+        best_key, best_val = None, 0.0
+        for k in weighted:
+            v = _criterion_value(k, p.attributes or {}, profile, p, evals)
+            if v > best_val:
+                best_key, best_val = k, v
+        if best_key and best_val >= 0.7:  # must genuinely shine somewhere the user cares about
+            pool.append({
+                "place_id": p.id, "name": p.name, "iso_code": p.iso_code,
+                "score": round(score), "standout_key": best_key,
+                "standout_value": round(best_val * 100),
+            })
+    random.shuffle(pool)
+    return pool[:n]
 
 
 def filter_advice(db: Session, user: User, search: Search) -> dict:

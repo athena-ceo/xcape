@@ -29,8 +29,12 @@ export function ExplorePage() {
   const [showExcluded, setShowExcluded] = useState(false)
   const [adding, setAdding] = useState<Set<number>>(new Set())
   const [added, setAdded] = useState<Set<number>>(new Set())
+  type Spark = { place_id: number; name: string; iso_code: string | null; score: number; standout_key: string; standout_value: number }
+  const [sparks, setSparks] = useState<Spark[] | null>(null)
 
   useEffect(() => { api.explore(sid).then(setRows).catch(() => setRows([])) }, [sid])
+  function shuffleSparks() { setSparks(null); api.wildcards(sid).then(setSparks).catch(() => setSparks([])) }
+  useEffect(() => { shuffleSparks() }, [sid])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Localise a criterion key, incl. service component sub-keys (healthcare:access).
   function critLabel(key: string): string {
@@ -88,6 +92,31 @@ export function ExplorePage() {
           </label>
         )}
       </div>
+
+      {/* Sparks: off-board dark horses to provoke ideas — clearly NOT recommendations. */}
+      {sparks && sparks.length > 0 && (
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium text-amber-900">✨ {t.explore.sparksTitle}</span>
+            <span className="text-xs text-amber-800/70">{t.explore.sparksHint}</span>
+            <button onClick={shuffleSparks} className="ml-auto text-xs text-amber-800 hover:underline">↻ {t.explore.shuffle}</button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {sparks.map((s) => (
+              <Link key={s.place_id} to={`/drilldown/${s.place_id}?search=${sid}`}
+                className="block rounded-md border border-amber-100 bg-white px-3 py-2 hover:border-amber-300">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-medium text-turquoise-900">{placeName(s, lang)}</span>
+                  <span className="text-xs text-turquoise-800/50 tabular-nums">{s.score}%</span>
+                </div>
+                <div className="text-xs text-amber-800/80">
+                  {t.explore.strongOn} {critLabel(s.standout_key)} ({s.standout_value})
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {rows === null ? (
         <p className="text-sm text-turquoise-800/50">{t.explore.loading}</p>

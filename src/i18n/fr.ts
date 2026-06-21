@@ -345,6 +345,10 @@ export const fr = {
     loading: 'Classement des pays…',
     addToBoard: 'Ajouter au tableau',
     onBoard: 'Dans le tableau',
+    sparksTitle: 'Idées',
+    sparksHint: 'Pas vos meilleures correspondances — juste pour ouvrir des pistes',
+    shuffle: 'Mélanger',
+    strongOn: 'Fort en',
   },
   trend: {
     level: 'Niveau',

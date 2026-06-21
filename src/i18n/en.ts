@@ -348,6 +348,10 @@ export const en: Dict = {
     loading: 'Ranking countries…',
     addToBoard: 'Add to board',
     onBoard: 'On board',
+    sparksTitle: 'Sparks',
+    sparksHint: 'Not your top matches — just to spark ideas',
+    shuffle: 'Shuffle',
+    strongOn: 'Strong on',
   },
   trend: {
     level: 'Level',

@@ -78,6 +78,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
   listCandidates: (id: number) => request<any[]>(`/searches/${id}/candidates`),
+  wildcards: (id: number) => request<{
+    place_id: number; name: string; iso_code: string | null; score: number
+    standout_key: string; standout_value: number
+  }[]>(`/searches/${id}/wildcards`),
   explore: (id: number) => request<{
     place_id: number; name: string; iso_code: string | null; score: number
     reasons: string[]; violations: string[]; pending: string[]; on_board: boolean

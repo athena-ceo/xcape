@@ -137,6 +137,16 @@ def list_candidates(
     return candidates
 
 
+@router.get("/{search_id}/wildcards")
+def wildcards(
+    search_id: int, n: int = 3,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """A few off-board 'spark' countries (dark horses) to provoke ideas — reshuffles each call."""
+    search = _owned(db, user, search_id)
+    return shortlist_service.wildcards(db, user, search, n=max(1, min(n, 6)))
+
+
 @router.get("/{search_id}/explore")
 def explore(
     search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
