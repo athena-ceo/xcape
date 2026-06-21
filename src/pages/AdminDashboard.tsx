@@ -18,18 +18,19 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: '', dir: 1 })
+  const [includeTest, setIncludeTest] = useState(false)  // searches tab: show smoke/test accounts
 
   useEffect(() => {
-    setQuery('')
-    setSort({ key: '', dir: 1 })
     if (tab === 'criteria' || tab === 'places' || tab === 'personas') { setLoading(false); setRows([]); return }
     setLoading(true)
     const fetcher = {
-      users: api.getAdminUsers, searches: api.getAdminSearches,
+      users: api.getAdminUsers, searches: () => api.getAdminSearches(includeTest),
       places: api.getAdminPlaces, ailog: api.getAdminAiLog,
     }[tab] as () => Promise<any[]>
     fetcher().then(setRows).catch(() => setRows([])).finally(() => setLoading(false))
-  }, [tab])
+  }, [tab, includeTest])
+
+  useEffect(() => { setQuery(''); setSort({ key: '', dir: 1 }) }, [tab])
 
   async function resetPassword(u: any) {
     const pw = window.prompt(`${t.admin.resetPrompt} ${u.email}`)
@@ -114,8 +115,17 @@ export function AdminDashboard() {
       </div>
 
       {tab !== 'criteria' && tab !== 'places' && tab !== 'personas' && (
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.admin.search}
-          className="w-full sm:w-72 border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.admin.search}
+            className="w-full sm:w-72 border border-turquoise-100 rounded-md px-3 py-2 text-sm" />
+          {tab === 'searches' && (
+            <label className="flex items-center gap-1.5 text-sm text-turquoise-800/70">
+              <input type="checkbox" checked={includeTest} className="accent-turquoise-600"
+                onChange={(e) => setIncludeTest(e.target.checked)} />
+              {t.admin.showTestAccounts}
+            </label>
+          )}
+        </div>
       )}
 
       {tab === 'criteria' ? (

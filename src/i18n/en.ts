@@ -204,6 +204,7 @@ export const en: Dict = {
     subtitle: 'Users · Searches · Place database · AI usage log.',
     usersTitle: 'Users',
     searchesTitle: 'Searches',
+    showTestAccounts: 'Show test accounts',
     placesTitle: 'Place database',
     criteriaTitle: 'Criteria',
     personasTitle: 'Personas',

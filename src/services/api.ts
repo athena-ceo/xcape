@@ -165,7 +165,8 @@ export const api = {
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getAdminUsers: () => request<any[]>('/admin/users'),
-  getAdminSearches: () => request<any[]>('/admin/searches'),
+  getAdminSearches: (includeTest = false) =>
+    request<any[]>(`/admin/searches${includeTest ? '?include_test=true' : ''}`),
   getAdminPlaces: () => request<any[]>('/admin/places'),
   getAdminAiLog: () => request<any[]>('/admin/ai-log'),
   adminResetPassword: (userId: number, password: string) =>

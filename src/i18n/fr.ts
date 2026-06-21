@@ -201,6 +201,7 @@ export const fr = {
     subtitle: 'Utilisateurs · Recherches · Base de pays · Journal IA.',
     usersTitle: 'Utilisateurs',
     searchesTitle: 'Recherches',
+    showTestAccounts: 'Afficher les comptes de test',
     placesTitle: 'Base de pays',
     criteriaTitle: 'Critères',
     personasTitle: 'Profils',

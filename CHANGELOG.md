@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Admin: hide test/smoke accounts from the Searches log
+
+- The Admin → Searches log now **excludes test/automation accounts by default** — the smoke
+  test registers a `smoke-*@example.com` user (with a search) on every `deploy prod`, and dev
+  scripts use `@example.com` / `@xcape.test`. A **"Show test accounts"** checkbox reveals them;
+  rows are tagged `is_test`. `GET /admin/searches?include_test=true` opts in.
+
 ### 2026-06-16 — Admin: set a persona's default filters
 
 - The Admin → Personas editor now has a **"Default filters"** section (a checkbox per criterion)

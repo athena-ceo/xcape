@@ -225,10 +225,28 @@ def list_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     return db.query(User).order_by(User.created_at.desc()).all()
 
 
+# Test/automation accounts (smoke tests register smoke-*@example.com on every deploy; dev
+# scripts use @example.com / @xcape.test). Hidden from the admin log by default.
+_TEST_EMAIL_PATTERNS = ("%@example.com", "%@xcape.test")
+
+
+def _is_test_email(email: str | None) -> bool:
+    e = (email or "").lower()
+    return e.endswith("@example.com") or e.endswith("@xcape.test")
+
+
 @router.get("/searches")
-def list_searches(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    """All users' searches with who owns them and how many candidates they hold."""
-    rows = db.query(Search).order_by(Search.updated_at.desc()).limit(500).all()
+def list_searches(
+    include_test: bool = False,
+    _: User = Depends(require_admin), db: Session = Depends(get_db),
+):
+    """All users' searches with who owns them and how many candidates they hold. Test/automation
+    accounts (smoke tests, dev scripts) are excluded unless include_test=true."""
+    q = db.query(Search).join(User, Search.user_id == User.id)
+    if not include_test:
+        for pat in _TEST_EMAIL_PATTERNS:
+            q = q.filter(~User.email.ilike(pat))
+    rows = q.order_by(Search.updated_at.desc()).limit(500).all()
     out = []
     for s in rows:
         active = [c for c in s.candidates if c.status == "active"]
@@ -239,6 +257,7 @@ def list_searches(_: User = Depends(require_admin), db: Session = Depends(get_db
             "candidates": len(active),
             "selected": sum(1 for c in active if c.selected),
             "updated_at": s.updated_at,
+            "is_test": _is_test_email(s.user.email if s.user else None),
         })
     return out
 
