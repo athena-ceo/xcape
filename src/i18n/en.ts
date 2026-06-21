@@ -165,24 +165,9 @@ export const en: Dict = {
       change: 'Not quite right? Choose a different profile:',
     },
   },
-  criteria: {
-    cost_of_living: 'Cost of living',
-    healthcare: 'Healthcare',
-    education: 'Education',
-    safety: 'Safety',
-    political_stability: 'Political stability',
-    inclusion: 'Tolerance & inclusion',
-    gender_equality: 'Gender equality',
-    language_ease: 'Language',
-    climate: 'Climate',
-    culture: 'Cultural life',
-    food: 'Food culture',
-    tax: 'Taxation',
-    visa: 'Visa',
-    expat_community: 'Expat community',
-    nature: 'Nature',
-    internet: 'Internet',
-  },
+  // NB: criterion labels are NOT here — they live in the criteria registry (criteria.json,
+  // resolved via labelOf), the single source of truth, so admin edits and new criteria flow
+  // through automatically.
   groups: {
     lgbtq: 'LGBTQ+ people',
     jewish: 'Jewish community',

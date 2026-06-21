@@ -393,7 +393,7 @@ export function Onboarding() {
                       className={`flex items-center gap-2 bg-turquoise-50 border border-turquoise-100 rounded-md px-3 py-2 ${dragIdx === i ? 'opacity-50' : ''}`}>
                       <span className="cursor-grab text-turquoise-800/40 select-none" aria-hidden>⠿</span>
                       <span className="w-5 h-5 grid place-items-center rounded-full bg-turquoise-600 text-turquoise-50 text-xs">{i + 1}</span>
-                      <span className="flex-1 text-sm text-turquoise-900">{(t.criteria as Record<string, string>)[k] ?? k}</span>
+                      <span className="flex-1 text-sm text-turquoise-900">{labelOf(reg, k, lang)}</span>
                       <span className="flex items-center gap-1">
                         <button type="button" aria-label="up" disabled={i === 0}
                           onClick={() => reorderPriority(i, i - 1)}
@@ -414,7 +414,7 @@ export function Onboarding() {
                 {PRIORITY_KEYS.filter((k) => !a.priorities.includes(k)).map((k) => (
                   <button key={k} type="button" onClick={() => addPriority(k)}
                     className="text-sm rounded-full border border-turquoise-100 px-3 py-1.5 text-turquoise-700 hover:bg-turquoise-50">
-                    + {(t.criteria as Record<string, string>)[k] ?? k}
+                    + {labelOf(reg, k, lang)}
                   </button>
                 ))}
               </div>

@@ -15,7 +15,7 @@ import {
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
-import { useCriteria, type Persona } from '../services/criteria'
+import { labelOf, useCriteria, type Persona } from '../services/criteria'
 import { useAuth } from '../store/auth'
 
 interface Form {
@@ -265,7 +265,7 @@ export function ProfilePage() {
             {PRIORITY_KEYS.map((k) => (
               <Chip key={k} active={f.priorities.includes(k)}
                 onClick={() => set('priorities', toggle(f.priorities, k))}>
-                {t.criteria[k]}
+                {labelOf(reg, k, lang)}
               </Chip>
             ))}
           </div>

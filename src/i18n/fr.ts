@@ -163,24 +163,8 @@ export const fr = {
       change: 'Pas tout à fait ça ? Choisissez un autre profil :',
     },
   },
-  criteria: {
-    cost_of_living: 'Coût de la vie',
-    healthcare: 'Santé',
-    education: 'Éducation',
-    safety: 'Sécurité',
-    political_stability: 'Stabilité politique',
-    inclusion: 'Tolérance et inclusion',
-    gender_equality: 'Égalité femmes-hommes',
-    language_ease: 'Langue',
-    climate: 'Climat',
-    culture: 'Vie culturelle',
-    food: 'Culture culinaire',
-    tax: 'Fiscalité',
-    visa: 'Visa',
-    expat_community: 'Communauté d’expatriés',
-    nature: 'Nature',
-    internet: 'Internet',
-  },
+  // NB : les libellés des critères ne sont PAS ici — ils proviennent du registre des critères
+  // (criteria.json, via labelOf), source unique de vérité.
   groups: {
     lgbtq: 'Personnes LGBTQ+',
     jewish: 'Communauté juive',
