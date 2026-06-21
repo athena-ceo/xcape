@@ -316,8 +316,13 @@ def populate(db: Session, places: list[Place], keys: list[str], *,
             # forced. A version-stale existing row (above) is always refreshed.
             if before is None and respect_buckets and not force and attrs.get(key):
                 continue
-            ev = evaluate(db, place, key, d["label"], d.get("description"),
-                          force=force, stale_days=stale_days)
+            try:
+                ev = evaluate(db, place, key, d["label"], d.get("description"),
+                              force=force, stale_days=stale_days)
+            except Exception as e:  # never let one cell kill a long unattended run
+                db.rollback()
+                print(f"  skip {place.name}/{key}: {type(e).__name__}: {e}")
+                continue
             if ev is None:
                 continue
             made += 1
