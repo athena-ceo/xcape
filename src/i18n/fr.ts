@@ -157,8 +157,8 @@ export const fr = {
       morePlaceholder: 'ex. un écosystème start-up dynamique et de bonnes écoles internationales',
     },
     persona: {
-      q: 'Voici ce sur quoi nous allons nous concentrer',
-      hint: 'D’après vos réponses, nous avons préparé un profil de départ. Vous pouvez le changer — et ajuster chaque poids plus tard.',
+      q: 'Qu’est-ce qui motive votre départ ?',
+      hint: 'Choisissez le profil qui vous correspond le mieux — il définit vos critères de départ. Vous pourrez tout ajuster ensuite.',
       focus: 'Critères prioritaires :',
       change: 'Pas tout à fait ça ? Choisissez un autre profil :',
     },

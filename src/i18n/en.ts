@@ -159,8 +159,8 @@ export const en: Dict = {
       morePlaceholder: 'e.g. a strong startup scene and good international schools',
     },
     persona: {
-      q: 'Here’s what we’ll focus on',
-      hint: 'Based on your answers, we’ve set up a starting profile. You can change it — and fine-tune every weight later.',
+      q: 'What’s driving your move?',
+      hint: 'Pick the profile that fits best — it sets your starting criteria. You can fine-tune everything later.',
       focus: 'Focus criteria:',
       change: 'Not quite right? Choose a different profile:',
     },

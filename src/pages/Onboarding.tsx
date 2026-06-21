@@ -11,7 +11,6 @@ import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
   CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
-  PRIORITY_KEYS, rankWeight, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
@@ -22,18 +21,15 @@ type StepId =
   | 'currentCountry'
   | 'citizenship'
   | 'household'
-  | 'reasons'
-  | 'priorities'
   | 'persona'
   | 'communities'
   | 'budget'
   | 'climate'
   | 'language'
 
-// Universal steps (always asked); the persona is derived right after priorities, then it
-// gates which of the optional steps below are shown (persona.ask). 'language' is universal
-// (a practical concern for everyone) and shown last.
-const BASE_STEPS: StepId[] = ['currentCountry', 'citizenship', 'household', 'reasons', 'priorities']
+// The user picks a persona directly (no guessing); it then gates which optional follow-up
+// steps are shown (persona.ask). 'language' is universal and shown last.
+const BASE_STEPS: StepId[] = ['currentCountry', 'citizenship', 'household', 'persona']
 const GATED_STEPS: StepId[] = ['communities', 'budget', 'climate']
 
 interface Answers {
@@ -77,8 +73,7 @@ export function Onboarding() {
   const [a, setA] = useState<Answers>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [persona, setPersona] = useState<Persona | null>(null)
-  const [deriving, setDeriving] = useState(false)
-  const [dragIdx, setDragIdx] = useState<number | null>(null)  // priority being dragged to reorder
+  const [savedPersonaKey, setSavedPersonaKey] = useState<string | null>(null)
 
   // Pre-fill from the server ONCE on mount — never re-run, so an async locale change can't
   // overwrite answers the user is in the middle of selecting (e.g. multiple communities).
@@ -92,6 +87,7 @@ export function Onboarding() {
     })
     api.getProfile().then((p: any) => {
       const known: string[] | undefined = p?.language_skills?.known
+      setSavedPersonaKey(p?.persona ?? null)  // pre-select the returning user's previous profile
       // Pre-fill every answer from the saved profile so "New request" lets the user tweak
       // and re-run rather than re-entering everything from scratch.
       setA((cur) => ({
@@ -111,19 +107,29 @@ export function Onboarding() {
     }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Steps are dynamic: the persona (derived after priorities) gates the optional steps.
+  // Steps are dynamic: until a persona is chosen the wizard ends at the picker; once chosen,
+  // the persona's `ask` gates which optional follow-ups appear (then language, last).
   const STEPS = useMemo<StepId[]>(() => {
     if (!persona) return BASE_STEPS
     const ask = persona.ask ?? GATED_STEPS
-    return [...BASE_STEPS, 'persona', ...GATED_STEPS.filter((g) => ask.includes(g)), 'language']
+    return [...BASE_STEPS, ...GATED_STEPS.filter((g) => ask.includes(g)), 'language']
   }, [persona])
   const step = STEPS[index]
   const isLast = index === STEPS.length - 1
+
+  // Once the registry has loaded, pre-select the returning user's saved persona in the picker.
+  useEffect(() => {
+    if (savedPersonaKey && !persona) {
+      const found = (reg?.personas ?? []).find((p) => p.key === savedPersonaKey)
+      if (found) setPersona(found)
+    }
+  }, [savedPersonaKey, reg]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Each step is "answered enough" to advance; most are optional.
   const canAdvance =
     step === 'household' ? !!a.household_type
     : step === 'currentCountry' ? !!a.current_country.trim()
+    : step === 'persona' ? !!persona
     : true
 
   const personaList: Persona[] = reg?.personas ?? []
@@ -176,13 +182,9 @@ export function Onboarding() {
     }
   }
 
-  // Initial weights = the persona's default profile, then the user's ranked priorities
-  // override on top: top of the list weighs most, decreasing by rank. Unselected criteria
-  // keep the persona default (0 if the persona doesn't weight them).
+  // Initial weights = the chosen persona's default profile (the user fine-tunes on the board).
   function weightsFromPersona(): Record<string, number> {
-    const cw: Record<string, number> = { ...(persona?.weights ?? {}) }
-    a.priorities.forEach((k, i) => { cw[k] = rankWeight(i, a.priorities.length) })
-    return cw
+    return { ...(persona?.weights ?? {}) }
   }
   // The persona's critical criteria default to an "exclude-bad" filter so countries rated
   // À éviter on them drop off automatically (the user can loosen via the relax banner). This
@@ -193,32 +195,7 @@ export function Onboarding() {
     return f
   }
 
-  // Priorities are an ORDERED list (rank = importance). Add appends; drag reorders.
-  function addPriority(k: string) { if (!a.priorities.includes(k)) setA({ ...a, priorities: [...a.priorities, k] }) }
-  function removePriority(k: string) { setA({ ...a, priorities: a.priorities.filter((x) => x !== k) }) }
-  function reorderPriority(from: number, to: number) {
-    if (from === to || from < 0 || to < 0) return
-    const arr = [...a.priorities]
-    const [m] = arr.splice(from, 1)
-    arr.splice(to, 0, m)
-    setA({ ...a, priorities: arr })
-  }
-
-  async function onNext() {
-    // Leaving the priorities step: derive the persona, then move to the confirm step.
-    if (step === 'priorities') {
-      setDeriving(true)
-      try {
-        const d = await api.derivePersona(a.reasons_leaving, a.priorities)
-        setPersona(d.persona)
-      } catch {
-        setPersona(personaList.find((p) => p.key === 'neutral') ?? null)
-      } finally {
-        setDeriving(false)
-      }
-      setIndex((i) => i + 1)
-      return
-    }
+  function onNext() {
     if (isLast) finish()
     else setIndex((i) => i + 1)
   }
@@ -291,20 +268,6 @@ export function Onboarding() {
             </>
           )}
 
-          {step === 'reasons' && (
-            <>
-              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.reasons.q}</h1>
-              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.reasons.hint}</p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {REASON_KEYS.map((r) => (
-                  <Chip key={r} active={a.reasons_leaving.includes(r)}
-                    onClick={() => setA({ ...a, reasons_leaving: toggle(a.reasons_leaving, r) })}>
-                    {t.onboarding.reasons[r]}
-                  </Chip>
-                ))}
-              </div>
-            </>
-          )}
 
           {step === 'communities' && (
             <>
@@ -376,87 +339,39 @@ export function Onboarding() {
             </>
           )}
 
-          {step === 'priorities' && (
+          {step === 'persona' && (
             <>
-              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.priorities.q}</h1>
-              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.priorities.hint}</p>
-
-              {/* Ranked, reorderable list — top = most important (highest weight). */}
-              {a.priorities.length > 0 && (
-                <ol className="space-y-2 mb-4">
-                  {a.priorities.map((k, i) => (
-                    <li key={k} draggable
-                      onDragStart={() => setDragIdx(i)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => { if (dragIdx !== null) reorderPriority(dragIdx, i); setDragIdx(null) }}
-                      onDragEnd={() => setDragIdx(null)}
-                      className={`flex items-center gap-2 bg-turquoise-50 border border-turquoise-100 rounded-md px-3 py-2 ${dragIdx === i ? 'opacity-50' : ''}`}>
-                      <span className="cursor-grab text-turquoise-800/40 select-none" aria-hidden>⠿</span>
-                      <span className="w-5 h-5 grid place-items-center rounded-full bg-turquoise-600 text-turquoise-50 text-xs">{i + 1}</span>
-                      <span className="flex-1 text-sm text-turquoise-900">{labelOf(reg, k, lang)}</span>
-                      <span className="flex items-center gap-1">
-                        <button type="button" aria-label="up" disabled={i === 0}
-                          onClick={() => reorderPriority(i, i - 1)}
-                          className="px-1 text-turquoise-600 disabled:opacity-30">▲</button>
-                        <button type="button" aria-label="down" disabled={i === a.priorities.length - 1}
-                          onClick={() => reorderPriority(i, i + 1)}
-                          className="px-1 text-turquoise-600 disabled:opacity-30">▼</button>
-                        <button type="button" aria-label="remove" onClick={() => removePriority(k)}
-                          className="px-1 text-turquoise-800/40 hover:text-red-600">×</button>
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-
-              {/* Add more priorities (unselected). */}
-              <div className="flex flex-wrap gap-2">
-                {PRIORITY_KEYS.filter((k) => !a.priorities.includes(k)).map((k) => (
-                  <button key={k} type="button" onClick={() => addPriority(k)}
-                    className="text-sm rounded-full border border-turquoise-100 px-3 py-1.5 text-turquoise-700 hover:bg-turquoise-50">
-                    + {labelOf(reg, k, lang)}
-                  </button>
-                ))}
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.persona.q}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.persona.hint}</p>
+              {/* Pick a profile directly — no guessing. The selected one shows its focus criteria. */}
+              <div className="space-y-2 mb-5">
+                {personaList.map((p) => {
+                  const on = persona?.key === p.key
+                  return (
+                    <button key={p.key} type="button" onClick={() => setPersona(p)}
+                      className={`block w-full text-left rounded-lg border p-3 ${
+                        on ? 'border-turquoise-400 bg-turquoise-50' : 'border-turquoise-100 hover:bg-turquoise-50'}`}>
+                      <span className="font-medium text-turquoise-900">{personaLabel(p)}</span>
+                      {personaBlurb(p) && (
+                        <span className="block text-sm text-turquoise-800/70 mt-0.5">{personaBlurb(p)}</span>
+                      )}
+                      {on && focusCriteria(p).length > 0 && (
+                        <span className="block text-xs text-turquoise-800/60 mt-1.5">
+                          {t.onboarding.persona.focus} {focusCriteria(p).map((k) => labelOf(reg, k, lang)).join(', ')}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
-
-              <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.priorities.moreQ}</p>
+              {/* Optional free-text to help clinch the shortlist. */}
+              <p className="text-sm font-medium text-turquoise-900 mb-1">{t.onboarding.priorities.moreQ}</p>
               <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.priorities.moreHint}</p>
               <VoiceField
                 value={a.priorities_text}
                 onChange={(v) => setA({ ...a, priorities_text: v })}
                 placeholder={t.onboarding.priorities.morePlaceholder}
               />
-            </>
-          )}
-
-          {step === 'persona' && (
-            <>
-              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.persona.q}</h1>
-              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.persona.hint}</p>
-              <div className="bg-turquoise-50 border border-turquoise-100 rounded-lg p-4 mb-4">
-                <p className="font-medium text-turquoise-900">{personaLabel(persona)}</p>
-                {personaBlurb(persona) && (
-                  <p className="text-sm text-turquoise-800/70 mt-1">{personaBlurb(persona)}</p>
-                )}
-                {focusCriteria(persona).length > 0 && (
-                  <p className="text-sm text-turquoise-800/70 mt-2">
-                    {t.onboarding.persona.focus}{' '}
-                    <span className="text-turquoise-900">
-                      {focusCriteria(persona).map((k) => labelOf(reg, k, lang)).join(', ')}
-                    </span>
-                  </p>
-                )}
-              </div>
-              <label className="block text-sm text-turquoise-800/70 mb-1">{t.onboarding.persona.change}</label>
-              <select
-                value={persona?.key ?? ''}
-                onChange={(e) => setPersona(personaList.find((p) => p.key === e.target.value) ?? persona)}
-                className="w-full border border-turquoise-100 rounded-md px-3 py-2 text-sm"
-              >
-                {personaList.map((p) => (
-                  <option key={p.key} value={p.key}>{personaLabel(p)}</option>
-                ))}
-              </select>
             </>
           )}
 
@@ -468,11 +383,11 @@ export function Onboarding() {
               </button>
             )}
             <button
-              disabled={!canAdvance || busy || deriving}
+              disabled={!canAdvance || busy}
               onClick={onNext}
               className="flex-1 bg-turquoise-600 text-turquoise-50 rounded-md py-2.5 disabled:opacity-50"
             >
-              {busy || deriving ? t.common.loading : isLast ? t.onboarding.finish : t.onboarding.continue}
+              {busy ? t.common.loading : isLast ? t.onboarding.finish : t.onboarding.continue}
             </button>
           </div>
         </div>

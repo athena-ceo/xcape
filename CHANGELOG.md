@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Onboarding: pick a persona directly (no guessing)
+
+- Onboarding now **leads with a persona picker** — a list of profiles with their descriptions
+  and focus criteria, chosen directly — instead of inferring one from "Why are you leaving?" +
+  "What matters most?". Those two steps are removed; the chosen persona sets the starting
+  weights and default filters, and only its relevant follow-ups (communities, budget, climate)
+  are then asked, plus the optional free-text. A returning user's saved persona is pre-selected.
+  Fewer, clearer screens; no opaque guessing (which had mis-classified some users).
+
 ### 2026-06-16 — Remove "Tune by situation" from the board (declutter)
 
 - Dropped the "Tune by situation" button/panel from the comparison board. Its function (AI
