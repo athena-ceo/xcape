@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Robust AI JSON parsing (long jobs survive a bad reply)
+
+- `ai_client.respond_json` no longer crashes on a truncated/invalid model response: it retries
+  once and, if still unparseable, raises `AIUnavailable` so callers degrade gracefully (e.g.
+  `evaluate-all` skips that cell and continues, picking it up on the next resumable run). A
+  single malformed reply previously killed the whole population job.
+
 ### 2026-06-16 — Explore Phase 2: wildcards (idea sparks)
 
 - The Explore view now shows a clearly-labelled **"✨ Sparks"** strip — a few off-board

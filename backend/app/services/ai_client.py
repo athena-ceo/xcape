@@ -139,9 +139,18 @@ def respond_json(
         kwargs["instructions"] = system
     if reasoning_effort:
         kwargs["reasoning"] = {"effort": reasoning_effort}
-    resp = _create(kwargs, db=db, user_id=user_id, kind=kind, summary=prompt)
-    text = getattr(resp, "output_text", "") or "{}"
-    return json.loads(text)
+    # The model occasionally returns truncated/invalid JSON. Retry once (a fresh call usually
+    # succeeds); if it still won't parse, raise AIUnavailable so callers skip this item
+    # gracefully (e.g. populate leaves the cell for a later run) instead of crashing a long job.
+    last_err: Exception | None = None
+    for _attempt in range(2):
+        resp = _create(kwargs, db=db, user_id=user_id, kind=kind, summary=prompt)
+        text = getattr(resp, "output_text", "") or "{}"
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            last_err = e
+    raise AIUnavailable(f"model returned unparseable JSON after retry: {last_err}")
 
 
 def converse(

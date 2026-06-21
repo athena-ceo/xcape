@@ -64,3 +64,26 @@ def test_fresh_requires_matching_fingerprint():
     ev = PlaceCustomEval(prompt_fp="abc123", freshness_at=None)
     assert ce._fresh(ev, "abc123", 0) is True
     assert ce._fresh(ev, "different", 0) is False  # prompt changed → stale → re-evaluate
+
+
+def test_respond_json_retries_then_degrades(monkeypatch):
+    """A truncated/invalid model reply must not crash a long job: respond_json retries once,
+    then raises AIUnavailable so callers skip the item; a valid retry recovers."""
+    import pytest
+    from app.services import ai_client
+
+    class _R:
+        def __init__(self, t): self.output_text = t
+
+    calls = {"n": 0}
+    def always_bad(*a, **k):
+        calls["n"] += 1
+        return _R('{"score": 8')  # truncated JSON
+    monkeypatch.setattr(ai_client, "_create", always_bad)
+    with pytest.raises(ai_client.AIUnavailable):
+        ai_client.respond_json("p", {})
+    assert calls["n"] == 2  # tried twice (one retry), then degraded
+
+    seq = [_R("{bad"), _R('{"score": 80}')]
+    monkeypatch.setattr(ai_client, "_create", lambda *a, **k: seq.pop(0))
+    assert ai_client.respond_json("p", {}) == {"score": 80}  # recovers on the retry
