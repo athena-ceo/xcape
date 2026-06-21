@@ -121,6 +121,25 @@
       "ask": ["climate", "budget"]
     },
     {
+      "key": "entrepreneur",
+      "label_fr": "Aventure entrepreneuriale", "label_en": "Entrepreneurial adventure",
+      "blurb_fr": "Vous voulez lancer ou développer une activité. On regarde la fiscalité, le visa, la connectivité, le coût et la communauté d'expatriés.",
+      "blurb_en": "You want to start or grow a venture. We look at taxation, visa, connectivity, cost and the expat community.",
+      "match": {"reasons": [], "tags": []},
+      "weights": {"tax": 2.5, "visa": 2, "internet": 2, "cost_of_living": 1.5, "political_stability": 1.5, "expat_community": 1.5, "safety": 1, "language_ease": 1},
+      "ask": ["budget"],
+      "filters": ["political_stability"]
+    },
+    {
+      "key": "broaden_horizons",
+      "label_fr": "Élargir mes horizons", "label_en": "Broaden my horizons",
+      "blurb_fr": "Vous cherchez une nouvelle expérience plus qu'un critère précis. On met en avant la culture, la nature, la gastronomie, le climat et l'accueil.",
+      "blurb_en": "You're after a new experience more than one specific thing. We highlight culture, nature, food, climate and how welcoming a place is.",
+      "match": {"reasons": [], "tags": []},
+      "weights": {"culture": 2, "nature": 2, "food": 1.5, "climate": 1.5, "cost_of_living": 1.5, "safety": 1.5, "expat_community": 1, "language_ease": 1},
+      "ask": ["climate", "budget"]
+    },
+    {
       "key": "neutral",
       "label_fr": "Équilibré", "label_en": "Balanced",
       "blurb_fr": "On équilibre tous les grands critères ; ajustez les poids à votre guise.",
@@ -197,7 +216,7 @@
     {"key": "practical", "parent": null, "label_fr": "Pratique & intégration", "label_en": "Practical & integration"},
     {"key": "language_ease", "parent": "practical", "kind": "computed", "tags": ["language"], "label_fr": "Langue", "label_en": "Language", "default_weight": 0.8,
      "scale": {"french": 1.0, "english": 0.9, "easy": 0.75, "medium": 0.55, "hard": 0.3}},
-    {"key": "visa", "parent": "practical", "kind": "computed", "tags": ["mobility"], "label_fr": "Visa", "label_en": "Visa", "default_weight": 0.7,
+    {"key": "visa", "parent": "practical", "kind": "computed", "tags": ["mobility"], "label_fr": "Facilité d'installation (visa)", "label_en": "Ease of settling (visa)", "default_weight": 0.7,
      "scale": {"easy": 1.0, "medium": 0.6, "hard": 0.25}},
     {"key": "expat_community", "parent": "practical", "kind": "objective", "tags": ["community"], "label_fr": "Communauté d'expatriés", "label_en": "Expat community", "default_weight": 0.0,
      "scale": {"large": 1.0, "medium": 0.6, "small": 0.3},
