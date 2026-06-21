@@ -46,6 +46,10 @@ case "$CMD" in
     MSG="${1:-change}"
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
+  verify-evals)
+    # Read-only: report whether the live criterion evals match the committed seed file
+    # (i.e. whether the recalibration is present). Tells you if reseed-data is needed.
+    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.verify_evals ;;
   reseed-data)
     # Force-refresh country data (places + cached evals) from the bundled seed files,
     # OVERWRITING existing rows. seed/deploy are insert-only, so use this to push committed
@@ -139,6 +143,8 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   makemigration "msg"     autogenerate a migration
   seed                    bootstrap the place database (+ cached evals; INSERT-ONLY — never
                           overwrites existing rows)
+  verify-evals <env>      read-only: check whether live evals match the committed seed
+                          (i.e. the recalibration is present); reports match/differ/missing
   reseed-data <env>       force-refresh country data (places + cached evals) from the seed
                           files, overwriting existing rows; user data untouched
   reseed-criteria <env>   overwrite the criteria registry (tree, personas, communities) from
