@@ -48,10 +48,6 @@ export function ComparisonPlayground() {
   const [settingsKey, setSettingsKey] = useState(0)
   const [applyError, setApplyError] = useState<string | null>(null)
   const [advice, setAdvice] = useState<{ qualified: number; board_size: number; suggestions: { key: string; admits: number; best_score: number; best_country: string | null }[] } | null>(null)
-  const [showTune, setShowTune] = useState(false)
-  const [tuneTags, setTuneTags] = useState<string[]>([])
-  const [tuneText, setTuneText] = useState('')
-  const [tuning, setTuning] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [showZero, setShowZero] = useState(false)  // reveal weight-0 (unimportant) criteria
@@ -209,19 +205,6 @@ export function ComparisonPlayground() {
     return raw ? attrValue(t, raw) : tierWord(tier)
   }
 
-  // Hybrid criterion selection: chosen tags + free text → AI sets weights / adds criteria.
-  async function tune() {
-    if (tuning) return
-    setTuning(true)
-    try {
-      await api.suggestCriteria(sid, tuneTags, tuneText.trim())
-      setShowTune(false)
-      setTuneText('')
-      await reload()  // picks up new weights, custom criteria and re-ranked candidates
-    } finally {
-      setTuning(false)
-    }
-  }
 
   async function downloadReport() {
     if (downloading) return
@@ -508,10 +491,6 @@ export function ComparisonPlayground() {
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
           {/* While Criteria settings has unsaved edits, the other actions are disabled so they
               can't discard the in-progress changes (Apply or Cancel in the panel first). */}
-          <button onClick={() => setShowTune((s) => !s)} disabled={settingsDirty}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-40">
-            {t.comparison.tune}
-          </button>
           <button onClick={() => setShowSettings((s) => !s)} disabled={settingsDirty}
             title={settingsDirty ? t.comparison.unsavedChanges : undefined}
             className="border border-turquoise-100 rounded-md px-3 py-1.5 disabled:opacity-40">
@@ -530,34 +509,6 @@ export function ComparisonPlayground() {
           </button>
         </div>
       </div>
-
-      {showTune && (
-        <div className="bg-white border border-turquoise-100 rounded-lg p-4 mb-4">
-          <p className="text-sm text-turquoise-800/70 mb-2">{t.comparison.tuneHint}</p>
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {Object.entries(reg?.tags ?? {}).map(([key, tag]) => {
-              const on = tuneTags.includes(key)
-              return (
-                <button key={key} type="button"
-                  onClick={() => setTuneTags((ts) => on ? ts.filter((x) => x !== key) : [...ts, key])}
-                  className={`text-xs rounded-full border px-2.5 py-1 ${
-                    on ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700'
-                       : 'border-turquoise-100 hover:bg-turquoise-50'}`}>
-                  {lang === 'fr' ? (tag as any).label_fr : (tag as any).label_en}
-                </button>
-              )
-            })}
-          </div>
-          <textarea value={tuneText} onChange={(e) => setTuneText(e.target.value)}
-            placeholder={t.comparison.tunePrompt} rows={2}
-            className="w-full border border-turquoise-100 rounded-md px-3 py-2 text-sm mb-3" />
-          <button onClick={tune} disabled={tuning || (!tuneTags.length && !tuneText.trim())}
-            className="bg-turquoise-600 text-turquoise-50 rounded-md px-4 py-2 text-sm disabled:opacity-50 inline-flex items-center gap-2">
-            {tuning && <Spinner className="border-turquoise-100 border-t-white" />}
-            {tuning ? t.comparison.customAdding : t.comparison.tuneApply}
-          </button>
-        </div>
-      )}
 
       {applyError && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

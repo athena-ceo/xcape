@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Remove "Tune by situation" from the board (declutter)
+
+- Dropped the "Tune by situation" button/panel from the comparison board. Its function (AI
+  guessing weights/criteria from tags + free text) overlapped the persona (situation→weights at
+  onboarding), the onboarding free-text step, and the chat — adding an opaque, redundant control.
+  The underlying `suggestCriteria` endpoint stays (onboarding free-text still uses it); explicit
+  tuning lives in Criteria settings / inline steppers, and free-text refinement in the chat.
+
 ### 2026-06-16 — Smoke test self-cleans; prod-safe test-user purge
 
 - The deploy **smoke test now deletes its throwaway account** at the end (new self-service
