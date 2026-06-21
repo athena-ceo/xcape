@@ -76,3 +76,34 @@ then reconcile into the household view:
   the only near-required extras (they drive visa); everything else inherits the household default.
 - Privacy: members' communities are sensitive; keep them scoring-only, never displayed as
   identifying labels (as today for the single profile).
+
+## Implementation (build-ready)
+
+**Backend**
+- Model `household_member.py`: `HouseholdMember(id, profile_id FK→profiles, label str, role str
+  [adult|child|retiree], citizenships JSON, language_skills JSON, minority_groups JSON,
+  persona str|None, criteria_weights JSON)`. Migration `00NN_household_member` (new table,
+  nullable everything; no change to existing rows ⇒ today's behaviour when there are no members).
+- Schema `MemberIn/MemberOut` + CRUD: `GET/POST/PUT/DELETE /profile/members[/{id}]`.
+- `shortlist`: add `_member_effective(profile, member)` → merge member fields over the household
+  profile (fallback to profile for any unset field), reusing `_effective_weights` on the merged
+  view. Add `score_for_member(place, member, ...)` and a `household_scores(db, user, search)`
+  returning `{place_id: {household, by_member: {member_id: score}, min, variance, viol_by_member}}`.
+  Reconciliation: hard filters = UNION of members' `filter_status` (any violation excludes);
+  household soft score = role-weighted mean of member soft scores. `rank_all`/`repopulate_board`
+  call into this when members exist (else unchanged single-profile path).
+- Endpoint `GET /searches/{id}/household` → per-country member breakdown + divergence
+  (compromise/polarising) for the By-member view.
+
+**Frontend**
+- Profile/onboarding: an optional "Add the people involved" section (light per-member form:
+  label, role, citizenship, optional persona/priorities/communities/languages). `api` CRUD.
+- ComparisonPlayground: a **"Household | By member"** toggle. By-member renders a members×board
+  matrix of scores (reuse cell styling) + a "Where you differ" strip (compromise vs polarising,
+  per-criterion conflicts). Household view = today's board (default).
+- All member-specific labels localized; communities never shown as identifying labels.
+
+**Sequencing:** build **after the visa deep-dive** — Phase 3 (a destination is viable only if
+ALL members have a visa pathway) consumes the per-(citizenship, category, destination) pathway
+machinery from `xcape-visa-pathways.md`. Phases 1–2 (members + per-member scoring + side-by-side)
+can land before that using the current coarse per-citizenship visa.
