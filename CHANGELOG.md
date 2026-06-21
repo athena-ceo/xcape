@@ -6,6 +6,15 @@
 ## [Unreleased]
 
 ### 2026-06-16 — Foreign-resident-access prompts; prompt-versioned eval cache
+- Refined: criteria now use one of two **lenses** — ACCESS (healthcare, education, tax,
+  asset security, banking, …: can a newcomer qualify/afford/reach it) vs EXPERIENCE (culture,
+  food, nature, internet, …: lived quality for a settled newcomer), so the access framing isn't
+  forced onto experiential criteria. healthcare/education descriptions sharpened to access.
+- Prompts (eval + detail) and the shared research `_SYSTEM` are now **origin-neutral** — no
+  hard-coded home country / citizenship — because the eval cache is shared across users. The
+  per-user home country stays in the chatbot context, where it belongs. (Eval version → v3,
+  detail version → v3.)
+
 
 - **AI prompts now judge access for a FOREIGN RESIDENT**, not generic domestic quality — for
   every criterion (healthcare, education, banking, …) the score and the drill-down text reflect

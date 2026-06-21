@@ -194,10 +194,10 @@
     {"key": "wellbeing", "parent": null, "label_fr": "Santé & éducation", "label_en": "Health & education"},
     {"key": "healthcare", "parent": "wellbeing", "kind": "objective", "tags": ["health"], "label_fr": "Santé", "label_en": "Healthcare", "default_weight": 1.0,
      "scale": {"strong": 1.0, "good": 0.7, "basic": 0.3},
-     "ai_description": "Quality and accessibility of healthcare for residents."},
+     "ai_description": "Healthcare access for a foreign resident — when a newcomer becomes eligible for the public system, the insurance / out-of-pocket cost before then, plus quality and language at the point of care."},
     {"key": "education", "parent": "wellbeing", "kind": "objective", "tags": ["health", "family"], "label_fr": "Éducation", "label_en": "Education", "default_weight": 0.0,
      "scale": {"strong": 1.0, "good": 0.7, "basic": 0.3},
-     "ai_description": "Quality and accessibility of schools and universities."},
+     "ai_description": "Schooling and university access for a foreign resident's family — enrolment rules for non-citizens, public vs international-school cost, language of instruction, and overall quality."},
 
     {"key": "lifestyle", "parent": null, "label_fr": "Cadre de vie", "label_en": "Lifestyle", "tags": ["lifestyle"]},
     {"key": "climate", "parent": "lifestyle", "kind": "computed", "tags": ["climate", "lifestyle"], "label_fr": "Climat", "label_en": "Climate", "default_weight": 0.8},

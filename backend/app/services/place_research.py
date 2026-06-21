@@ -58,9 +58,10 @@ _ENUMS: dict[str, list[str]] = {
 _GROUP_LEVELS = ["high", "mixed", "low"]
 
 _SYSTEM = (
-    "You assess countries for someone relocating from France. Use web search for "
-    "current facts. Rate each attribute on the given scale; language_ease and visa "
-    "are judged from the perspective of a French/EU citizen. For social_acceptance, "
+    "You assess countries for someone relocating internationally as a foreign resident. Use "
+    "web search for current facts. This data is shared across users, so stay origin-neutral: "
+    "do NOT assume any particular home country or citizenship (per-user visa/language scoring "
+    "is applied separately). Rate each attribute on the given scale. For social_acceptance, "
     "rate how welcome each community is in daily life, anchored on evidence (e.g. ILGA "
     "for LGBTQ+ rights, antisemitism / Islamophobia monitoring reports, discrimination "
     "and integration indices) rather than impressions. For gender_equality use signals "
@@ -71,7 +72,7 @@ _SYSTEM = (
 # Bump when the per-criterion DETAIL prompt below changes in a way that should invalidate the
 # cached explanation text. Entries are stamped with this; detail_map ignores entries from an
 # older version, so they're treated as missing and regenerated on the next drilldown.
-DETAIL_PROMPT_VERSION = "2"  # v2: explain access for a foreign resident, not generic facts
+DETAIL_PROMPT_VERSION = "3"  # v3: foreign-resident access framing + origin-neutral system prompt
 
 
 def _place_schema() -> dict:

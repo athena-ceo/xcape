@@ -31,15 +31,32 @@ _LEVEL_VALUE = {"good": 1.0, "ok": 0.6, "bad": 0.3}
 STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=...)
 
 # Bump when the evaluation PROMPT/template below changes in a way that should invalidate
-# cached evals. Together with the criterion's label+description it forms each row's prompt_fp;
-# a mismatch marks the row stale so the next evaluate-all (or lazy refresh) regenerates it.
-EVAL_PROMPT_VERSION = "2"  # v2: judge access for a FOREIGN RESIDENT, not generic domestic quality
+# cached evals. Together with the criterion's label+description+lens it forms each row's
+# prompt_fp; a mismatch marks the row stale so the next evaluate-all (or lazy refresh)
+# regenerates it.
+EVAL_PROMPT_VERSION = "3"  # v3: per-criterion lens (access vs experience), origin-neutral
+
+# Criteria judged through the ACCESS lens — for these, what matters is whether a FOREIGN
+# RESIDENT can actually qualify for / reach / afford the thing (eligibility, waiting periods,
+# cost to non-citizens, legal hurdles). Everything else uses the EXPERIENCE lens (quality of
+# the thing as a newcomer lives it). Includes the access-oriented persona custom criteria.
+ACCESS_LENS_KEYS = {
+    "tax", "tax_treaty", "asset_security", "healthcare", "education",
+    "custom_banking_asset_protection", "custom_wealth_inheritance_tax",
+    "custom_retirement_visa", "custom_healthcare_for_retirees",
+}
 
 
-def prompt_fingerprint(label: str, description: str | None) -> str:
-    """Short stable hash of (template version, label, description) — the invariant part of the
-    prompt (place name excluded). Changes whenever the prompt or this criterion's wording does."""
-    raw = f"{EVAL_PROMPT_VERSION}\x1f{label}\x1f{description or ''}"
+def lens_for(key: str) -> str:
+    """Which evaluation lens a criterion uses: 'access' (can a newcomer get it) vs 'experience'
+    (how good it is to live with as a newcomer)."""
+    return "access" if key in ACCESS_LENS_KEYS else "experience"
+
+
+def prompt_fingerprint(label: str, description: str | None, lens: str = "experience") -> str:
+    """Short stable hash of (template version, lens, label, description) — the invariant part of
+    the prompt (place name excluded). Changes whenever the prompt, lens or wording does."""
+    raw = f"{EVAL_PROMPT_VERSION}\x1f{lens}\x1f{label}\x1f{description or ''}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
@@ -95,7 +112,7 @@ def _eval_schema() -> dict:
 
 def evaluate(
     db: Session, place: Place, key: str, label: str, description: str | None = None,
-    *, user_id: int | None = None, force: bool = False, stale_days: int = 0,
+    *, lens: str | None = None, user_id: int | None = None, force: bool = False, stale_days: int = 0,
 ) -> PlaceCustomEval | None:
     """Rate one place on one criterion (cache-first). Re-evaluates if `force` or the cached
     row is older than `stale_days`. Returns the (possibly cached) eval, or None if AI is off."""
@@ -104,20 +121,34 @@ def evaluate(
         .filter(PlaceCustomEval.place_id == place.id, PlaceCustomEval.key == key)
         .first()
     )
-    fp = prompt_fingerprint(label, description)
+    lens = lens or lens_for(key)
+    fp = prompt_fingerprint(label, description, lens)
     if existing and not force and _fresh(existing, fp, stale_days):
         return existing
 
     # The short label is the column name; the (optional) description explains what to judge.
     criterion = label + (f": {description}" if description else "")
+    # Origin-neutral on purpose: these evals are a SHARED cross-user cache, so they must not
+    # bake in any one user's home country / citizenship. Per-user framing (relocating FROM X)
+    # lives in the chatbot context instead.
+    if lens == "access":
+        focus = (
+            "Score 0 (poor) to 100 (excellent) specifically for how well a FOREIGN RESIDENT can "
+            "actually ACCESS and benefit from it: eligibility and legal/visa requirements, any "
+            "qualifying or waiting period, cost to non-citizens / new arrivals, language barriers "
+            "and practical hurdles — NOT just the general domestic quality for locals."
+        )
+    else:
+        focus = (
+            "Score 0 (poor) to 100 (excellent) for how good this is to live with day-to-day for a "
+            "FOREIGN RESIDENT who has settled there, noting any barrier a newcomer specifically "
+            "faces (e.g. language or lack of local networks). Judge the lived quality, not "
+            "bureaucratic eligibility."
+        )
     try:
         data = ai_client.respond_json(
-            f"Assess {place.name} for someone moving there as a FOREIGN RESIDENT — a newcomer "
-            f"(not a native citizen) — on this criterion: \"{criterion}\". Score 0 (poor) to "
-            f"100 (excellent) specifically for how well a foreign resident can actually ACCESS "
-            f"and benefit from it: eligibility and legal/visa requirements, any qualifying or "
-            f"waiting period, cost to non-citizens / new arrivals, language barriers, and "
-            f"practical hurdles — NOT just the general domestic quality for locals. Add a "
+            f"Assess {place.name} for someone who has moved there as a FOREIGN RESIDENT — a "
+            f"newcomer, not a native citizen — on this criterion: \"{criterion}\". {focus} Add a "
             f"concise 1-2 sentence justification in French (summary_fr) and English "
             f"(summary_en), written from that newcomer's standpoint. Use web search for current "
             f"facts. Put sources ONLY in the sources array as bare https URLs.",
@@ -180,7 +211,7 @@ def populate(db: Session, places: list[Place], keys: list[str], *,
                 .filter(PlaceCustomEval.place_id == place.id, PlaceCustomEval.key == key)
                 .first()
             )
-            fp = prompt_fingerprint(d["label"], d.get("description"))
+            fp = prompt_fingerprint(d["label"], d.get("description"), lens_for(key))
             if before and not force and _fresh(before, fp, stale_days):
                 continue  # already current for this prompt
             # No eval yet AND only a coarse seed bucket present → leave it (bounds cost) unless
