@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Smoke test self-cleans; prod-safe test-user purge
+
+- The deploy **smoke test now deletes its throwaway account** at the end (new self-service
+  `DELETE /auth/me`, cascades the account's data), so `smoke-*@example.com` users no longer
+  accumulate on prod.
+- `./xcape.sh purge-test-users <env>` is now **allowed on prod** (was refused) behind a
+  confirmation — scoped strictly to `@example.com` / `@xcape.test`, so it can clear the existing
+  backlog without ever touching real users.
+
 ### 2026-06-16 — Admin: hide test/smoke accounts from the Searches log
 
 - The Admin → Searches log now **excludes test/automation accounts by default** — the smoke

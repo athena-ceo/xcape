@@ -112,6 +112,11 @@ def main() -> int:
     check("chat degrades gracefully (200)",
           st == 200 and isinstance(msg, dict) and bool(msg.get("reply")), f"status={st}")
 
+    # Clean up after ourselves: delete the throwaway account so smoke runs don't accumulate
+    # (especially on prod, where this runs on every deploy).
+    st, _ = call("DELETE", "/auth/me", token)
+    check("cleanup: smoke account deleted", st == 204, f"status={st}")
+
     return _finish()
 
 

@@ -85,7 +85,11 @@ case "$CMD" in
     [[ -z "$EMAIL" || -z "$NEWPW" ]] && { echo "usage: ./xcape.sh reset-password <dev|prod> <email> <newpassword>"; exit 1; }
     $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.set_password "$EMAIL" "$NEWPW" ;;
   purge-test-users)
-    if [[ "$ENV" == "prod" ]]; then echo "Refusing to purge on prod."; exit 1; fi
+    # Scoped to test domains only (@example.com / @xcape.test) — never touches real users — so
+    # it's safe on prod too, behind a confirmation. Cascades to their searches/candidates/chat.
+    echo "Permanently DELETE test-domain users (@example.com / @xcape.test) and their data on $ENV?"
+    read -r -p "Proceed on $ENV? [y/N] " ans
+    [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "Aborted."; exit 0; }
     $COMPOSE exec -T db psql -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-xcape_dev}" \
       -c "delete from users where email ilike '%@example.com' or email ilike '%@xcape.test';"
     echo "Purged test users (@example.com / @xcape.test) and their data." ;;
@@ -154,7 +158,7 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
                           AI-evaluate every objective criterion for every country (cross-user cache)
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
-  purge-test-users <env>    (dev) delete @example.com / @xcape.test test users
+  purge-test-users <env>    delete @example.com / @xcape.test test users (confirm; prod-safe)
   test                    run backend pytest
   smoke                   run end-to-end smoke tests against the running stack
   shell                   open a backend shell

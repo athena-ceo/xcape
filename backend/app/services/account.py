@@ -21,3 +21,11 @@ def reset_user_data(db: Session, user: User) -> None:
     if user.profile is not None:
         db.delete(user.profile)
     db.commit()
+
+
+def delete_user(db: Session, user: User) -> None:
+    """Permanently delete the account and all its data (profile, searches, candidates, chat).
+    Used for self-service account deletion and by the smoke test to clean up after itself."""
+    reset_user_data(db, user)
+    db.delete(user)
+    db.commit()

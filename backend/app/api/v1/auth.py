@@ -77,3 +77,11 @@ def update_me(
     for search in user.searches:
         shortlist_service.rescore_candidates(db, user, search)
     return user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Permanently delete the caller's own account and all its data. Used for self-service
+    account deletion and by the smoke test to clean up the throwaway account it creates."""
+    from app.services import account
+    account.delete_user(db, user)
