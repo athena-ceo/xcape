@@ -39,10 +39,6 @@
   now carries `override`. Migration `0018_candidate_override` adds the nullable column.
 
 ### 2026-06-16 — Deploy seeding is insert-only; `reseed-data` to force a refresh
-- New `./xcape.sh verify-evals <dev|prod>` (read-only) reports whether the live criterion
-  evals match the committed seed (i.e. whether the recalibration is present) — match / differ
-  / missing — so you can tell if `reseed-data` is needed.
-
 
 - `seed` (and therefore `deploy prod`) is now **insert-only**: it bootstraps a fresh DB and
   adds newly-committed countries, but **never overwrites existing places or evals**. So a
@@ -52,6 +48,9 @@
   evals) from the seed files, overwriting existing rows — use it to push committed data
   updates (refreshed evals, corrected attributes). User searches/profiles and custom-criterion
   evals are never touched. Mirrors the `reseed-criteria` pattern.
+- New `./xcape.sh verify-evals <dev|prod>` (read-only) reports whether the live criterion
+  evals match the committed seed (i.e. whether the recalibration is present) — match / differ
+  / missing — so you can tell if `reseed-data` is needed.
 
 ### 2026-06-16 — Hard filters exclude violators; advice on what to relax
 
