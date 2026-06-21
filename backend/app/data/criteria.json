@@ -43,10 +43,11 @@
       "match": {"reasons": ["discrimination", "safety"], "tags": ["discrimination", "fear"]},
       "weights": {"inclusion": 3, "safety": 2.5, "political_stability": 2, "gender_equality": 1.5, "visa": 1, "language_ease": 1, "cost_of_living": 1, "healthcare": 0.5},
       "ask": ["communities"],
+      "filters": ["safety", "inclusion"],
       "custom_criteria": [
         {"label_en": "Safety for my community", "label_fr": "Sécurité pour ma communauté",
          "description": "How safe, accepted and protected the {community} community is for residents — recent trends in hate incidents, legal protections and everyday climate. Cite trusted human-rights / community sources.",
-         "per_community": true, "category": "protection"}
+         "per_community": true, "category": "protection", "min": 0.45}
       ]
     },
     {
@@ -56,7 +57,8 @@
       "blurb_en": "You're fleeing the political climate. We prioritise stability, rights and safety.",
       "match": {"reasons": ["politics"], "tags": ["stability"]},
       "weights": {"political_stability": 3, "safety": 2.5, "gender_equality": 1.5, "inclusion": 1, "visa": 1.5, "cost_of_living": 1, "language_ease": 1},
-      "ask": []
+      "ask": [],
+      "filters": ["political_stability", "safety"]
     },
     {
       "key": "asset_protection",
@@ -66,6 +68,7 @@
       "match": {"reasons": ["patrimoine"], "tags": ["financial", "tax"]},
       "weights": {"tax": 3, "tax_treaty": 2.5, "asset_security": 2.5, "cost_of_living": 1.5, "political_stability": 1.5, "safety": 1, "visa": 1},
       "ask": ["budget"],
+      "filters": ["asset_security", "political_stability"],
       "custom_criteria": [
         {"label_en": "Wealth & inheritance tax", "label_fr": "Impôt sur la fortune et successions",
          "description": "Wealth, inheritance and capital-gains taxation for a relocating high-net-worth resident, including exit-tax exposure. Cite official / tax-advisory sources."},
@@ -81,6 +84,7 @@
       "match": {"reasons": ["retirement"], "tags": ["retirement"]},
       "weights": {"visa": 2.5, "cost_of_living": 2.5, "healthcare": 3, "climate": 1.5, "safety": 1.5, "tax": 1, "language_ease": 1},
       "ask": ["budget", "climate"],
+      "filters": ["healthcare", "safety"],
       "custom_criteria": [
         {"label_en": "Retirement visa", "label_fr": "Visa retraite",
          "description": "Retirement / pensioner visa pathways, minimum income or pension requirements, and ease of long-term residency for retirees. Cite official immigration sources."},
@@ -104,7 +108,8 @@
       "blurb_en": "You're moving with family. We prioritise education, healthcare, safety and cost of living.",
       "match": {"reasons": ["healthcare"], "tags": ["family", "health"]},
       "weights": {"education": 2.5, "healthcare": 2.5, "safety": 2.5, "cost_of_living": 1.5, "culture": 1, "climate": 1, "inclusion": 1, "language_ease": 1, "visa": 1},
-      "ask": ["budget", "climate"]
+      "ask": ["budget", "climate"],
+      "filters": ["safety", "healthcare"]
     },
     {
       "key": "climate_lifestyle",

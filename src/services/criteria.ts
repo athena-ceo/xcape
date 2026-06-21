@@ -26,6 +26,7 @@ export interface Persona {
   blurb_en?: string
   match?: { reasons?: string[]; tags?: string[] }
   weights?: Record<string, number>
+  filters?: string[]  // criteria that default to an "exclude-bad" hard filter
   ask?: string[]
   custom_criteria?: { label_en?: string; label_fr?: string; description?: string; per_community?: boolean }[]
 }

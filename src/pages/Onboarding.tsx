@@ -154,6 +154,7 @@ export function Onboarding() {
         climate_pref: a.climate_pref,
         language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
         criteria_weights: weightsFromPersona(),
+        filters: filtersFromPersona(),
         minority_groups: a.minority_groups,
         persona: persona?.key,
         priorities_text: a.priorities_text.trim(),
@@ -182,6 +183,14 @@ export function Onboarding() {
     const cw: Record<string, number> = { ...(persona?.weights ?? {}) }
     a.priorities.forEach((k, i) => { cw[k] = rankWeight(i, a.priorities.length) })
     return cw
+  }
+  // The persona's critical criteria default to an "exclude-bad" filter so countries rated
+  // À éviter on them drop off automatically (the user can loosen via the relax banner). This
+  // also REPLACES any stale filters from a previous search/onboarding.
+  function filtersFromPersona(): Record<string, string> {
+    const f: Record<string, string> = {}
+    for (const k of persona?.filters ?? []) f[k] = 'ok'
+    return f
   }
 
   // Priorities are an ORDERED list (rank = importance). Add appends; drag reorders.

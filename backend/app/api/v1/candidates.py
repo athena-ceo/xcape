@@ -439,7 +439,7 @@ def apply_persona(
     user_comms = (prof.minority_groups or []) if prof else []
     added: list[str] = []
 
-    def _add(label: str, description: str, weight: float, category: str | None):
+    def _add(label: str, description: str, weight: float, category: str | None, mn: float | None):
         key = criterion_eval.slugify(label)
         if not key or key in have:
             return
@@ -447,6 +447,8 @@ def apply_persona(
              "source": "persona"}  # per-search (regenerated); not persisted to the profile
         if category:
             d["category"] = category  # file it under a built-in category, not "Your criteria"
+        if mn is not None:
+            d["min"] = float(mn)  # persona-declared hard filter (e.g. exclude unsafe-for-community)
         defs.append(d)
         have.add(key)
         added.append(key)
@@ -455,13 +457,14 @@ def apply_persona(
         base = cc.get(f"label_{locale}") or cc.get("label_en") or cc.get("label") or "criterion"
         desc = cc.get("description", "")
         category = cc.get("category")
+        mn = cc.get("min")
         if cc.get("per_community"):
             for ck in user_comms:
                 c = comms.get(ck)
                 clabel = (c.get(f"label_{locale}") or c.get("label_en") or ck) if c else ck
-                _add(f"{base} — {clabel}", desc.replace("{community}", clabel), 2.0, category)
+                _add(f"{base} — {clabel}", desc.replace("{community}", clabel), 2.0, category, mn)
         else:
-            _add(base, desc, 1.5, category)
+            _add(base, desc, 1.5, category, mn)
 
     if added:
         search.custom_criteria = defs

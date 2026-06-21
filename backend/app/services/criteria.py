@@ -172,6 +172,14 @@ def persona_weights(key: str | None) -> dict[str, float]:
     return {k: float(v) for k, v in (p.get("weights", {}) if p else {}).items()}
 
 
+def persona_filters(key: str | None) -> dict[str, str]:
+    """A persona's default hard filters: its critical criteria set to an "exclude-bad" ('ok')
+    threshold, so countries rated À éviter on them drop off the board automatically. Returns a
+    {criterion_key: 'ok'} dict — empty for personas that declare no default filters."""
+    p = persona(key)
+    return {k: "ok" for k in (p.get("filters", []) if p else [])}
+
+
 def persona_for(reasons: list[str] | None, priorities: list[str] | None = None) -> str:
     """Rule-based: pick the persona whose match rule best fits the user's reasons + priorities.
     Score = (reason overlap) + (overlap of implied tags with the persona's match tags). Highest

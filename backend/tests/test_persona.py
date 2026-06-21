@@ -142,3 +142,11 @@ def test_custom_criterion_weight_and_min_update_persists(auth_client, db_session
     assert auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()[0].get("min") == 0.7
     auth_client.patch(f"/api/v1/searches/{sid}/custom-criteria/{key}", json={"min": None})
     assert auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()[0].get("min") is None
+
+
+def test_persona_filters_default_to_exclude_bad():
+    """A persona's critical criteria come back as 'exclude-bad' ('ok') hard filters."""
+    from app.services import criteria
+    f = criteria.persona_filters("safety_community")
+    assert f.get("safety") == "ok" and f.get("inclusion") == "ok"
+    assert criteria.persona_filters("neutral") == {}  # neutral imposes no hard filters
