@@ -34,10 +34,11 @@ depends on citizenship + situation. Split accordingly:
   threshold checks).
 
 ## Categories (taxonomy)
-`free_movement`, `work` (skilled/employer), `digital_nomad`, `retirement` (passive-income),
-`investment` (golden / real-estate / business), `entrepreneur/startup`, `ancestry/descent`,
-`family` (spouse/child reunification), `student`, `long_residency` (the PR→citizenship clock).
-Start with the ~6 highest-value: free_movement, work, retirement, investment, ancestry, family.
+**Confirmed set to support:** `free_movement`, `work` (skilled/employer), `retirement`
+(passive-income), `investment` (golden / real-estate / business), `entrepreneur/startup`,
+`digital_nomad`, `ancestry/descent`, `family` (spouse/child reunification), `student`. Plus
+`long_residency` (the PR→citizenship clock) tracked as timeline metadata on each pathway rather
+than a standalone category.
 
 ## Per-user synthesis (the scoring + gate)
 For a user, pick the **best available pathway**:
@@ -68,14 +69,16 @@ For a user, pick the **best available pathway**:
 - **Phase 4 — household tie-in:** each member's best pathway; a destination is viable only if
   ALL members have one (principal + family reunification). Couples with `docs/xcape-household-members.md`.
 
-## Decisions needed before building
-1. **Catalog scope/cost:** on-demand per (destination, category) [recommended — bounded cost],
-   vs a bulk run for the top ~6 categories × 217 (~1,300 evals, instant + filterable everywhere).
-2. **Category set:** the ~6 high-value to start (free_movement, work, retirement, investment,
-   ancestry, family)? Add digital_nomad?
-3. **Ancestry:** confirm user-declared flag (we can't reliably infer heritage) — store on profile.
-4. **Visa-waiver matrix:** skip a full bilateral matrix for now and lean on the catalog +
-   free-movement zones? (A complete matrix is large and churny.)
+## Decisions (confirmed 2026-06-16)
+1. **Catalog scope:** **on-demand** per (destination, category) — evaluate a pathway only when a
+   user needs it (cached + shared once computed). No bulk run.
+2. **Category set:** free_movement, work, retirement, investment, entrepreneur, digital_nomad,
+   ancestry, family, student (long-residency as timeline metadata on each pathway).
+3. **Ancestry:** user-declared profile flag (can't infer heritage) — add to onboarding/profile.
+4. **Visa-waiver matrix:** skip the full bilateral matrix; lean on the on-demand catalog +
+   a free-movement-zone data file.
+5. **Timing:** build AFTER the objective-eval regeneration finishes and is committed (the plan is
+   captured; this is the next focused project).
 
 ## Notes
 - This is independent of the objective-eval regeneration (visa is computed + its own
