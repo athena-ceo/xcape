@@ -336,6 +336,12 @@ export const en: Dict = {
     region: 'Region',
     area: 'Area',
   },
+  trend: {
+    level: 'Level',
+    trendLabel: 'Trend',
+    high: 'high', moderate: 'moderate', low: 'low',
+    improving: 'improving', stable: 'stable', worsening: 'worsening',
+  },
   reasons: {
     details: 'See details',
     lang_known: 'You speak {lang}, spoken there.',

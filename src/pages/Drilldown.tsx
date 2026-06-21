@@ -230,6 +230,32 @@ export function Drilldown() {
     )
   }
 
+  // Structured trend block for trend-lens criteria (community safety, safety, stability):
+  // current level + trajectory arrow + window + the factual basis (metric).
+  function trendLine(meta: any) {
+    const tr = meta?.trend as 'improving' | 'stable' | 'worsening' | undefined
+    const lvl = meta?.level as 'high' | 'moderate' | 'low' | undefined
+    const arrow = tr === 'improving' ? '↗' : tr === 'worsening' ? '↘' : '→'
+    const arrowCls = tr === 'improving' ? 'text-emerald-600' : tr === 'worsening' ? 'text-red-600' : 'text-turquoise-800/50'
+    const tt = t.trend as Record<string, string>
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        {lvl && (
+          <span className="text-turquoise-800/70">
+            {tt.level}: <span className="font-medium text-turquoise-900">{tt[lvl] ?? lvl}</span>
+          </span>
+        )}
+        {tr && (
+          <span className="text-turquoise-800/70">
+            {tt.trendLabel}: <span className={`font-medium ${arrowCls}`}>{arrow} {tt[tr] ?? tr}</span>
+          </span>
+        )}
+        {meta?.window && <span className="text-turquoise-800/50">({meta.window})</span>}
+        {meta?.metric && <span className="basis-full text-turquoise-800/60 italic">{meta.metric}</span>}
+      </div>
+    )
+  }
+
   function criterionBox(key: string) {
     const d = detailByKey[key]
     if (!d) return null
@@ -260,6 +286,7 @@ export function Drilldown() {
             {d.summary ? cleanSummary(d.summary) : t.drilldown.assessmentPending}
           </p>
         )}
+        {d.meta && trendLine(d.meta)}
         {Array.isArray(d.sources) && d.sources.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>

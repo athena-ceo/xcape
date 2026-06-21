@@ -78,6 +78,7 @@ def seed_evals(db: Session, overwrite: bool = False) -> int:
             ev = PlaceCustomEval(place_id=place.id, key=r["key"])
             db.add(ev)
         ev.label = r.get("label") or r["key"]
+        ev.meta = r.get("meta")
         ev.prompt_fp = r.get("prompt_fp")  # carry the prompt version so it isn't re-evaluated
         ev.score = r.get("score")
         ev.level = r.get("level") or "ok"

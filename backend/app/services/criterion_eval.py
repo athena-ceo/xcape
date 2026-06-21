@@ -34,7 +34,7 @@ STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=..
 # cached evals. Together with the criterion's label+description+lens it forms each row's
 # prompt_fp; a mismatch marks the row stale so the next evaluate-all (or lazy refresh)
 # regenerates it.
-EVAL_PROMPT_VERSION = "3"  # v3: per-criterion lens (access vs experience), origin-neutral
+EVAL_PROMPT_VERSION = "4"  # v4: trend lens (level + trajectory) for safety/community criteria
 
 # Criteria judged through the ACCESS lens — for these, what matters is whether a FOREIGN
 # RESIDENT can actually qualify for / reach / afford the thing (eligibility, waiting periods,
@@ -45,11 +45,17 @@ ACCESS_LENS_KEYS = {
     "custom_banking_asset_protection", "custom_wealth_inheritance_tax",
     "custom_retirement_visa", "custom_healthcare_for_retirees",
 }
+# TREND lens — for these the trajectory matters as much as the current level, so we capture
+# structured {level, trend, window, metric} (e.g. anti-community incidents rising/falling).
+TREND_LENS_KEYS = {"safety", "political_stability"}
+_COMMUNITY_SAFETY_PREFIX = "custom_safety_for_my_community"  # per-community criterion slugs
 
 
 def lens_for(key: str) -> str:
-    """Which evaluation lens a criterion uses: 'access' (can a newcomer get it) vs 'experience'
-    (how good it is to live with as a newcomer)."""
+    """Which evaluation lens a criterion uses: 'access' (can a newcomer get it), 'trend' (level
+    + trajectory, e.g. incident trends), or 'experience' (how good it is to live with)."""
+    if key in TREND_LENS_KEYS or key.startswith(_COMMUNITY_SAFETY_PREFIX):
+        return "trend"
     return "access" if key in ACCESS_LENS_KEYS else "experience"
 
 
@@ -110,6 +116,28 @@ def _eval_schema() -> dict:
     }
 
 
+def _trend_schema() -> dict:
+    """Eval schema for trend-lens criteria: adds structured level/trend/window/metric so the
+    trajectory (e.g. anti-community incidents rising vs falling) is first-class data, not buried
+    in prose."""
+    return {
+        "type": "object",
+        "properties": {
+            "score": {"type": "integer", "minimum": 0, "maximum": 100},
+            "level": {"type": "string", "enum": ["high", "moderate", "low"]},
+            "trend": {"type": "string", "enum": ["improving", "stable", "worsening"]},
+            "window": {"type": "string"},   # period assessed, e.g. "2023–2025"
+            "metric": {"type": "string"},   # one-line factual basis (cite a recognised monitor)
+            "summary_fr": {"type": "string"},
+            "summary_en": {"type": "string"},
+            "sources": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["score", "level", "trend", "window", "metric",
+                     "summary_fr", "summary_en", "sources"],
+        "additionalProperties": False,
+    }
+
+
 def evaluate(
     db: Session, place: Place, key: str, label: str, description: str | None = None,
     *, lens: str | None = None, user_id: int | None = None, force: bool = False, stale_days: int = 0,
@@ -138,6 +166,17 @@ def evaluate(
             "qualifying or waiting period, cost to non-citizens / new arrivals, language barriers "
             "and practical hurdles — NOT just the general domestic quality for locals."
         )
+    elif lens == "trend":
+        focus = (
+            "Both the current LEVEL and the recent TRAJECTORY matter. Report: level (high / "
+            "moderate / low, where high = best for a resident); trend (improving / stable / "
+            "worsening); window (the period assessed, e.g. \"2023–2025\"); metric (a one-line "
+            "factual basis, citing a recognised monitor where one exists — e.g. ADL or CST for "
+            "Jewish communities, ILGA for LGBTQ+, OSCE-ODIHR / EU-FRA hate-crime data, or "
+            "national statistics — with figures or direction if available). The score (0-100) "
+            "must reflect BOTH: a high but worsening situation scores below a stable high one, "
+            "and a low but improving one above a worsening low one."
+        )
     else:
         focus = (
             "Score 0 (poor) to 100 (excellent) for how good this is to live with day-to-day for a "
@@ -145,6 +184,7 @@ def evaluate(
             "faces (e.g. language or lack of local networks). Judge the lived quality, not "
             "bureaucratic eligibility."
         )
+    schema = _trend_schema() if lens == "trend" else _eval_schema()
     try:
         data = ai_client.respond_json(
             f"Assess {place.name} for someone who has moved there as a FOREIGN RESIDENT — a "
@@ -152,8 +192,8 @@ def evaluate(
             f"concise 1-2 sentence justification in French (summary_fr) and English "
             f"(summary_en), written from that newcomer's standpoint. Use web search for current "
             f"facts. Put sources ONLY in the sources array as bare https URLs.",
-            _eval_schema(),
-            schema_name="criterion_eval",
+            schema,
+            schema_name="criterion_eval_trend" if lens == "trend" else "criterion_eval",
             web_search=True,
             model=settings.openai_chat_model,  # lightweight scoring → use the faster model
             kind="custom",
@@ -164,6 +204,10 @@ def evaluate(
         return None
 
     score = data.get("score")
+    # Structured trend fields (trend lens only) → stored in meta for first-class display/use.
+    meta = None
+    if lens == "trend":
+        meta = {k: data.get(k) for k in ("level", "trend", "window", "metric") if data.get(k)}
     if existing:  # refresh in place
         existing.score = score
         existing.level = level_from_score(score)
@@ -171,6 +215,7 @@ def evaluate(
         existing.summary_fr = data.get("summary_fr")
         existing.summary_en = data.get("summary_en")
         existing.sources = data.get("sources", [])
+        existing.meta = meta
         existing.prompt_fp = fp
         existing.freshness_at = datetime.now(timezone.utc)
         db.commit()
@@ -181,7 +226,7 @@ def evaluate(
         place_id=place.id, key=key, label=label, score=score,
         level=level_from_score(score),
         summary_fr=data.get("summary_fr"), summary_en=data.get("summary_en"),
-        sources=data.get("sources", []), prompt_fp=fp,
+        sources=data.get("sources", []), meta=meta, prompt_fp=fp,
     )
     db.add(ev)
     db.commit()

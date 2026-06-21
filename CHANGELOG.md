@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — Structured incident-trend data (level + trajectory)
+
+- Trend-sensitive criteria (`safety`, `political_stability`, and the per-community "Safety for
+  my community") now use a dedicated **trend lens**: the eval captures structured
+  `{level, trend, window, metric}` (e.g. anti-community incidents high/low and improving/stable/
+  worsening, with a one-line factual basis citing a recognised monitor — ADL/CST, ILGA,
+  OSCE-ODIHR/FRA, national stats). The 0–100 score reflects BOTH level and trajectory.
+- Stored in `place_custom_evals.meta` (migration `0020_eval_meta`), round-trips through
+  export/seed, and shown in the drill-down as a level + trend arrow (↗/→/↘) + window + basis.
+- Design for a grounded data pipeline (option B) documented in
+  `docs/xcape-incident-trend-data.md`.
+
 ### 2026-06-16 — Foreign-resident-access prompts; prompt-versioned eval cache
 - Refined: criteria now use one of two **lenses** — ACCESS (healthcare, education, tax,
   asset security, banking, …: can a newcomer qualify/afford/reach it) vs EXPERIENCE (culture,

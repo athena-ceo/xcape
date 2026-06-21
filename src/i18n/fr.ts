@@ -333,6 +333,12 @@ export const fr = {
     region: 'Région',
     area: 'Superficie',
   },
+  trend: {
+    level: 'Niveau',
+    trendLabel: 'Tendance',
+    high: 'élevé', moderate: 'modéré', low: 'faible',
+    improving: 'en amélioration', stable: 'stable', worsening: 'en dégradation',
+  },
   reasons: {
     details: 'Voir le détail',
     lang_known: 'Vous parlez {lang}, parlé sur place.',

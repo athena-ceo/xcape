@@ -37,8 +37,11 @@ def test_generate_fills_in_order_routes_and_caches(auth_client, db_session, monk
 
     def fake_respond_json(*args, schema_name=None, **kwargs):
         calls["n"] += 1
-        if schema_name == "criterion_eval":
-            return {"score": 80, "summary_fr": "ok fr", "summary_en": "ok en", "sources": []}
+        if schema_name in ("criterion_eval", "criterion_eval_trend"):
+            out = {"score": 80, "summary_fr": "ok fr", "summary_en": "ok en", "sources": []}
+            if schema_name == "criterion_eval_trend":  # safety uses the trend lens now
+                out.update(level="moderate", trend="stable", window="2023–2025", metric="basis")
+            return out
         return {"summary_fr": "détail fr", "summary_en": "detail en", "sources": ["https://x.test"]}
 
     monkeypatch.setattr(ai_client, "respond_json", fake_respond_json)

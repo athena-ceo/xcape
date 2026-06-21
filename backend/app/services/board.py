@@ -81,12 +81,13 @@ def criterion_details(
     for key in list(criteria.criteria_keys()) + custom_keys:
         value = sl._criterion_value(key, attrs, profile, place, eval_values)
         ev = rows.get(key)
-        summary, sources, score, pending = "", [], None, False
+        summary, sources, score, pending, meta = "", [], None, False, None
         if key in eval_objective_keys:
             if ev is not None:
                 summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr or ""
                 sources = ev.sources or []
                 score = round(value * 100)
+                meta = ev.meta  # structured trend fields (level/trend/window/metric), if any
             else:
                 pending = True  # no AI eval yet → generate on demand
         elif key == "proximity":
@@ -104,6 +105,7 @@ def criterion_details(
         out.append({
             "key": key, "label": custom_lookup.get(key, {}).get("label"),
             "score": score, "summary": summary, "sources": sources, "pending": pending,
+            "meta": meta,
         })
     return out
 
