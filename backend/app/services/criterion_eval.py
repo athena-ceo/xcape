@@ -34,7 +34,7 @@ STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=..
 # cached evals. Together with the criterion's label+description+lens it forms each row's
 # prompt_fp; a mismatch marks the row stale so the next evaluate-all (or lazy refresh)
 # regenerates it.
-EVAL_PROMPT_VERSION = "5"  # v5: global full-range calibration + recency (anti-clustering)
+EVAL_PROMPT_VERSION = "6"  # v6: summary hygiene (no score echo) + level/score consistency
 
 # Criteria judged through the ACCESS lens — for these, what matters is whether a FOREIGN
 # RESIDENT can actually qualify for / reach / afford the thing (eligibility, waiting periods,
@@ -203,9 +203,10 @@ def evaluate(
             f"newcomer, not a native citizen — on this criterion: \"{criterion}\". {focus} "
             f"{_CALIBRATION} Add a concise, specific 1-2 sentence justification (include a "
             f"concrete fact or figure where possible) in French (summary_fr) and English "
-            f"(summary_en), written from that newcomer's standpoint. Use web search and favour "
-            f"the most recent data (2025–2026). Put sources ONLY in the sources array as bare "
-            f"https URLs.",
+            f"(summary_en), written from that newcomer's standpoint — do NOT restate the number "
+            f"or write \"Score:\" in the summaries, and keep any level you report consistent with "
+            f"the score. Use web search and favour the most recent data (2025–2026). Put sources "
+            f"ONLY in the sources array as bare https URLs.",
             schema,
             schema_name="criterion_eval_trend" if lens == "trend" else "criterion_eval",
             web_search=True,
