@@ -175,7 +175,11 @@ export function ComparisonPlayground() {
 
   // Label for any criterion — resolved from the registry, falling back to a custom name.
   function critLabel(key: string) {
-    return labelOf(reg, key, lang, customCrit)
+    // Service component sub-keys (e.g. "healthcare:access") → "Healthcare · Access", localized.
+    const [base, comp] = key.split(':')
+    const label = labelOf(reg, base, lang, customCrit)
+    if (comp) return `${label} · ${(t.trend as Record<string, string>)[comp] ?? comp}`
+    return label
   }
 
   // Generic quality word from a tier — used when an objective criterion has an AI score but
