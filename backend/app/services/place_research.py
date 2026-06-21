@@ -72,7 +72,7 @@ _SYSTEM = (
 # Bump when the per-criterion DETAIL prompt below changes in a way that should invalidate the
 # cached explanation text. Entries are stamped with this; detail_map ignores entries from an
 # older version, so they're treated as missing and regenerated on the next drilldown.
-DETAIL_PROMPT_VERSION = "3"  # v3: foreign-resident access framing + origin-neutral system prompt
+DETAIL_PROMPT_VERSION = "4"  # v4: neutral newcomer framing (no forced eligibility) + visa pathways
 
 
 def _place_schema() -> dict:
@@ -214,16 +214,31 @@ def criterion_detail_one(
     if key in existing:
         return existing[key]
     label = criteria.label(key, "en")
+    # Visa is the one origin-specific case; since this text is a SHARED cache it can't be
+    # personalised, so describe the country's residence PATHWAYS in general (the per-user score
+    # is computed separately). Everything else: the practical reality for a settled newcomer,
+    # noting a newcomer-specific angle only where it genuinely applies (no forced "eligibility"
+    # language on things like cost of living or climate).
+    if key == "visa":
+        angle = (
+            "summarise the main residence pathways available (e.g. work/skilled, retirement, "
+            "investment, family, ancestry, digital-nomad) and roughly how accessible they are, "
+            "WITHOUT assuming the reader's nationality"
+        )
+    else:
+        angle = (
+            "describe the practical reality for a foreign resident settling in, including a "
+            "newcomer-specific angle (cost to non-citizens, when one qualifies, or language) only "
+            "where it genuinely applies — not generic boilerplate"
+        )
     try:
         data = ai_client.respond_json(
-            f"For someone moving to {place.name} as a FOREIGN RESIDENT (a newcomer, not a "
-            f"native citizen), write a concise, factual 1-2 sentence explanation of \"{label}\" "
-            f"focused on how a newcomer actually accesses or experiences it — eligibility, "
-            f"qualifying/waiting periods, cost to non-citizens, and practical or legal hurdles — "
-            f"not just generic facts about the country. Provide BOTH a French version "
-            f"(summary_fr) and an English version (summary_en). Use web search for current "
-            f"facts. Put sources ONLY in the sources array, each a plain bare URL "
-            f"(https://…, no Markdown, no tracking params). Do NOT put URLs inside the summaries.",
+            f"For someone moving to {place.name} as a FOREIGN RESIDENT (a newcomer, not a native "
+            f"citizen), write a concise, factual 1-2 sentence explanation of \"{label}\": {angle}. "
+            f"Provide BOTH a French version (summary_fr) and an English version (summary_en). Use "
+            f"web search and favour the most recent data (2025–2026). Put sources ONLY in the "
+            f"sources array, each a plain bare URL (https://…, no Markdown, no tracking params). "
+            f"Do NOT put URLs inside the summaries.",
             _one_detail_schema(),
             schema_name="criterion_detail",
             web_search=True,

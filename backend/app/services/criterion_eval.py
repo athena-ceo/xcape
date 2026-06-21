@@ -34,7 +34,7 @@ STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=..
 # cached evals. Together with the criterion's label+description+lens it forms each row's
 # prompt_fp; a mismatch marks the row stale so the next evaluate-all (or lazy refresh)
 # regenerates it.
-EVAL_PROMPT_VERSION = "4"  # v4: trend lens (level + trajectory) for safety/community criteria
+EVAL_PROMPT_VERSION = "5"  # v5: global full-range calibration + recency (anti-clustering)
 
 # Criteria judged through the ACCESS lens — for these, what matters is whether a FOREIGN
 # RESIDENT can actually qualify for / reach / afford the thing (eligibility, waiting periods,
@@ -57,6 +57,18 @@ def lens_for(key: str) -> str:
     if key in TREND_LENS_KEYS or key.startswith(_COMMUNITY_SAFETY_PREFIX):
         return "trend"
     return "access" if key in ACCESS_LENS_KEYS else "experience"
+
+
+# Each eval scores ONE country in isolation (the model never sees the others), which makes models
+# cluster and inflate — especially for famous countries. Force an absolute, full-range, global
+# calibration so strong and lesser-known countries are genuinely differentiated.
+_CALIBRATION = (
+    "Calibrate on a GLOBAL absolute scale across ALL countries worldwide, using the FULL 0-100 "
+    "range — do not cluster scores and do not grade on reputation or region. Anchors: ~90+ = "
+    "among the very best in the world; ~70 = clearly strong; ~50 = global average / typical; "
+    "~30 = clearly weak; ~10 = among the worst. A well-known country with only average provision "
+    "should score around 50, and a lesser-known country that genuinely excels should score high."
+)
 
 
 def prompt_fingerprint(label: str, description: str | None, lens: str = "experience") -> str:
@@ -188,10 +200,12 @@ def evaluate(
     try:
         data = ai_client.respond_json(
             f"Assess {place.name} for someone who has moved there as a FOREIGN RESIDENT — a "
-            f"newcomer, not a native citizen — on this criterion: \"{criterion}\". {focus} Add a "
-            f"concise 1-2 sentence justification in French (summary_fr) and English "
-            f"(summary_en), written from that newcomer's standpoint. Use web search for current "
-            f"facts. Put sources ONLY in the sources array as bare https URLs.",
+            f"newcomer, not a native citizen — on this criterion: \"{criterion}\". {focus} "
+            f"{_CALIBRATION} Add a concise, specific 1-2 sentence justification (include a "
+            f"concrete fact or figure where possible) in French (summary_fr) and English "
+            f"(summary_en), written from that newcomer's standpoint. Use web search and favour "
+            f"the most recent data (2025–2026). Put sources ONLY in the sources array as bare "
+            f"https URLs.",
             schema,
             schema_name="criterion_eval_trend" if lens == "trend" else "criterion_eval",
             web_search=True,
