@@ -28,7 +28,7 @@ _FALLBACK: dict[str, float] = {
     "TWD": 35.0, "RUB": 95.0, "UAH": 45.0,
 }
 
-_FRANKFURTER = "https://api.frankfurter.app/latest"
+_FRANKFURTER = "https://api.frankfurter.dev/v1/latest"
 
 # In-process daily cache: {"rates": {...}, "day": "YYYY-MM-DD"}. Refetched once per UTC day.
 _cache: dict = {"rates": None, "day": None}
@@ -41,7 +41,9 @@ def _today() -> str:
 def _fetch() -> dict[str, float] | None:
     """Best-effort EUR-based rates from the ECB (Frankfurter). None on any failure."""
     try:
-        resp = httpx.get(_FRANKFURTER, params={"from": "EUR"}, timeout=6.0)
+        # follow_redirects: httpx (unlike requests) doesn't follow by default, and the API host
+        # has moved before (frankfurter.app → frankfurter.dev) — survive any future redirect.
+        resp = httpx.get(_FRANKFURTER, params={"from": "EUR"}, timeout=6.0, follow_redirects=True)
         if resp.status_code != 200:
             return None
         data = resp.json()
