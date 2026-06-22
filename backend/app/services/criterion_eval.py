@@ -209,7 +209,10 @@ def evaluate(
             "Score 0 (poor) to 100 (excellent) specifically for how well a FOREIGN RESIDENT can "
             "actually ACCESS and benefit from it: eligibility and legal/visa requirements, any "
             "qualifying or waiting period, cost to non-citizens / new arrivals, language barriers "
-            "and practical hurdles — NOT just the general domestic quality for locals."
+            "and practical hurdles — NOT just the general domestic quality for locals. Judge the "
+            "OUTCOME, recognising functional equivalents: a pathway that achieves the same end "
+            "under a different name still counts — do not score something weak merely because a "
+            "specifically-named program is absent if a general route delivers the same result."
         )
     elif lens == "trend":
         focus = (

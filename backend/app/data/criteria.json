@@ -87,7 +87,7 @@
       "filters": ["healthcare", "safety"],
       "custom_criteria": [
         {"label_en": "Retirement visa", "label_fr": "Visa retraite", "category": "practical", "weight": 3,
-         "description": "Retirement / pensioner visa pathways, minimum income or pension requirements, and ease of long-term residency for retirees. Cite official immigration sources."},
+         "description": "Ease for a foreign retiree to obtain legal residence on pension / passive income. COUNT any qualifying pathway as valid — a named retirement/pensioner visa OR a general 'residence for persons of independent means / living on their own resources' permit achieves the same outcome; do NOT mark it weak merely because there is no specifically-named 'retirement visa'. Weigh income/pension thresholds, required documents, and the ease and length of long-term residency. Cite official immigration sources."},
         {"label_en": "Healthcare for retirees", "label_fr": "Santé pour les retraités", "category": "wellbeing", "weight": 3,
          "description": "Access to and cost of healthcare for older residents and retirees, including eligibility for the public system. Cite official / health sources."}
       ]

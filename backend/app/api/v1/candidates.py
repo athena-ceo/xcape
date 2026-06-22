@@ -471,6 +471,7 @@ def apply_persona(
             for d in defs:
                 if d.get("key") == key and d.get("source") == "persona":
                     d["weight"] = weight
+                    d["description"] = description  # pick up improved wording → re-evaluates
                     if category:
                         d["category"] = category
                     if mn is not None:
