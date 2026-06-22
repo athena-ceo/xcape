@@ -58,6 +58,13 @@ For a user, pick the **best available pathway**:
   by ancestry anywhere? which countries?") and reuse budget as the income signal.
 
 ## Phasing
+> **Status (2026-06-22):** Phase 1 ✅ (ancestry overlay in `_visa_value`), Phase 2 ✅
+> (`visa_pathways` on-demand catalog in `place_custom_evals`, `visa_<category>` + meta), and the
+> Phase 3 **drill-down pathways panel** ✅ (persona/ancestry-relevant categories, best-route
+> highlight, thresholds + timeline + requirements + sources, progressive on-demand fill). Still
+> open: folding the catalog's best-pathway into the board **visa score + hard gate** (synthesis),
+> a free-movement-zone data file beyond EU, and Phase 4 household tie-in.
+
 - **Phase 1 — foundation (no catalog):** category taxonomy; extend the citizenship overlay
   (free-movement data file; ancestry as a declared profile flag; budget→income); make visa a
   proper hard gate (exclude no-pathway). Improves today's computed visa immediately.

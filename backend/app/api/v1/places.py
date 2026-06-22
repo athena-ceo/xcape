@@ -13,7 +13,9 @@ from app.models.user import User
 from pydantic import BaseModel
 
 from app.schemas.place import MediaOut, PlaceOut
-from app.services import ai_client, board, country_facts, criteria, criterion_eval, place_research
+from app.services import (
+    ai_client, board, country_facts, criteria, criterion_eval, place_research, visa_pathways,
+)
 
 router = APIRouter()
 
@@ -117,6 +119,70 @@ def generate_detail(
                 made += 1
         # proximity / unknown keys: nothing to generate
     return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang)}
+
+
+def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:
+    """Assemble the visa-pathways panel: the categories relevant to this user for this place,
+    each cached row's terms (or pending), and the best (easiest existing) pathway."""
+    profile = user.profile
+    cats = visa_pathways.relevant_categories(profile, place)
+    rows = visa_pathways.cached_rows(db, place.id)
+    out = []
+    best_cat, best_diff = None, -1
+    for c in cats:
+        entry = {"category": c, "label": visa_pathways.category_label(c, lang)}
+        ev = rows.get(c)
+        if ev is None:
+            entry["pending"] = True
+        else:
+            entry["pending"] = False
+            entry.update(visa_pathways.pathway_payload(ev, lang))
+            if entry.get("exists") and (entry.get("difficulty") or 0) > best_diff:
+                best_cat, best_diff = c, entry.get("difficulty") or 0
+        out.append(entry)
+    return {"categories": out, "best": best_cat}
+
+
+@router.get("/{place_id}/visa-pathways")
+def get_visa_pathways(
+    place_id: int,
+    lang: str = "fr",
+    search: int | None = None,  # accepted for symmetry with the drill-down; profile drives relevance
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The visa-pathways panel for the drill-down — INSTANT, from cache. Categories relevant to
+    the user (persona + declared ancestry + universal) come back with their terms or `pending:true`;
+    the page fills pending ones via POST .../visa-pathways/generate."""
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    return _visa_panel(db, place, user, lang)
+
+
+class GenerateVisaRequest(BaseModel):
+    limit: int = 2  # how many pathway categories to evaluate this call (the page loops)
+
+
+@router.post("/{place_id}/visa-pathways/generate")
+def generate_visa_pathways(
+    place_id: int,
+    body: GenerateVisaRequest,
+    lang: str = "fr",
+    search: int | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Evaluate up to `limit` of the still-pending relevant pathway categories on-demand, then
+    return the assembled panel. Called repeatedly so pathways fill in progressively."""
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    cats = visa_pathways.relevant_categories(user.profile, place)
+    have = visa_pathways.cached_rows(db, place.id)
+    pending = [c for c in cats if c not in have]
+    visa_pathways.ensure_for_place(db, place, pending[: max(0, body.limit)], user_id=user.id)
+    return _visa_panel(db, place, user, lang)
 
 
 @router.get("/{place_id}/media", response_model=list[MediaOut])

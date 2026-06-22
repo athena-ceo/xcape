@@ -163,6 +163,16 @@ export const api = {
       `/places/${id}/detail/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
       { method: 'POST', body: JSON.stringify(body) },
     ),
+  // Visa pathways panel (drill-down): relevant categories with their terms, or pending.
+  getVisaPathways: (id: number, lang: string, search?: number) =>
+    request<{ categories: any[]; best: string | null }>(
+      `/places/${id}/visa-pathways?lang=${lang}${search != null ? `&search=${search}` : ''}`,
+    ),
+  generateVisaPathways: (id: number, body: { limit: number }, lang: string, search?: number) =>
+    request<{ categories: any[]; best: string | null }>(
+      `/places/${id}/visa-pathways/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getAdminUsers: () => request<any[]>('/admin/users'),

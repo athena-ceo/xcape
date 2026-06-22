@@ -35,6 +35,8 @@ export function Drilldown() {
   const [customWeights, setCustomWeights] = useState<Record<string, number>>({})
   const [customCats, setCustomCats] = useState<Record<string, string>>({})
   const [showZero, setShowZero] = useState(false)
+  const [visa, setVisa] = useState<{ categories: any[]; best: string | null } | null>(null)
+  const visaDrainRef = useRef(false)
 
   // Collapse state per category (persisted). Default collapsed except the clicked criterion's.
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
@@ -178,6 +180,31 @@ export function Drilldown() {
     return () => { cancelled = true }
   }, [id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Visa pathways: load the instant panel (relevant categories, from cache), then progressively
+  // generate the pending ones on-demand.
+  async function drainVisa(initial?: { categories: any[]; best: string | null }) {
+    if (visaDrainRef.current) return
+    visaDrainRef.current = true
+    try {
+      let cur = initial ?? visa
+      for (let i = 0; i < 10; i++) {
+        if (cur && !cur.categories.some((c) => c.pending)) break
+        const res = await api.generateVisaPathways(id, { limit: 2 }, lang, searchId ?? undefined)
+        cur = res
+        setVisa(res)
+      }
+    } finally {
+      visaDrainRef.current = false
+    }
+  }
+  useEffect(() => {
+    let cancelled = false
+    api.getVisaPathways(id, lang, searchId ?? undefined)
+      .then((p) => { if (!cancelled) { setVisa(p); void drainVisa(p) } })
+      .catch(() => { if (!cancelled) setVisa(null) })
+    return () => { cancelled = true }
+  }, [id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // After detail first renders, scroll to the clicked criterion with a brief highlight.
   useEffect(() => {
     if (loadingDetail || !hash) return
@@ -290,6 +317,60 @@ export function Drilldown() {
     )
   }
 
+  // One visa-pathway category card (the gate: how this user could legally settle there).
+  function visaCard(c: any) {
+    const v = t.drilldown.visa as Record<string, string>
+    const best = visa?.best === c.category
+    const summary = lang === 'fr' ? c.summary_fr : c.summary_en
+    const money = (x: any) => (x == null ? null : `${Number(x).toLocaleString(lang)} €`)
+    const years = (x: any) => (x == null ? null : `${x} ${v.years}`)
+    const tier = (d: number) => (d >= 70 ? 'text-emerald-700' : d >= 45 ? 'text-turquoise-700' : 'text-amber-700')
+    const term = (label: string, val: string | null) =>
+      val && <span>{label}: <b className="text-turquoise-900">{val}</b></span>
+    return (
+      <div key={c.category}
+        className={`bg-white border rounded-lg p-4 ${best ? 'border-turquoise-300 ring-1 ring-turquoise-200' : 'border-turquoise-100'}`}>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-sm font-medium text-turquoise-900">{c.label}</p>
+          {best && <span className="text-[10px] uppercase tracking-wide bg-turquoise-600 text-turquoise-50 rounded px-1.5 py-0.5">{v.best}</span>}
+          {!c.pending && c.exists && (
+            <span className={`ml-auto text-sm font-medium ${tier(c.difficulty ?? 0)}`}>{c.difficulty}/100</span>
+          )}
+        </div>
+        {c.pending ? (
+          <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2"><Spinner /> {t.drilldown.generating}</p>
+        ) : !c.exists ? (
+          <p className="text-sm text-turquoise-800/40 italic">{v.noRoute}</p>
+        ) : (
+          <>
+            {summary && <p className="text-sm text-turquoise-800/80">{cleanSummary(summary)}</p>}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-turquoise-800/70">
+              {term(v.income, money(c.income_eur))}
+              {term(v.investment, money(c.investment_eur))}
+              {term(v.pr, years(c.pr_years))}
+              {term(v.citizenship, years(c.citizenship_years))}
+            </div>
+            {Array.isArray(c.requirements) && c.requirements.length > 0 && (
+              <ul className="mt-2 list-disc list-inside text-xs text-turquoise-800/70 space-y-0.5">
+                {c.requirements.map((r: string, i: number) => <li key={i}>{r}</li>)}
+              </ul>
+            )}
+            {Array.isArray(c.sources) && c.sources.length > 0 && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>
+                {c.sources.map((s: string, i: number) => {
+                  const p = parseSource(s)
+                  return p ? <a key={i} href={p.url} target="_blank" rel="noreferrer"
+                    className="text-xs text-turquoise-600 hover:underline">{p.label}</a> : null
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
   function criterionBox(key: string) {
     const d = detailByKey[key]
     if (!d) return null
@@ -385,6 +466,15 @@ export function Drilldown() {
               className="w-full h-28 object-cover rounded-md border border-turquoise-100" />
           ))}
         </div>
+      )}
+
+      {/* Visa pathways — the gate: how this user could legally settle here */}
+      {visa && visa.categories.length > 0 && (
+        <section className="mb-6">
+          <h2 className="text-lg font-medium text-turquoise-900 mb-1">{t.drilldown.visa.title}</h2>
+          <p className="text-sm text-turquoise-800/60 mb-3">{t.drilldown.visa.hint}</p>
+          <div className="space-y-3">{visa.categories.map(visaCard)}</div>
+        </section>
       )}
 
       {/* Per-criterion detail, grouped by category (collapsed except the clicked one) */}
