@@ -17,3 +17,13 @@ def test_profile_partial_updates_accumulate(auth_client):
 
 def test_profile_requires_auth(client):
     assert client.get("/api/v1/profile").status_code == 401
+
+
+def test_profile_currency_default_and_override(auth_client):
+    # With no explicit choice, the response carries a concrete (derived) currency, not null.
+    profile = auth_client.get("/api/v1/profile").json()
+    assert profile["currency"]  # effective currency populated
+
+    # The user can pick their own currency; it persists.
+    auth_client.put("/api/v1/profile", json={"currency": "USD"})
+    assert auth_client.get("/api/v1/profile").json()["currency"] == "USD"

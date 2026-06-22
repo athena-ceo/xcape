@@ -129,8 +129,12 @@ export const fr = {
     },
     budget: {
       q: 'Quel budget mensuel envisagez-vous ?',
-      hint: 'Logement et vie courante, en euros par mois.',
-      suffix: '€/mois',
+      hint: 'Logement et vie courante, par mois.',
+      suffix: '/mois',
+    },
+    currency: {
+      q: 'Devise du budget',
+      hint: 'La devise de votre budget. Par défaut celle de votre pays de résidence ; modifiable à tout moment.',
     },
     tenure: {
       q: 'Louer ou acheter ?',
@@ -354,7 +358,7 @@ export const fr = {
     afford: {
       title: 'Budget & accessibilité',
       hint: 'Estimez si votre budget mensuel couvre le coût de la vie ici, ajusté à votre foyer.',
-      budgetLabel: 'Budget mensuel (€)',
+      budgetLabel: 'Budget mensuel',
       householdLabel: 'Taille du foyer',
       generating: 'Estimation des coûts locaux…',
       pending: 'Lancez l’estimation pour comparer votre budget.',

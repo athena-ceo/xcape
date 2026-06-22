@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+### 2026-06-22 — Per-user budgeting currency
+
+- **Budgeting is no longer euro-only.** Added `profile.currency` (ISO-4217), editable in the
+  profile, with a per-currency selector next to the budget. When the user hasn't chosen one it's
+  **derived from their country of residence** (e.g. US → USD, UK → GBP; eurozone → EUR) and
+  persisted so scoring can read it.
+- The shared country data (cost breakdown, visa income/investment thresholds) stays **canonical in
+  EUR**; every money figure is **converted to the user's currency at the boundary** for display,
+  and the budget is converted back to EUR to stay comparable across users in the cost-of-living
+  ranking. The drill-down budget calculator, the cost breakdown + per-entry popup, the visa income
+  tie-in, and the visa-pathway cards now all show money in the user's currency (locale-aware symbol).
+- Exchange rates: new `services/fx.py` fetches EUR-based ECB reference rates once per day
+  (Frankfurter, keyless), cached in-process, with a built-in fallback table so budgeting never
+  breaks offline. Country → currency mapping in `services/currencies.py`.
+- Migration `0022_profile_currency`. Tests: `test_currencies.py`, currency conversion + profile
+  default/override in `test_affordability.py` / `test_profile.py`.
+
 ### 2026-06-22 — Budget / affordability calculator on the drill-down
 
 - New **budget & affordability calculator** on the country drill-down — a **collapsed-by-default,

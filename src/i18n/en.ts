@@ -131,8 +131,12 @@ export const en: Dict = {
     },
     budget: {
       q: 'What monthly budget do you have in mind?',
-      hint: 'Housing and everyday living, in euros per month.',
-      suffix: '€/month',
+      hint: 'Housing and everyday living, per month.',
+      suffix: '/month',
+    },
+    currency: {
+      q: 'Budgeting currency',
+      hint: 'The currency your budget is in. Defaults to your country of residence; change it anytime.',
     },
     tenure: {
       q: 'Rent or buy?',
@@ -357,7 +361,7 @@ export const en: Dict = {
     afford: {
       title: 'Budget & affordability',
       hint: 'Estimate whether your monthly budget covers the cost of living here, scaled to your household.',
-      budgetLabel: 'Monthly budget (€)',
+      budgetLabel: 'Monthly budget',
       householdLabel: 'Household size',
       generating: 'Estimating local costs…',
       pending: 'Run the estimate to see how your budget compares.',

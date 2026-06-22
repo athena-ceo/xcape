@@ -14,8 +14,8 @@ from pydantic import BaseModel
 
 from app.schemas.place import MediaOut, PlaceOut
 from app.services import (
-    affordability, ai_client, board, country_facts, criteria, criterion_eval, place_research,
-    visa_pathways,
+    affordability, ai_client, board, country_facts, criteria, criterion_eval, currencies, fx,
+    place_research, visa_pathways,
 )
 
 router = APIRouter()
@@ -140,6 +140,8 @@ def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:
     profile = user.profile
     cats = visa_pathways.relevant_categories(profile, place)
     rows = visa_pathways.cached_rows(db, place.id)
+    currency = currencies.effective_currency(db, user)
+    rate = fx.eur_rate(currency)
     out = []
     for c in cats:
         entry = {"category": c, "label": visa_pathways.category_label(c, lang)}
@@ -148,7 +150,7 @@ def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:
             entry["pending"] = True
         else:
             entry["pending"] = False
-            entry.update(visa_pathways.pathway_payload(ev, lang))
+            entry.update(visa_pathways.pathway_payload(ev, lang, rate=rate, currency=currency))
         out.append(entry)
     return {"categories": out, "best": None}
 
@@ -222,7 +224,8 @@ def get_affordability(
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     return affordability.compute(
-        db, place, user.profile, budget_monthly=budget, household_size=household, lang=lang)
+        db, place, user.profile, budget_monthly=budget, household_size=household,
+        currency=currencies.effective_currency(db, user), lang=lang)
 
 
 class GenerateAffordabilityRequest(BaseModel):
@@ -255,7 +258,8 @@ def generate_affordability(
     visa_pathways.ensure_for_place(
         db, place, [c for c in affordability.INCOME_CATEGORIES if c in relevant], user_id=user.id)
     return affordability.compute(
-        db, place, user.profile, budget_monthly=body.budget, household_size=body.household, lang=lang)
+        db, place, user.profile, budget_monthly=body.budget, household_size=body.household,
+        currency=currencies.effective_currency(db, user), lang=lang)
 
 
 @router.get("/{place_id}/media", response_model=list[MediaOut])

@@ -33,6 +33,7 @@ export function Drilldown() {
   const [loadingMedia, setLoadingMedia] = useState(true)
   const [searchId, setSearchId] = useState<number | null>(null)
   const [weights, setWeights] = useState<Record<string, number>>({})
+  const [currency, setCurrency] = useState<string>('EUR')  // the user's budgeting currency (for labels)
   const [customWeights, setCustomWeights] = useState<Record<string, number>>({})
   const [customCats, setCustomCats] = useState<Record<string, string>>({})
   const [showZero, setShowZero] = useState(false)
@@ -208,7 +209,10 @@ export function Drilldown() {
     api.getPlace(id).then(setPlace)
     api.getFacts(id).then(setFacts).catch(() => {})
     api.getMedia(id).then(setMedia).catch(() => {}).finally(() => setLoadingMedia(false))
-    api.getProfile().then((p: any) => setWeights(p?.criteria_weights ?? {})).catch(() => {})
+    api.getProfile().then((p: any) => {
+      setWeights(p?.criteria_weights ?? {})
+      if (p?.currency) setCurrency(p.currency)
+    }).catch(() => {})
   }, [id])
 
   // Custom-criterion weights come from the search's definitions, not the profile.
@@ -451,11 +455,23 @@ export function Drilldown() {
     )
   }
 
+  // Format a money amount in the given currency (locale-aware symbol); null passes through so
+  // callers can hide an absent figure. Backend money is already converted to the user's currency.
+  function fmtMoney(x: any, currency?: string): string | null {
+    if (x == null) return null
+    const cur = (currency || 'EUR').toUpperCase()
+    try {
+      return new Intl.NumberFormat(lang, { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(Number(x))
+    } catch {
+      return `${Number(x).toLocaleString(lang)} ${cur}`
+    }
+  }
+
   // One visa-pathway category card (the gate: how this user could legally settle there).
   function visaCard(c: any) {
     const v = t.drilldown.visa as Record<string, string>
     const summary = lang === 'fr' ? c.summary_fr : c.summary_en
-    const money = (x: any) => (x == null ? null : `${Number(x).toLocaleString(lang)} €`)
+    const money = (x: any) => fmtMoney(x, c.currency)
     const years = (x: any) => (x == null ? null : `${x} ${v.years}`)
     const tier = (d: number) => (d >= 70 ? 'text-emerald-700' : d >= 45 ? 'text-turquoise-700' : 'text-amber-700')
     const term = (label: string, val: string | null) =>
@@ -476,8 +492,8 @@ export function Drilldown() {
           <>
             {summary && <p className="text-sm text-turquoise-800/80">{cleanSummary(summary)}</p>}
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-turquoise-800/70">
-              {term(v.income, money(c.income_eur))}
-              {term(v.investment, money(c.investment_eur))}
+              {term(v.income, money(c.income))}
+              {term(v.investment, money(c.investment))}
               {term(v.pr, years(c.pr_years))}
               {term(v.citizenship, years(c.citizenship_years))}
             </div>
@@ -518,7 +534,7 @@ export function Drilldown() {
       )
     }
     const comps = af.components as Record<string, string>
-    const money = (x: any) => (x == null ? '—' : `${Number(x).toLocaleString(lang)} €`)
+    const money = (x: any) => fmtMoney(x, a.currency) ?? '—'
     const hasBudget = a.budget_monthly != null
     const ratio = a.ratio as number | null
     const fillPct = ratio != null ? Math.min(100, Math.round((1 / ratio) * 100)) : 0
@@ -539,12 +555,15 @@ export function Drilldown() {
           <div className="flex flex-wrap gap-4 mb-3">
             <label className="flex flex-col gap-1 text-xs text-turquoise-800/60">
               {af.budgetLabel}
-              <input type="number" min={0} step={100} value={budgetInput ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value === '' ? null : Number(e.target.value)
-                  setBudgetInput(v); scheduleRecompute(v, householdInput)
-                }}
-                className="w-32 border border-turquoise-200 rounded px-2 py-1 text-sm text-turquoise-900" />
+              <span className="flex items-center gap-1.5">
+                <input type="number" min={0} step={100} value={budgetInput ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value === '' ? null : Number(e.target.value)
+                    setBudgetInput(v); scheduleRecompute(v, householdInput)
+                  }}
+                  className="w-32 border border-turquoise-200 rounded px-2 py-1 text-sm text-turquoise-900" />
+                <span className="text-turquoise-800/60">{a.currency}</span>
+              </span>
             </label>
             <label className="flex flex-col gap-1 text-xs text-turquoise-800/60">
               {af.householdLabel}
@@ -561,20 +580,20 @@ export function Drilldown() {
             <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2">
               <Spinner /> {af.generating}
             </p>
-          ) : a.cost_total_eur != null && (
+          ) : a.cost_total != null && (
             <>
               {/* Cost vs budget */}
               <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-2">
                 <span className="text-turquoise-800/70">{af.estimatedCost}:
-                  <b className="text-turquoise-900"> {money(a.cost_total_eur)}{af.perMonth}</b></span>
+                  <b className="text-turquoise-900"> {money(a.cost_total)}{af.perMonth}</b></span>
                 {hasBudget && (
                   <span className="text-turquoise-800/70">{af.yourBudget}:
                     <b className="text-turquoise-900"> {money(a.budget_monthly)}{af.perMonth}</b></span>
                 )}
-                {hasBudget && a.surplus_eur != null && (
-                  <span className={a.surplus_eur >= 0 ? 'text-emerald-700' : 'text-red-700'}>
-                    {a.surplus_eur >= 0 ? af.surplus : af.deficit}:
-                    <b> {money(Math.abs(a.surplus_eur))}{af.perMonth}</b>
+                {hasBudget && a.surplus != null && (
+                  <span className={a.surplus >= 0 ? 'text-emerald-700' : 'text-red-700'}>
+                    {a.surplus >= 0 ? af.surplus : af.deficit}:
+                    <b> {money(Math.abs(a.surplus))}{af.perMonth}</b>
                   </span>
                 )}
               </div>
@@ -604,7 +623,7 @@ export function Drilldown() {
                           {comps[b.key] ?? b.key}
                           <span className="text-turquoise-400" aria-hidden>ⓘ</span>
                         </p>
-                        <p className="text-sm font-medium text-turquoise-900">{money(b.amount_eur)}</p>
+                        <p className="text-sm font-medium text-turquoise-900">{money(b.amount)}</p>
                       </button>
                     ))}
                   </div>
@@ -633,9 +652,9 @@ export function Drilldown() {
           {incomeRoutes.length > 0 && (
             <div className="mt-4 border-t border-turquoise-50 pt-3">
               <p className="text-sm font-medium text-turquoise-900">{af.incomeTitle}</p>
-              {a.annual_income_eur != null && (
+              {a.annual_income != null && (
                 <p className="text-xs text-turquoise-800/60 mb-2">
-                  {af.incomeHint.replace('{income}', money(a.annual_income_eur))}
+                  {af.incomeHint.replace('{income}', money(a.annual_income))}
                 </p>
               )}
               <div className="space-y-1.5">
@@ -643,7 +662,7 @@ export function Drilldown() {
                   <div key={r.category} className="flex items-center gap-2 text-sm">
                     <span className="text-turquoise-900">{r.label ?? r.category}</span>
                     <span className="text-xs text-turquoise-800/60">
-                      {af.threshold}: {money(r.income_eur)}{af.perYear}
+                      {af.threshold}: {money(r.income)}{af.perYear}
                     </span>
                     <span className={`ml-auto text-xs font-medium rounded-full px-2 py-0.5 ${
                       r.qualifies ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
@@ -664,7 +683,7 @@ export function Drilldown() {
     if (!costWhy) return null
     const af = t.drilldown.afford as any
     const comps = af.components as Record<string, string>
-    const money = (x: any) => (x == null ? '—' : `${Number(x).toLocaleString(lang)} €`)
+    const money = (x: any) => fmtMoney(x, afford?.currency) ?? '—'
     const note = lang === 'fr' ? costWhy.note_fr : costWhy.note_en
     const size = householdInput ?? 1
     return (
@@ -678,11 +697,11 @@ export function Drilldown() {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-3">
             <span className="text-turquoise-800/70">{af.perPerson}:
-              <b className="text-turquoise-900"> {money(costWhy.single_eur)}{af.perMonth}</b></span>
+              <b className="text-turquoise-900"> {money(costWhy.single)}{af.perMonth}</b></span>
             {size > 1 && (
               <span className="text-turquoise-800/70">
                 {af.yourHouseholdN.replace('{n}', String(size))}:
-                <b className="text-turquoise-900"> {money(costWhy.amount_eur)}{af.perMonth}</b>
+                <b className="text-turquoise-900"> {money(costWhy.amount)}{af.perMonth}</b>
               </span>
             )}
           </div>
@@ -705,7 +724,7 @@ export function Drilldown() {
             <span className="inline-block w-4 text-turquoise-600">{afOpen ? '▾' : '▸'}</span>
             <span className="text-lg font-medium text-turquoise-900">{af.title}</span>
             {afOpen && afford == null && <Spinner />}
-            <span className="ml-auto text-xs text-turquoise-800/50">€</span>
+            <span className="ml-auto text-xs text-turquoise-800/50">{afford?.currency ?? currency}</span>
           </button>
           {afOpen && (
             <div className="mt-2">

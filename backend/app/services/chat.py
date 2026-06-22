@@ -95,7 +95,7 @@ def _user_context(db: Session, user: User, search: Search, place_id: int | None 
         if p.reasons_leaving:
             lines.append(f"Reasons for leaving: {', '.join(p.reasons_leaving)}.")
         if p.budget_monthly:
-            lines.append(f"Monthly budget: {p.budget_monthly}.")
+            lines.append(f"Monthly budget: {p.budget_monthly} {getattr(p, 'currency', None) or 'EUR'}.")
         if p.tenure:
             lines.append(f"Rent/buy: {p.tenure}.")
         if p.climate_pref:

@@ -31,7 +31,7 @@ from app.core.config import settings
 from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
 from app.models.profile import Profile
-from app.services import ai_client, visa_pathways
+from app.services import ai_client, fx, visa_pathways
 from app.services.criterion_eval import _fresh, level_from_score
 
 # Bump when the breakdown prompt/schema below changes in a way that should invalidate cached rows.
@@ -194,10 +194,11 @@ def _verdict(ratio: float) -> str:
 
 
 def income_pathways(
-    db: Session, place_id: int, annual_income: int | None, lang: str = "en",
+    db: Session, place_id: int, annual_income: int | None, lang: str = "en", *, rate: float = 1.0,
 ) -> list[dict]:
     """Income-based visa routes (cached) the annualised budget is checked against. Each carries the
-    threshold and whether the income clears it. Routes with no income threshold are skipped."""
+    threshold (converted from the canonical EUR to the user's currency) and whether the income
+    clears it. Routes with no income threshold are skipped."""
     rows = visa_pathways.cached_rows(db, place_id)
     out: list[dict] = []
     for cat in INCOME_CATEGORIES:
@@ -205,13 +206,14 @@ def income_pathways(
         if ev is None:
             continue
         m = ev.meta or {}
-        threshold = m.get("income_eur")
-        if not m.get("exists", True) or threshold is None:
+        threshold_eur = m.get("income_eur")
+        if not m.get("exists", True) or threshold_eur is None:
             continue
+        threshold = round(threshold_eur * rate)  # both income and threshold in the user's currency
         out.append({
             "category": cat,
             "label": visa_pathways.category_label(cat, lang),
-            "income_eur": threshold,
+            "income": threshold,
             "qualifies": annual_income is not None and annual_income >= threshold,
         })
     return out
@@ -219,23 +221,27 @@ def income_pathways(
 
 def compute(
     db: Session, place: Place, profile: Profile | None, *,
-    budget_monthly: int | None, household_size: int | None, lang: str = "en",
+    budget_monthly: int | None, household_size: int | None, currency: str = "EUR", lang: str = "en",
 ) -> dict:
     """Assemble the affordability payload from the cached breakdown (or `pending`), the household
-    scaling, the budget comparison, and the visa income tie-in. Deterministic — no AI call."""
+    scaling, the budget comparison, and the visa income tie-in. The cached costs / thresholds are
+    canonical EUR; every money figure is converted to `currency` (the user's budgeting currency, in
+    which `budget_monthly` is already expressed). Deterministic — no AI call."""
     budget = budget_monthly if budget_monthly is not None else (
         getattr(profile, "budget_monthly", None) if profile else None)
     size = household_size if household_size is not None else default_household_size(profile)
     size = max(1, int(size or 1))
+    rate = fx.eur_rate(currency)  # units of `currency` per 1 EUR
 
     ev = cached_breakdown(db, place.id)
     annual = budget * 12 if budget else None
     base: dict = {
         "pending": ev is None,
+        "currency": currency,
         "budget_monthly": budget,
         "household_size": size,
-        "annual_income_eur": annual,
-        "income_pathways": income_pathways(db, place.id, annual, lang),
+        "annual_income": annual,
+        "income_pathways": income_pathways(db, place.id, annual, lang, rate=rate),
     }
     if ev is None:
         return base
@@ -245,12 +251,12 @@ def compute(
     breakdown = []
     cost_total = 0.0
     for c in COMPONENTS:
-        single = float(comps.get(c) or 0)
-        amount = round(single * household_factor(c, size))
+        single_eur = float(comps.get(c) or 0)
+        amount = round(single_eur * household_factor(c, size) * rate)
         cost_total += amount
         note = notes.get(c) or {}
         breakdown.append({
-            "key": c, "single_eur": round(single), "amount_eur": amount,
+            "key": c, "single": round(single_eur * rate), "amount": amount,
             "note_fr": note.get("fr") or "", "note_en": note.get("en") or "",
         })
     cost_total = round(cost_total)
@@ -259,8 +265,8 @@ def compute(
     ratio = (budget / cost_total) if (budget and cost_total > 0) else None
     base.update({
         "breakdown": breakdown,
-        "cost_total_eur": cost_total,
-        "surplus_eur": surplus,
+        "cost_total": cost_total,
+        "surplus": surplus,
         "ratio": round(ratio, 2) if ratio is not None else None,
         "verdict": _verdict(ratio) if ratio is not None else None,
         "summary_fr": ev.summary_fr or "",

@@ -25,6 +25,9 @@ class Profile(Base):
     # Free-text priorities (any number, beyond the preset chips) → AI criterion selection.
     priorities_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     budget_monthly: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Budgeting currency (ISO-4217, e.g. "USD"). When null, derived from the country of residence
+    # (see services.currencies). The budget above is expressed in THIS currency.
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     tenure: Mapped[str | None] = mapped_column(String(10), nullable=True)  # rent/buy
     climate_pref: Mapped[str | None] = mapped_column(String(20), nullable=True)
     language_skills: Mapped[dict | None] = mapped_column(JSON, default=dict)

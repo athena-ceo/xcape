@@ -84,8 +84,10 @@ def criterion_reason(place: Place, profile: Profile | None, key: str) -> dict:
         budget = getattr(profile, "budget_monthly", None) if profile else None
         band = shortlist._COST_BAND.get(str(val).lower())
         if budget and band:
+            from app.services import fx
             factor = shortlist._HOUSEHOLD_FACTOR.get(getattr(profile, "household_type", None), 1.3)
-            ratio = budget / (band * factor)
+            budget_eur = fx.to_eur(budget, getattr(profile, "currency", None))  # bands are EUR
+            ratio = budget_eur / (band * factor)
             code = "cost_within" if ratio >= 1.0 else "cost_tight" if ratio >= 0.8 else "cost_over"
             return {"code": code, "v": val}
         return {"code": "cost_level", "v": val}

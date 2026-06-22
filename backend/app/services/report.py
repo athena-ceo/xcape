@@ -98,7 +98,9 @@ def build_report(db: Session, user: User, search: Search, lang: str | None = Non
         (tr("residence"), user.current_country or "—"),
         (tr("citizenship"), ", ".join(user.citizenships or []) or "—"),
         (tr("household"), getattr(p, "household_type", None) or "—"),
-        (tr("budget"), f"{p.budget_monthly} €/mois" if (p and p.budget_monthly) else "—"),
+        (tr("budget"),
+         f"{p.budget_monthly:,} {getattr(p, 'currency', None) or 'EUR'}/mois".replace(",", " ")
+         if (p and p.budget_monthly) else "—"),
         (tr("climate"), getattr(p, "climate_pref", None) or "—"),
         (tr("languages"), ", ".join((p.language_skills or {}).get("known", []) if p else []) or "—"),
         (tr("communities"), ", ".join(getattr(p, "minority_groups", None) or []) or "—"),

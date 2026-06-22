@@ -236,15 +236,21 @@ def ensure_for_place(
     return out
 
 
-def pathway_payload(ev: PlaceCustomEval, lang: str = "en") -> dict:
-    """Serialise a pathway row for the API / drill-down panel (both languages carried)."""
+def pathway_payload(
+    ev: PlaceCustomEval, lang: str = "en", *, rate: float = 1.0, currency: str = "EUR",
+) -> dict:
+    """Serialise a pathway row for the API / drill-down panel (both languages carried). The
+    canonical EUR income/investment thresholds are converted to `currency` for display."""
     m = ev.meta or {}
+    income_eur = m.get("income_eur")
+    investment_eur = m.get("investment_eur")
     return {
         "category": m.get("category"),
         "exists": m.get("exists", True),
         "difficulty": ev.score,
-        "income_eur": m.get("income_eur"),
-        "investment_eur": m.get("investment_eur"),
+        "currency": currency,
+        "income": round(income_eur * rate) if income_eur is not None else None,
+        "investment": round(investment_eur * rate) if investment_eur is not None else None,
         "pr_years": m.get("pr_years"),
         "citizenship_years": m.get("citizenship_years"),
         "requirements": m.get("requirements") or [],

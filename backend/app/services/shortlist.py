@@ -27,6 +27,7 @@ from app.models.profile import Profile
 from app.models.search import Search
 from app.models.user import User
 from app.services import criteria
+from app.services import fx
 from app.services import geo
 
 SHORTLIST_SIZE = 15
@@ -165,8 +166,9 @@ def _cost_value(attrs: dict, profile: Profile | None) -> float:
     budget = getattr(profile, "budget_monthly", None) if profile else None
     if budget and level in _COST_BAND:
         factor = _HOUSEHOLD_FACTOR.get(getattr(profile, "household_type", None), 1.3)
-        estimate = _COST_BAND[level] * factor
-        ratio = budget / estimate
+        estimate = _COST_BAND[level] * factor  # bands are EUR → compare the budget in EUR
+        budget_eur = fx.to_eur(budget, getattr(profile, "currency", None))
+        ratio = budget_eur / estimate
         # ratio 0.5 (budget half the cost) -> 0; ratio 1.2 (comfortable surplus) -> 1.
         return max(0.0, min(1.0, (ratio - 0.5) / 0.7))
     return criteria.scales().get("cost_of_living", {}).get(level, 0.5)

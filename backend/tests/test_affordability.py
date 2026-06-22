@@ -5,7 +5,7 @@ from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
 from app.models.profile import Profile
 from app.models.user import User
-from app.services import affordability, ai_client
+from app.services import affordability, ai_client, fx
 
 # Single-person monthly cost breakdown the AI would return (euros), with per-component notes.
 _BREAKDOWN = {
@@ -67,28 +67,43 @@ def test_compute_surplus_and_verdict(db_session, monkeypatch):
     place = _country(db_session)
     affordability.evaluate_breakdown(db_session, place)
 
-    # Single person, comfortable budget → surplus and a "comfortable" verdict.
+    # Single person, comfortable budget → surplus and a "comfortable" verdict. Default currency is
+    # EUR (rate 1.0), so the cached EUR figures pass through unchanged.
     rich = affordability.compute(db_session, place, None, budget_monthly=3000, household_size=1)
-    assert rich["pending"] is False
-    assert rich["cost_total_eur"] == 1600           # no household scaling at size 1
-    assert rich["surplus_eur"] == 1400
+    assert rich["pending"] is False and rich["currency"] == "EUR"
+    assert rich["cost_total"] == 1600           # no household scaling at size 1
+    assert rich["surplus"] == 1400
     assert rich["verdict"] == "comfortable"
 
     # Same budget, larger household → costs rise, verdict degrades.
     family = affordability.compute(db_session, place, None, budget_monthly=3000, household_size=4)
-    assert family["cost_total_eur"] > rich["cost_total_eur"]
+    assert family["cost_total"] > rich["cost_total"]
     assert family["verdict"] in ("manageable", "tight", "insufficient")
 
     # A budget below local costs → deficit + "insufficient".
     poor = affordability.compute(db_session, place, None, budget_monthly=1000, household_size=1)
-    assert poor["surplus_eur"] == -600 and poor["verdict"] == "insufficient"
+    assert poor["surplus"] == -600 and poor["verdict"] == "insufficient"
+
+
+def test_compute_converts_to_user_currency(db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _BREAKDOWN)
+    place = _country(db_session)
+    affordability.evaluate_breakdown(db_session, place)
+    # 1 EUR = 2 units of the user's currency → every cached EUR figure doubles for display.
+    monkeypatch.setattr(fx, "eur_rate", lambda c: 2.0 if c == "USD" else 1.0)
+    out = affordability.compute(
+        db_session, place, None, budget_monthly=4000, household_size=1, currency="USD")
+    assert out["currency"] == "USD"
+    assert out["cost_total"] == 3200            # 1600 EUR × 2
+    assert out["surplus"] == 800                # 4000 (USD budget) − 3200
+    assert out["breakdown"][0]["amount"] == 1600  # rent 800 EUR × 2
 
 
 def test_compute_pending_without_breakdown(db_session):
     place = _country(db_session)  # nothing cached
     out = affordability.compute(db_session, place, None, budget_monthly=2000, household_size=1)
-    assert out["pending"] is True and "cost_total_eur" not in out
-    assert out["annual_income_eur"] == 24000  # tie-in still computed
+    assert out["pending"] is True and "cost_total" not in out
+    assert out["annual_income"] == 24000  # tie-in still computed
 
 
 def test_income_pathways_tie_in(db_session):
@@ -100,7 +115,8 @@ def test_income_pathways_tie_in(db_session):
     db_session.commit()
 
     qualifies = affordability.income_pathways(db_session, place.id, annual_income=30000)
-    assert qualifies[0]["category"] == "retirement" and qualifies[0]["qualifies"] is True
+    assert qualifies[0]["category"] == "retirement" and qualifies[0]["income"] == 24000
+    assert qualifies[0]["qualifies"] is True
     below = affordability.income_pathways(db_session, place.id, annual_income=12000)
     assert below[0]["qualifies"] is False
 
@@ -117,7 +133,7 @@ def test_affordability_endpoint_pending_then_filled(auth_client, db_session, mon
     r2 = auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en",
                           json={"budget": 3000, "household": 1}).json()
     assert r2["pending"] is False
-    assert r2["cost_total_eur"] == 1600 and r2["verdict"] == "comfortable"
+    assert r2["cost_total"] == 1600 and r2["verdict"] == "comfortable"
     assert len(r2["breakdown"]) == len(affordability.COMPONENTS)
     rent = next(b for b in r2["breakdown"] if b["key"] == "rent")
     assert rent["note_en"] == "note rent en" and rent["note_fr"] == "note rent fr"

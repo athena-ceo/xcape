@@ -9,10 +9,17 @@ from app.db.session import get_db
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
-from app.services import account
+from app.services import account, currencies
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
+
+
+def _ensure_currency(db: Session, user: User, profile: Profile) -> None:
+    """Persist the effective budgeting currency (derived from residence) when the user hasn't set
+    one, so the pure scoring functions — which can't reach the DB — can read it off the profile."""
+    if not profile.currency:
+        profile.currency = currencies.effective_currency(db, user)
 
 
 @router.post("/reset", status_code=204)
@@ -33,7 +40,12 @@ def _get_or_create(db: Session, user: User) -> Profile:
 
 @router.get("", response_model=ProfileOut)
 def get_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return _get_or_create(db, user)
+    profile = _get_or_create(db, user)
+    if not profile.currency:
+        _ensure_currency(db, user, profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
 
 
 @router.put("", response_model=ProfileOut)
@@ -45,6 +57,7 @@ def update_profile(
     profile = _get_or_create(db, user)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
+    _ensure_currency(db, user, profile)  # populate before re-ranking (scoring reads profile.currency)
     db.commit()
     db.refresh(profile)
     # Profile drives scoring — re-rank every existing search to reflect the change,

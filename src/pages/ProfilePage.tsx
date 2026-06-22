@@ -18,6 +18,13 @@ import { api } from '../services/api'
 import { labelOf, useCriteria, type Persona } from '../services/criteria'
 import { useAuth } from '../store/auth'
 
+// Currencies offered in the budgeting selector (ISO-4217). The backend accepts any code and
+// derives a default from the country of residence, so this is just a convenient shortlist.
+const CURRENCIES = [
+  'EUR', 'USD', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD', 'JPY', 'SGD', 'HKD', 'SEK', 'NOK', 'DKK',
+  'PLN', 'CZK', 'AED', 'SAR', 'ZAR', 'BRL', 'MXN', 'INR', 'CNY', 'THB', 'TRY', 'ILS', 'KRW',
+]
+
 interface Form {
   first_name: string
   last_name: string
@@ -29,6 +36,7 @@ interface Form {
   reasons_leaving: string[]
   minority_groups: string[]
   budget_monthly: number | null
+  currency: string | null
   tenure: 'rent' | 'buy' | null
   climate_pref: string | null
   known_languages: string[]
@@ -70,6 +78,7 @@ export function ProfilePage() {
         reasons_leaving: p?.reasons_leaving ?? [],
         minority_groups: p?.minority_groups ?? [],
         budget_monthly: p?.budget_monthly ?? null,
+        currency: p?.currency ?? null,
         tenure: p?.tenure ?? null,
         climate_pref: p?.climate_pref ?? null,
         known_languages: p?.language_skills?.known ?? [],
@@ -112,6 +121,7 @@ export function ProfilePage() {
         reasons_leaving: f.reasons_leaving,
         minority_groups: f.minority_groups,
         budget_monthly: f.budget_monthly,
+        currency: f.currency ?? undefined,
         tenure: f.tenure,
         climate_pref: f.climate_pref,
         language_skills: { known: f.known_languages, willing_to_learn: !!f.willing_to_learn },
@@ -223,12 +233,22 @@ export function ProfilePage() {
         </Section>
 
         <Section title={t.onboarding.budget.q}>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input type="number" min={0} step={100} value={f.budget_monthly ?? ''}
               onChange={(e) => set('budget_monthly', e.target.value ? Number(e.target.value) : null)}
               className="w-40 border border-turquoise-100 rounded-md px-3 py-2" placeholder="2000" />
+            <select value={f.currency ?? ''} onChange={(e) => set('currency', e.target.value || null)}
+              className="border border-turquoise-100 rounded-md px-3 py-2 bg-white"
+              title={t.onboarding.currency.q}>
+              {/* Keep the current value selectable even if it's outside the shortlist. */}
+              {f.currency && !CURRENCIES.includes(f.currency) && (
+                <option value={f.currency}>{f.currency}</option>
+              )}
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
             <span className="text-turquoise-800/70">{t.onboarding.budget.suffix}</span>
           </div>
+          <p className="text-xs text-turquoise-800/50 mt-2">{t.onboarding.currency.hint}</p>
         </Section>
 
         <Section title={t.onboarding.tenure.q}>
