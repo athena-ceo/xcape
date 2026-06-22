@@ -463,7 +463,20 @@ def apply_persona(
 
     def _add(label: str, description: str, weight: float, category: str | None, mn: float | None):
         key = criterion_eval.slugify(label)
-        if not key or key in have:
+        if not key:
+            return
+        if key in have:
+            # Refresh a persona-managed def in place so re-applying picks up new weight/category
+            # (e.g. retiree criteria promoted to weight 3); never clobber a user's own criterion.
+            for d in defs:
+                if d.get("key") == key and d.get("source") == "persona":
+                    d["weight"] = weight
+                    if category:
+                        d["category"] = category
+                    if mn is not None:
+                        d["min"] = float(mn)
+                    if key not in added:
+                        added.append(key)
             return
         d = {"key": key, "label": label, "description": description, "weight": weight,
              "source": "persona"}  # per-search (regenerated); not persisted to the profile
