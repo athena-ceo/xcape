@@ -154,8 +154,10 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   reseed-criteria <env>   overwrite the criteria registry (tree, personas, communities) from
                           criteria.json — rolls out registry changes; replaces admin UI edits
   backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
-  evaluate-all [--force] [--stale-days N] [--limit N]
-                          AI-evaluate every objective criterion for every country (cross-user cache)
+  evaluate-all [--force] [--stale-days N] [--limit N] [--skip-buckets]
+                          AI-evaluate every objective criterion for every country (cross-user
+                          cache). Covers bucket-only cells by default; --skip-buckets for the
+                          cheaper gap-fill-only mode.
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
   purge-test-users <env>    delete @example.com / @xcape.test test users (confirm; prod-safe)

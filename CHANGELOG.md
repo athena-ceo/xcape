@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### 2026-06-16 — evaluate-all covers bucket-only cells by default
+
+- `evaluate-all` now evaluates every (country, criterion) cell — including those relying only on
+  a coarse seed bucket — by **default**, so a plain run always closes the gap (e.g. a
+  low-default-weight criterion like education that was never lazily evaluated, which left a
+  version-bump regeneration ~189 short). `--skip-buckets` opts into the cheaper gap-fill-only
+  mode; `--include-buckets` is now the default (kept as a no-op for back-compat).
+
 ### 2026-06-16 — Discoverable category expand + inline criterion filters
 
 - **Categories read as expandable**: a boxed ▸/▾ chevron, a row hover state, and a "N · open"

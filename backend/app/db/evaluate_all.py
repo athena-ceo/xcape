@@ -7,10 +7,14 @@ Fills the per-(country, criterion) eval cache so the ~190 seed-sparse countries 
 scores + justifications instead of clustering at neutral. Cache-first and resumable: re-run
 to continue; pass --force to refresh, --stale-days N to refresh evals older than N days.
 
-Usage: python -m app.db.evaluate_all [--force] [--stale-days N] [--limit N] [--include-buckets]
-  --include-buckets : also evaluate cells that currently rely on a coarse seed bucket (no AI
-                      eval yet), so every country is scored on the same real-eval basis.
-                      Cache-first, so already-evaluated cells are skipped — cheap to run.
+Usage: python -m app.db.evaluate_all [--force] [--stale-days N] [--limit N] [--skip-buckets]
+  By DEFAULT every (country, criterion) cell is evaluated — including those that currently rely
+  only on a coarse seed bucket — so a plain run always closes the gap (e.g. a low-default-weight
+  criterion like education that was never lazily evaluated). Cache-first, so already-current
+  cells are skipped; resumable.
+  --skip-buckets : the cheaper mode — leave bucket-only cells alone (only fill genuinely-empty
+                   cells and refresh version-stale ones).
+  --include-buckets : accepted for back-compat; it's the default now (no-op).
 Invoked by `./xcape.sh evaluate-all <env>`.
 """
 
@@ -25,7 +29,8 @@ from app.services import ai_client, criteria, criterion_eval
 
 def main() -> None:
     force = "--force" in sys.argv
-    include_buckets = "--include-buckets" in sys.argv
+    # Buckets are included by default so a plain run closes the gap; --skip-buckets opts out.
+    respect_buckets = "--skip-buckets" in sys.argv
     stale_days = 0
     limit = None
     for i, a in enumerate(sys.argv):
@@ -39,13 +44,13 @@ def main() -> None:
         places = db.query(Place).filter(Place.kind == "country").all()
         keys = criteria.objective_keys()
         print(f"Evaluating {len(keys)} objective criteria across {len(places)} countries "
-              f"(force={force}, include_buckets={include_buckets}, stale_days={stale_days}, "
+              f"(force={force}, respect_buckets={respect_buckets}, stale_days={stale_days}, "
               f"limit={limit}). Cache-first, resumable.")
         try:
             # Commit per cell (inside evaluate) → safe to interrupt and resume.
             made = criterion_eval.populate(
                 db, places, keys, stale_days=stale_days, force=force, limit=limit,
-                respect_buckets=not include_buckets,
+                respect_buckets=respect_buckets,
             )
         except ai_client.AIUnavailable:
             print("AI unavailable (no API key) — nothing to do.")
