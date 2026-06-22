@@ -38,6 +38,7 @@ export function ComparisonPlayground() {
   const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
   const [showCustomForm, setShowCustomForm] = useState(false)
+  const [editKey, setEditKey] = useState<string | null>(null)  // criterion whose weight/filter popover is open
 
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [filters, setFilters] = useState<Record<string, any>>({})
@@ -322,6 +323,25 @@ export function ComparisonPlayground() {
     }
   }
 
+  // Set a filter to an arbitrary value (a tier word, a list of climates, or a boolean) — used by
+  // the per-criterion popover for the bespoke filters (climate list, inclusion toggle).
+  async function applyFilterValue(criterion: string, value: any) {
+    if (applying) return
+    setApplying(true)
+    try {
+      const empty = value === '' || value == null || value === false ||
+        (Array.isArray(value) && value.length === 0)
+      const next = { ...filters }
+      if (empty) delete next[criterion]; else next[criterion] = value
+      setFilters(next)
+      await api.updateProfile({ filters: next })
+      await api.repopulate(sid)
+      await reloadCandidates()
+    } finally {
+      setApplying(false)
+    }
+  }
+
   // Inline filter for a CUSTOM criterion = its per-search min threshold.
   async function applyCustomMin(criterion: string, tier: string) {
     if (applying) return
@@ -474,43 +494,95 @@ export function ComparisonPlayground() {
     )
   }
 
-  // Inline hard-filter control (Any / ≥ OK / ≥ Good), the filter analog of the weight stepper.
-  // Visa and language route through the generic threshold (≥ OK / ≥ Good on their computed value);
-  // climate (list) and inclusion (community) keep their bespoke controls in Criteria settings.
-  // Built-ins set profile filters; custom criteria set their per-search min.
-  const SPECIAL_FILTER_KEYS = new Set(['climate', 'inclusion'])
+  // The current ≥OK/≥Good tier of a criterion's filter (custom criteria use their per-search min).
+  const CLIMATES = ['cold', 'temperate', 'mild', 'warm', 'tropical'] as const
   function filterTierOf(key: string): string {
     const cust = customCrit.find((c) => c.key === key)
     if (cust) return cust.min != null && cust.min >= 0.7 ? 'good' : cust.min != null && cust.min > 0 ? 'ok' : ''
     const v = (filters as Record<string, any>)[key]
     return v === 'good' || v === 'ok' ? v : ''
   }
-  function filterControl(key: string) {
-    if (SPECIAL_FILTER_KEYS.has(key)) return null
+  // Whether a criterion currently has an active filter (drives the chip's "filtered" styling).
+  function isFiltered(key: string): boolean {
+    const cust = customCrit.find((c) => c.key === key)
+    if (cust) return cust.min != null && cust.min > 0
+    const v = (filters as Record<string, any>)[key]
+    return Array.isArray(v) ? v.length > 0 : (v != null && v !== '' && v !== false)
+  }
+  // Threshold (Any / ≥OK / ≥Good) select, the common filter control.
+  function thresholdSelect(key: string) {
     const tier = filterTierOf(key)
     const isCustom = customCrit.some((c) => c.key === key)
     return (
-      <select value={tier} title={t.comparison.filter} disabled={applying}
+      <select value={tier} disabled={applying}
         onChange={(e) => (isCustom ? applyCustomMin(key, e.target.value) : applyFilter(key, e.target.value))}
-        className={`text-xs rounded border px-1 py-0.5 shrink-0 ${
-          tier ? 'border-turquoise-400 text-turquoise-700 bg-turquoise-50' : 'border-turquoise-100 text-turquoise-800/50'}`}>
+        className="w-full text-sm rounded border border-turquoise-200 px-2 py-1">
         <option value="">{t.comparison.minAny}</option>
         <option value="ok">{t.comparison.minOk}</option>
         <option value="good">{t.comparison.minGood}</option>
       </select>
     )
   }
+  // The right filter control for a criterion (bespoke for climate/inclusion, threshold otherwise),
+  // shown inside the per-criterion popover so every criterion is filterable without cluttering the row.
+  function filterEditor(key: string) {
+    if (key === 'climate') {
+      const sel: string[] = Array.isArray(filters.climate) ? filters.climate
+        : (filters.climate ? [filters.climate] : [])
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {CLIMATES.map((c) => {
+            const on = sel.includes(c)
+            return (
+              <button key={c} type="button" disabled={applying}
+                onClick={() => applyFilterValue('climate', on ? sel.filter((x) => x !== c) : [...sel, c])}
+                className={`text-xs rounded-full border px-2 py-0.5 ${on
+                  ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700' : 'border-turquoise-100 text-turquoise-800/60'}`}>
+                {(t.onboarding.climate as Record<string, string>)[c]}
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+    if (key === 'inclusion') {
+      return (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" className="accent-turquoise-600" disabled={applying}
+            checked={!!filters.inclusion} onChange={(e) => applyFilterValue('inclusion', e.target.checked)} />
+          {t.comparison.filterWelcomingOnly}
+        </label>
+      )
+    }
+    return thresholdSelect(key)
+  }
 
-  // One leaf criterion row (used inside each open category group). The weight stepper + filter
-  // sit to the left of the label (reusing applyWeight / applyFilter, which persist + re-rank).
+  // Compact per-criterion control chip: shows the weight (and a filter dot when set) and opens a
+  // popover to change weight + filter — keeps each row to one line.
+  function controlChip(key: string) {
+    const w = weightOf(key)
+    const filtered = isFiltered(key)
+    return (
+      <button onClick={() => setEditKey(key)} disabled={applying}
+        title={t.comparison.editControls}
+        className={`ml-auto shrink-0 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs hover:bg-turquoise-50 ${
+          filtered ? 'border-turquoise-400 bg-turquoise-50 text-turquoise-700' : 'border-turquoise-100 text-turquoise-800/60'}`}>
+        <span aria-hidden>⚙</span>
+        <span className="tabular-nums">{w}</span>
+        {filtered && <span className="text-turquoise-500" title={t.comparison.filter} aria-hidden>●</span>}
+      </button>
+    )
+  }
+
+  // One leaf criterion row (used inside each open category group). Weight + filter live in a
+  // compact popover opened from the chip, so the row stays a single clean line.
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
         <td className="p-3 pl-8 text-turquoise-800/70">
-          <div className="flex flex-wrap items-center gap-2">
-            {weightControl(key)}
+          <div className="flex items-center gap-2">
             <span>{critLabel(key)}</span>
-            <span className="ml-auto">{filterControl(key)}</span>
+            {controlChip(key)}
           </div>
         </td>
         {baseline && (() => {
@@ -910,6 +982,31 @@ export function ComparisonPlayground() {
               className="text-sm text-turquoise-600 hover:underline">
               {t.reasons.details} →
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Per-criterion weight + filter popover (opened from a row's ⚙ chip) */}
+      {editKey && (
+        <div onClick={() => setEditKey(null)}
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-4 z-50">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-xl max-w-xs w-full p-5">
+            <div className="flex items-start gap-3 mb-3">
+              <p className="font-medium text-turquoise-900">{critLabel(editKey)}</p>
+              <button onClick={() => setEditKey(null)}
+                className="ml-auto text-turquoise-800/50 hover:text-turquoise-900" aria-label={t.comparison.close}>×</button>
+            </div>
+            <div className="mb-4">
+              <p className="text-xs text-turquoise-800/60 mb-1">{t.comparison.importance}</p>
+              {weightControl(editKey)}
+              {weightOf(editKey) === 0 && (
+                <p className="text-xs text-amber-700 mt-1">{t.comparison.filterIgnoredZero}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-turquoise-800/60 mb-1">{t.comparison.filter}</p>
+              {filterEditor(editKey)}
+            </div>
           </div>
         </div>
       )}
