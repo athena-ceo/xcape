@@ -332,6 +332,10 @@ export const fr = {
     detailTitle: 'Détail par critère',
     assessmentPending: 'Évaluation détaillée à venir.',
     generating: 'Recherche en cours…',
+    regenerate: 'Régénérer le texte',
+    regenerating: 'Régénération…',
+    regenHint: 'Admin : ré-analyser et réécrire chaque critère pour ce pays',
+    regenConfirm: 'Régénérer tous les textes de critères pour ce pays ? Cela lance de nouveaux appels IA et écrase les évaluations en cache.',
     visa: {
       title: 'Voies d’immigration',
       hint: 'Comment vous installer ici légalement — les voies adaptées à votre situation, la plus simple d’abord.',

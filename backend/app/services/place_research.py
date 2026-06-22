@@ -204,14 +204,14 @@ def _one_detail_schema() -> dict:
 
 
 def criterion_detail_one(
-    db: Session, place: Place, key: str, *, user_id: int | None = None
+    db: Session, place: Place, key: str, *, user_id: int | None = None, force: bool = False
 ) -> dict | None:
     """Generate (cache-first) the explanation text for ONE computed criterion (cost, climate,
     language, visa, inclusion …) and cache it per-key on `place.criteria_detail`. Bilingual +
     sources. Returns the entry, or None if AI is unavailable. Never touches place_custom_evals,
-    so it can't disturb the deterministic computed scores."""
+    so it can't disturb the deterministic computed scores. `force` regenerates even if cached."""
     existing = detail_map(place)
-    if key in existing:
+    if key in existing and not force:
         return existing[key]
     label = criteria.label(key, "en")
     # Visa is the one origin-specific case; since this text is a SHARED cache it can't be

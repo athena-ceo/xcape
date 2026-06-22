@@ -335,6 +335,10 @@ export const en: Dict = {
     detailTitle: 'Detail by criterion',
     assessmentPending: 'Detailed assessment coming.',
     generating: 'Researching…',
+    regenerate: 'Regenerate text',
+    regenerating: 'Regenerating…',
+    regenHint: 'Admin: re-research and rewrite every criterion for this country',
+    regenConfirm: 'Regenerate all criterion text for this country? This makes fresh AI calls and overwrites the cached assessments.',
     visa: {
       title: 'Visa pathways',
       hint: 'How you could legally settle here — the routes that fit your situation, easiest first.',

@@ -72,11 +72,6 @@ case "$CMD" in
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
   evaluate-all)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_all "$@" ;;
-  retone-evals)
-    # Rewrite existing cached criterion summaries to the neutral third-person voice (voice only;
-    # scores/levels/sources/meta untouched). Cheaper than a full regen. Idempotent/resumable.
-    # Pass --limit N to cap, --all to rewrite every row (default: only first/second-person ones).
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.retone_evals "$@" ;;
   export-evals)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.export_evals ;;
   make-admin)

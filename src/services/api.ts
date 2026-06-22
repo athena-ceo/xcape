@@ -158,7 +158,7 @@ export const api = {
       `/places/${id}/detail?lang=${lang}${search != null ? `&search=${search}` : ''}`,
     ),
   // Generate up to `limit` of the still-pending criteria, in the given priority order.
-  generateDetail: (id: number, body: { keys: string[]; limit: number }, lang: string, search?: number) =>
+  generateDetail: (id: number, body: { keys: string[]; limit: number; force?: boolean }, lang: string, search?: number) =>
     request<{ criteria: any[] }>(
       `/places/${id}/detail/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
       { method: 'POST', body: JSON.stringify(body) },

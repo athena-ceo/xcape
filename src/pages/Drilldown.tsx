@@ -10,6 +10,7 @@ import { useT } from '../i18n'
 import { placeName } from '../i18n/places'
 import { api } from '../services/api'
 import { categories, labelOf, useCriteria } from '../services/criteria'
+import { useAuth } from '../store/auth'
 
 // Drill-down on a country: facts, map, photos, and per-criterion AI detail grouped by
 // category (collapsed by default except the one the user clicked). The details fill in
@@ -37,6 +38,8 @@ export function Drilldown() {
   const [showZero, setShowZero] = useState(false)
   const [visa, setVisa] = useState<{ categories: any[]; best: string | null } | null>(null)
   const visaDrainRef = useRef(false)
+  const isAdmin = useAuth((s) => s.isAdmin)
+  const [regenerating, setRegenerating] = useState(false)
 
   // Collapse state per category (persisted). Default collapsed except the clicked criterion's.
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
@@ -133,6 +136,28 @@ export function Drilldown() {
       }
     } finally {
       drainingRef.current = false
+    }
+  }
+
+  // Admin-only: force-regenerate every criterion's text for this country (e.g. after a prompt
+  // change). Walks the criteria in chunks, forcing regeneration regardless of the cache.
+  async function regenerateAll() {
+    if (drainingRef.current || regenerating) return
+    if (!confirm(t.drilldown.regenConfirm)) return
+    setRegenerating(true)
+    drainingRef.current = true
+    try {
+      const keys = detailRef.current.filter((r) => r.key !== 'proximity').map((r) => r.key)
+      for (let i = 0; i < keys.length; i += 2) {
+        const chunk = keys.slice(i, i + 2)
+        const res = await api.generateDetail(
+          id, { keys: chunk, limit: chunk.length, force: true }, lang, searchId ?? undefined)
+        detailRef.current = res.criteria
+        setDetail(res.criteria)
+      }
+    } finally {
+      drainingRef.current = false
+      setRegenerating(false)
     }
   }
 
@@ -478,7 +503,16 @@ export function Drilldown() {
       )}
 
       {/* Per-criterion detail, grouped by category (collapsed except the clicked one) */}
-      <h2 className="text-lg font-medium text-turquoise-900 mb-3">{t.drilldown.detailTitle}</h2>
+      <div className="flex items-center gap-3 mb-3">
+        <h2 className="text-lg font-medium text-turquoise-900">{t.drilldown.detailTitle}</h2>
+        {isAdmin && (
+          <button onClick={regenerateAll} disabled={regenerating || loadingDetail}
+            title={t.drilldown.regenHint}
+            className="text-xs border border-turquoise-200 text-turquoise-700 rounded-md px-2.5 py-1 hover:bg-turquoise-50 disabled:opacity-50 flex items-center gap-1.5">
+            {regenerating ? <><Spinner /> {t.drilldown.regenerating}</> : `↻ ${t.drilldown.regenerate}`}
+          </button>
+        )}
+      </div>
       {loadingDetail && (
         <p className="text-turquoise-800/60 mb-4 flex items-center gap-2">
           <Spinner /> {t.drilldown.loadingDetail}

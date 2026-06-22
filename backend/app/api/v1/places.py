@@ -77,6 +77,7 @@ def get_detail(
 class GenerateDetailRequest(BaseModel):
     keys: list[str]      # criteria to fill, in priority order (clicked → visible → rest)
     limit: int = 2       # how many AI generations to do this call (the page loops)
+    force: bool = False  # admin only: regenerate even criteria that already have cached text
 
 
 @router.post("/{place_id}/detail/generate")
@@ -91,7 +92,12 @@ def generate_detail(
     """Generate up to `limit` of the still-pending criteria in `keys` (in order), then return
     the freshly assembled detail. Objective/custom → criterion_eval; computed → per-key detail
     text; proximity is synthesised (skipped). The page calls this repeatedly until nothing is
-    pending, so boxes fill in progressively."""
+    pending, so boxes fill in progressively.
+
+    `force` (admins only) regenerates each listed criterion even when it already has cached text —
+    this is the per-country "regenerate text" action, used e.g. after a prompt change."""
+    if body.force and not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
@@ -107,15 +113,16 @@ def generate_detail(
         if made >= body.limit:
             break
         if key in defs:
-            if key in have_evals:
+            if key in have_evals and not body.force:
                 continue
             d = defs[key]
-            if criterion_eval.evaluate(db, place, key, d["label"], d.get("description"), user_id=user.id):
+            if criterion_eval.evaluate(db, place, key, d["label"], d.get("description"),
+                                       user_id=user.id, force=body.force):
                 made += 1
         elif key in computed_text:
-            if key in have_detail:
+            if key in have_detail and not body.force:
                 continue
-            if place_research.criterion_detail_one(db, place, key, user_id=user.id):
+            if place_research.criterion_detail_one(db, place, key, user_id=user.id, force=body.force):
                 made += 1
         # proximity / unknown keys: nothing to generate
     return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang)}
