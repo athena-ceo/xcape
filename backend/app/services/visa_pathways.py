@@ -163,10 +163,11 @@ def evaluate_pathway(
         f"else null.\n"
         f"- requirements: 3-6 short bullet strings of the key conditions (e.g. job offer, "
         f"language level, clean criminal record, private health insurance, minimum stay).\n"
-        f"Add a concrete 1-2 sentence summary in French (summary_fr) and English (summary_en) for "
-        f"someone weighing this route — name the actual program if it has one, and do NOT restate "
-        f"the difficulty number. Put sources ONLY in the sources array as bare https URLs. Use web "
-        f"search and favour the most recent data (2025–2026)."
+        f"Add a concrete 1-2 sentence summary in French (summary_fr) and English (summary_en), "
+        f"written as a neutral, friendly advisor stating the facts — in the THIRD PERSON, never "
+        f"first or second person (no \"I\", \"we\", \"you\"). Name the actual program if it has "
+        f"one, and do NOT restate the difficulty number. Put sources ONLY in the sources array as "
+        f"bare https URLs. Use web search and favour the most recent data (2025–2026)."
     )
     try:
         data = ai_client.respond_json(

@@ -239,10 +239,13 @@ def evaluate(
             f"newcomer, not a native citizen — on this criterion: \"{criterion}\". {focus} "
             f"{_CALIBRATION} Add a concise, specific 1-2 sentence justification (include a "
             f"concrete fact or figure where possible) in French (summary_fr) and English "
-            f"(summary_en), written from that newcomer's standpoint — do NOT restate the number "
-            f"or write \"Score:\" in the summaries, and keep any level you report consistent with "
-            f"the score. Use web search and favour the most recent data (2025–2026). Put sources "
-            f"ONLY in the sources array as bare https URLs.",
+            f"(summary_en). Write as a neutral, friendly advisor stating relevant FACTS about what "
+            f"a foreign resident can expect — always in the THIRD PERSON, never first or second "
+            f"person (no \"I\", \"we\", \"you\", \"my\", \"our\"): describe the country and its "
+            f"conditions, not personal feelings or perceptions. Do NOT restate the number or write "
+            f"\"Score:\" in the summaries, and keep any level you report consistent with the score. "
+            f"Use web search and favour the most recent data (2025–2026). Put sources ONLY in the "
+            f"sources array as bare https URLs.",
             schema,
             schema_name=schema_name,
             web_search=True,
