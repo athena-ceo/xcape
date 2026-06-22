@@ -13,6 +13,15 @@
   and household size, an AI-estimated per-country monthly cost breakdown (rent / utilities / food /
   healthcare / transport / other) scaled to the household, and an **estimated cost vs budget**
   verdict (comfortable / manageable / tight / insufficient) with surplus/deficit and a coverage bar.
+  Each breakdown entry is **clickable for a "how this is estimated" popup** — the AI returns a
+  per-component FR/EN justification, shown alongside the per-person base and the household scaling.
+- The drill-down's **visa-pathways panel is now collapsible and lazy** too (collapsed by default,
+  open/closed remembered) — matching the budget calculator, so neither generates AI content until
+  the user expands it. The admin regenerate still force-refreshes both even while collapsed.
+- The admin **"Regenerate text"** button moved to the **top of the drill-down** and now re-researches
+  **everything** for the country in one action — every criterion's detail text, the visa pathways,
+  and the budget cost breakdown (forced regardless of cache). The visa-pathways and affordability
+  generate routes gained an admin-only `force` flag for this.
 - **Cost breakdown** is generated on-demand and cached in `place_custom_evals` under
   `key = "cost_breakdown"` (versioned `prompt_fp`, shared cross-user) — same pattern as the
   objective evals and the visa catalog, so no schema change.

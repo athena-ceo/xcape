@@ -338,8 +338,8 @@ export const fr = {
     generating: 'Recherche en cours…',
     regenerate: 'Régénérer le texte',
     regenerating: 'Régénération…',
-    regenHint: 'Admin : ré-analyser et réécrire chaque critère pour ce pays',
-    regenConfirm: 'Régénérer tous les textes de critères pour ce pays ? Cela lance de nouveaux appels IA et écrase les évaluations en cache.',
+    regenHint: 'Admin : tout ré-analyser pour ce pays — critères, voies d’immigration et budget',
+    regenConfirm: 'Tout régénérer pour ce pays — textes des critères, voies d’immigration et détail du budget ? Cela lance de nouveaux appels IA et écrase les évaluations en cache.',
     visa: {
       title: 'Voies d’immigration',
       hint: 'Voies envisageables pour vous installer ici. Votre éligibilité dépend de votre situation (le regroupement familial suppose de la famille sur place ; l’ascendance, un lien déclaré).',
@@ -366,6 +366,10 @@ export const fr = {
       perMonth: '/mois',
       perYear: '/an',
       breakdownTitle: 'Détail des coûts (votre foyer)',
+      howCalculated: 'Comment c’est estimé',
+      perPerson: 'Par personne',
+      yourHouseholdN: 'Votre foyer ({n})',
+      close: 'Fermer',
       noBudget: 'Renseignez un budget mensuel dans votre profil pour le comparer aux coûts locaux.',
       components: {
         rent: 'Loyer', utilities: 'Charges', food: 'Alimentation',

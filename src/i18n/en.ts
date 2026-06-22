@@ -341,8 +341,8 @@ export const en: Dict = {
     generating: 'Researching…',
     regenerate: 'Regenerate text',
     regenerating: 'Regenerating…',
-    regenHint: 'Admin: re-research and rewrite every criterion for this country',
-    regenConfirm: 'Regenerate all criterion text for this country? This makes fresh AI calls and overwrites the cached assessments.',
+    regenHint: 'Admin: re-research everything for this country — criteria, visa pathways and the budget breakdown',
+    regenConfirm: 'Regenerate everything for this country — criterion text, visa pathways and the budget cost breakdown? This makes fresh AI calls and overwrites the cached assessments.',
     visa: {
       title: 'Visa pathways',
       hint: 'Routes that could let you settle here. Which you qualify for depends on your circumstances (a family route needs relatives here; ancestry needs a declared tie).',
@@ -369,6 +369,10 @@ export const en: Dict = {
       perMonth: '/mo',
       perYear: '/yr',
       breakdownTitle: 'Cost breakdown (your household)',
+      howCalculated: 'How this is estimated',
+      perPerson: 'Per person',
+      yourHouseholdN: 'Your household ({n})',
+      close: 'Close',
       noBudget: 'Set a monthly budget in your profile to compare it against local costs.',
       components: {
         rent: 'Rent', utilities: 'Utilities', food: 'Food',

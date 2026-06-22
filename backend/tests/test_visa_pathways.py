@@ -80,3 +80,28 @@ def test_visa_panel_pending_then_filled(auth_client, db_session, monkeypatch):
     assert r2["best"] is None
     filled = next(c for c in r2["categories"] if c["category"] == "work")
     assert filled["difficulty"] == 60 and filled["label"]
+
+
+def test_visa_force_is_admin_only(auth_client, db_session, monkeypatch):
+    place = _country(db_session)
+    # A regular user cannot force a re-research.
+    assert auth_client.post(f"/api/v1/places/{place.id}/visa-pathways/generate?lang=en",
+                            json={"force": True, "categories": ["work"]}).status_code == 403
+
+    # As admin, force re-evaluates an already-cached category (the regenerate action).
+    u = db_session.query(User).filter(User.email == "test@example.com").first()
+    u.is_admin = True
+    db_session.commit()
+    calls = {"n": 0}
+
+    def fake(*a, **k):
+        calls["n"] += 1
+        return _PATHWAY
+
+    monkeypatch.setattr(ai_client, "respond_json", fake)
+    auth_client.post(f"/api/v1/places/{place.id}/visa-pathways/generate?lang=en",
+                     json={"limit": 9})  # caches the pending categories
+    before = calls["n"]
+    auth_client.post(f"/api/v1/places/{place.id}/visa-pathways/generate?lang=en",
+                     json={"force": True, "categories": ["work"], "limit": 9})  # re-runs just work
+    assert calls["n"] == before + 1

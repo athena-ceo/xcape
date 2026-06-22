@@ -168,7 +168,11 @@ export const api = {
     request<{ categories: any[]; best: string | null }>(
       `/places/${id}/visa-pathways?lang=${lang}${search != null ? `&search=${search}` : ''}`,
     ),
-  generateVisaPathways: (id: number, body: { limit: number }, lang: string, search?: number) =>
+  generateVisaPathways: (
+    id: number,
+    body: { limit: number; force?: boolean; categories?: string[] },
+    lang: string, search?: number,
+  ) =>
     request<{ categories: any[]; best: string | null }>(
       `/places/${id}/visa-pathways/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
       { method: 'POST', body: JSON.stringify(body) },
@@ -181,7 +185,9 @@ export const api = {
     if (household != null) q.set('household', String(household))
     return request<any>(`/places/${id}/affordability?${q.toString()}`)
   },
-  generateAffordability: (id: number, body: { budget?: number; household?: number }, lang: string) =>
+  generateAffordability: (
+    id: number, body: { budget?: number; household?: number; force?: boolean }, lang: string,
+  ) =>
     request<any>(`/places/${id}/affordability/generate?lang=${lang}`,
       { method: 'POST', body: JSON.stringify(body) }),
 

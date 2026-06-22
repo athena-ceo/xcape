@@ -35,7 +35,7 @@ from app.services import ai_client, visa_pathways
 from app.services.criterion_eval import _fresh, level_from_score
 
 # Bump when the breakdown prompt/schema below changes in a way that should invalidate cached rows.
-COST_PROMPT_VERSION = "1"
+COST_PROMPT_VERSION = "2"  # v2: per-component FR/EN justification notes
 BREAKDOWN_KEY = "cost_breakdown"
 
 # The breakdown's cost components, in display order. The single-person figures the AI returns are
@@ -79,19 +79,24 @@ def _fp() -> str:
 
 
 def _schema() -> dict:
+    """Per component: a single-person monthly figure (`{c}_eur`) and a short FR/EN justification
+    (`{c}_note_fr` / `{c}_note_en`) of how it was derived, for the per-entry explanation popup."""
     num = {"type": "number", "minimum": 0}
+    props: dict = {}
+    required: list[str] = []
+    for c in COMPONENTS:
+        props[f"{c}_eur"] = num                       # typical monthly cost for ONE person, euros
+        props[f"{c}_note_fr"] = {"type": "string"}    # how this figure was derived (FR)
+        props[f"{c}_note_en"] = {"type": "string"}    # how this figure was derived (EN)
+        required += [f"{c}_eur", f"{c}_note_fr", f"{c}_note_en"]
+    props["summary_fr"] = {"type": "string"}
+    props["summary_en"] = {"type": "string"}
+    props["sources"] = {"type": "array", "items": {"type": "string"}}
+    required += ["summary_fr", "summary_en", "sources"]
     return {
         "type": "object",
-        "properties": {
-            # Typical monthly cost for ONE person in a mid-range area, euros.
-            "rent_eur": num, "utilities_eur": num, "food_eur": num,
-            "healthcare_eur": num, "transport_eur": num, "other_eur": num,
-            "summary_fr": {"type": "string"},
-            "summary_en": {"type": "string"},
-            "sources": {"type": "array", "items": {"type": "string"}},
-        },
-        "required": ["rent_eur", "utilities_eur", "food_eur", "healthcare_eur",
-                     "transport_eur", "other_eur", "summary_fr", "summary_en", "sources"],
+        "properties": props,
+        "required": required,
         "additionalProperties": False,
     }
 
@@ -123,11 +128,15 @@ def evaluate_breakdown(
         f"resident not yet in the public system.\n"
         f"- transport_eur: public transport pass and occasional taxis, or modest car running costs.\n"
         f"- other_eur: everything else (clothing, leisure, household goods, incidentals).\n"
-        f"Give realistic single-person figures (the caller scales them to larger households). Add a "
-        f"concrete 1-2 sentence summary in French (summary_fr) and English (summary_en), written as "
-        f"a neutral, friendly advisor — do NOT write in the first person (no \"I\", \"we\", \"my\", "
-        f"\"our\") and do NOT restate every number. Put sources ONLY in the sources array as bare "
-        f"https URLs. Use web search and favour the most recent data (2025–2026)."
+        f"Give realistic single-person figures (the caller scales them to larger households). For "
+        f"EACH component also add a short one-sentence justification in French ({{c}}_note_fr) and "
+        f"English ({{c}}_note_en) explaining how the figure was derived — what it assumes or "
+        f"includes (e.g. the type of area, what the figure covers, a concrete reference point) — "
+        f"so a reader can see why this number. Then add a concrete 1-2 sentence overall summary in "
+        f"French (summary_fr) and English (summary_en). Write as a neutral, friendly advisor — do "
+        f"NOT write in the first person (no \"I\", \"we\", \"my\", \"our\") and do NOT merely "
+        f"restate every number. Put sources ONLY in the sources array as bare https URLs. Use web "
+        f"search and favour the most recent data (2025–2026)."
     )
     try:
         data = ai_client.respond_json(
@@ -138,8 +147,14 @@ def evaluate_breakdown(
         return None
 
     comps = {c: float(data.get(f"{c}_eur") or 0) for c in COMPONENTS}
+    # Per-component justification (how each single-person figure was derived), both languages, for
+    # the per-entry explanation popup. Empty strings are dropped so the UI falls back gracefully.
+    notes = {
+        c: {"fr": data.get(f"{c}_note_fr") or "", "en": data.get(f"{c}_note_en") or ""}
+        for c in COMPONENTS
+    }
     total = round(sum(comps.values()))
-    meta = {"components": comps, "total_single_eur": total}
+    meta = {"components": comps, "notes": notes, "total_single_eur": total}
     fields = dict(
         label="Monthly cost breakdown", score=None, level=level_from_score(None),
         summary_fr=data.get("summary_fr"), summary_en=data.get("summary_en"),
@@ -226,13 +241,18 @@ def compute(
         return base
 
     comps = (ev.meta or {}).get("components") or {}
+    notes = (ev.meta or {}).get("notes") or {}
     breakdown = []
     cost_total = 0.0
     for c in COMPONENTS:
         single = float(comps.get(c) or 0)
         amount = round(single * household_factor(c, size))
         cost_total += amount
-        breakdown.append({"key": c, "single_eur": round(single), "amount_eur": amount})
+        note = notes.get(c) or {}
+        breakdown.append({
+            "key": c, "single_eur": round(single), "amount_eur": amount,
+            "note_fr": note.get("fr") or "", "note_en": note.get("en") or "",
+        })
     cost_total = round(cost_total)
 
     surplus = (budget - cost_total) if budget is not None else None

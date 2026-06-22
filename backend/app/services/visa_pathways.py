@@ -223,13 +223,14 @@ def cached_rows(db: Session, place_id: int) -> dict[str, PlaceCustomEval]:
 
 def ensure_for_place(
     db: Session, place: Place, categories: list[str], *,
-    stale_days: int = 0, user_id: int | None = None,
+    stale_days: int = 0, force: bool = False, user_id: int | None = None,
 ) -> dict[str, PlaceCustomEval]:
     """Return {category: pathway row} for the requested categories, evaluating any that are
-    missing or stale on-demand (cache-first). Categories outside the catalog are ignored."""
+    missing or stale on-demand (cache-first). With `force`, every requested category is
+    re-evaluated regardless of cache. Categories outside the catalog are ignored."""
     out: dict[str, PlaceCustomEval] = {}
     for c in categories:
-        ev = evaluate_pathway(db, place, c, stale_days=stale_days, user_id=user_id)
+        ev = evaluate_pathway(db, place, c, force=force, stale_days=stale_days, user_id=user_id)
         if ev is not None:
             out[c] = ev
     return out

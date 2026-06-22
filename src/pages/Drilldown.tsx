@@ -38,6 +38,12 @@ export function Drilldown() {
   const [showZero, setShowZero] = useState(false)
   const [visa, setVisa] = useState<{ categories: any[]; best: string | null } | null>(null)
   const visaDrainRef = useRef(false)
+  const visaLoadRef = useRef(false)
+  // The visa-pathways panel is collapsed by default and loads lazily — no fetch or AI pathway
+  // generation happens until the user expands it. Open/closed is persisted.
+  const [visaOpen, setVisaOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('xcape_visa_open') === '1' } catch { return false }
+  })
   const [afford, setAfford] = useState<any>(null)
   const [budgetInput, setBudgetInput] = useState<number | null>(null)
   const [householdInput, setHouseholdInput] = useState<number | null>(null)
@@ -49,6 +55,7 @@ export function Drilldown() {
   const afLoadRef = useRef(false)
   const afGenRef = useRef(false)
   const afTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [costWhy, setCostWhy] = useState<any>(null)  // breakdown entry whose explanation popup is open
   const isAdmin = useAuth((s) => s.isAdmin)
   const [regenerating, setRegenerating] = useState(false)
 
@@ -150,14 +157,16 @@ export function Drilldown() {
     }
   }
 
-  // Admin-only: force-regenerate every criterion's text for this country (e.g. after a prompt
-  // change). Walks the criteria in chunks, forcing regeneration regardless of the cache.
+  // Admin-only: force-regenerate EVERYTHING for this country (e.g. after a prompt change) — every
+  // criterion's detail text, the visa pathways, and the budget cost breakdown — in chunks, forcing
+  // regeneration regardless of the cache.
   async function regenerateAll() {
     if (drainingRef.current || regenerating) return
     if (!confirm(t.drilldown.regenConfirm)) return
     setRegenerating(true)
     drainingRef.current = true
     try {
+      // 1. Per-criterion detail text.
       const keys = detailRef.current.filter((r) => r.key !== 'proximity').map((r) => r.key)
       for (let i = 0; i < keys.length; i += 2) {
         const chunk = keys.slice(i, i + 2)
@@ -166,6 +175,28 @@ export function Drilldown() {
         detailRef.current = res.criteria
         setDetail(res.criteria)
       }
+      // 2. Visa pathways (every relevant category, forced). The panel may not be loaded yet (it's
+      // collapsed by default), so fetch the relevant categories first.
+      let vpanel = visa
+      if (vpanel == null) {
+        vpanel = await api.getVisaPathways(id, lang, searchId ?? undefined).catch(() => null)
+        if (vpanel) setVisa(vpanel)
+      }
+      const vcats = (vpanel?.categories ?? []).map((c: any) => c.category)
+      for (let i = 0; i < vcats.length; i += 2) {
+        const chunk = vcats.slice(i, i + 2)
+        const res = await api.generateVisaPathways(
+          id, { limit: chunk.length, force: true, categories: chunk }, lang, searchId ?? undefined)
+        setVisa(res)
+      }
+      visaLoadRef.current = true  // panel is now populated; expanding it won't refetch
+      // 3. Budget cost breakdown (forced). Mark it loaded so expanding the panel won't refetch.
+      const af = await api.generateAffordability(
+        id, { force: true, budget: budgetInput ?? undefined, household: householdInput ?? undefined }, lang)
+      setAfford(af)
+      afLoadRef.current = true
+      if (budgetInput == null) setBudgetInput(af.budget_monthly ?? null)
+      if (householdInput == null) setHouseholdInput(af.household_size ?? 1)
     } finally {
       drainingRef.current = false
       setRegenerating(false)
@@ -216,8 +247,7 @@ export function Drilldown() {
     return () => { cancelled = true }
   }, [id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Visa pathways: load the instant panel (relevant categories, from cache), then progressively
-  // generate the pending ones on-demand.
+  // Visa pathways: progressively generate the still-pending relevant categories on-demand.
   async function drainVisa(initial?: { categories: any[]; best: string | null }) {
     if (visaDrainRef.current) return
     visaDrainRef.current = true
@@ -233,13 +263,29 @@ export function Drilldown() {
       visaDrainRef.current = false
     }
   }
+
+  // Reset the (lazily-loaded) visa panel when the country / language / search context changes.
+  useEffect(() => { setVisa(null); visaLoadRef.current = false }, [id, lang, searchId])
+
+  function toggleVisa() {
+    setVisaOpen((o) => {
+      const next = !o
+      try { localStorage.setItem('xcape_visa_open', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  // Load the panel only once the user expands it: the instant cached panel (relevant categories),
+  // then generate the pending ones on-demand. Gated on `visaOpen` so a collapsed panel costs nothing.
   useEffect(() => {
+    if (!visaOpen || visaLoadRef.current) return
+    visaLoadRef.current = true
     let cancelled = false
     api.getVisaPathways(id, lang, searchId ?? undefined)
       .then((p) => { if (!cancelled) { setVisa(p); void drainVisa(p) } })
-      .catch(() => { if (!cancelled) setVisa(null) })
+      .catch(() => { if (!cancelled) { setVisa(null); visaLoadRef.current = false } })
     return () => { cancelled = true }
-  }, [id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visaOpen, id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset the (lazily-loaded) calculator when the country or language changes, so reopening it
   // refetches for the new context.
@@ -551,10 +597,15 @@ export function Drilldown() {
                   <p className="text-xs text-turquoise-800/50 mb-1">{af.breakdownTitle}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {a.breakdown.map((b: any) => (
-                      <div key={b.key} className="bg-turquoise-50/60 rounded-md px-3 py-2">
-                        <p className="text-xs text-turquoise-800/60">{comps[b.key] ?? b.key}</p>
+                      <button key={b.key} type="button" onClick={() => setCostWhy(b)}
+                        title={af.howCalculated}
+                        className="text-left bg-turquoise-50/60 hover:bg-turquoise-100/60 rounded-md px-3 py-2 transition-colors">
+                        <p className="text-xs text-turquoise-800/60 flex items-center gap-1">
+                          {comps[b.key] ?? b.key}
+                          <span className="text-turquoise-400" aria-hidden>ⓘ</span>
+                        </p>
                         <p className="text-sm font-medium text-turquoise-900">{money(b.amount_eur)}</p>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -607,26 +658,64 @@ export function Drilldown() {
     )
   }
 
+  // Per-entry explanation popup: how a cost figure was derived (the AI's localized justification),
+  // plus the per-person base scaled to the household. Reuses the board's overlay-modal pattern.
+  function costWhyModal() {
+    if (!costWhy) return null
+    const af = t.drilldown.afford as any
+    const comps = af.components as Record<string, string>
+    const money = (x: any) => (x == null ? '—' : `${Number(x).toLocaleString(lang)} €`)
+    const note = lang === 'fr' ? costWhy.note_fr : costWhy.note_en
+    const size = householdInput ?? 1
+    return (
+      <div onClick={() => setCostWhy(null)}
+        className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-4 z-50">
+        <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-xl max-w-sm w-full p-5">
+          <div className="flex items-start gap-3 mb-2">
+            <p className="font-medium text-turquoise-900">{comps[costWhy.key] ?? costWhy.key}</p>
+            <button onClick={() => setCostWhy(null)} aria-label={af.close}
+              className="ml-auto text-turquoise-800/50 hover:text-turquoise-900">×</button>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-3">
+            <span className="text-turquoise-800/70">{af.perPerson}:
+              <b className="text-turquoise-900"> {money(costWhy.single_eur)}{af.perMonth}</b></span>
+            {size > 1 && (
+              <span className="text-turquoise-800/70">
+                {af.yourHouseholdN.replace('{n}', String(size))}:
+                <b className="text-turquoise-900"> {money(costWhy.amount_eur)}{af.perMonth}</b>
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-turquoise-800/50 mb-1">{af.howCalculated}</p>
+          <p className="text-sm text-turquoise-800/80">{note ? cleanSummary(note) : '—'}</p>
+        </div>
+      </div>
+    )
+  }
+
   // Collapsible wrapper: the calculator is hidden behind a toggle so it doesn't crowd the page —
   // expanding it lazily loads the data (and generates the cost breakdown) on first open.
   function affordSection() {
     const af = t.drilldown.afford as any
     return (
-      <section className="mb-6">
-        <button onClick={toggleAfford}
-          className="w-full flex items-center gap-2 text-left bg-turquoise-50/70 border border-turquoise-100 rounded-lg px-3 py-2">
-          <span className="inline-block w-4 text-turquoise-600">{afOpen ? '▾' : '▸'}</span>
-          <span className="text-lg font-medium text-turquoise-900">{af.title}</span>
-          {afOpen && afford == null && <Spinner />}
-          <span className="ml-auto text-xs text-turquoise-800/50">€</span>
-        </button>
-        {afOpen && (
-          <div className="mt-2">
-            <p className="text-sm text-turquoise-800/60 mb-3">{af.hint}</p>
-            {affordBody()}
-          </div>
-        )}
-      </section>
+      <>
+        <section className="mb-6">
+          <button onClick={toggleAfford}
+            className="w-full flex items-center gap-2 text-left bg-turquoise-50/70 border border-turquoise-100 rounded-lg px-3 py-2">
+            <span className="inline-block w-4 text-turquoise-600">{afOpen ? '▾' : '▸'}</span>
+            <span className="text-lg font-medium text-turquoise-900">{af.title}</span>
+            {afOpen && afford == null && <Spinner />}
+            <span className="ml-auto text-xs text-turquoise-800/50">€</span>
+          </button>
+          {afOpen && (
+            <div className="mt-2">
+              <p className="text-sm text-turquoise-800/60 mb-3">{af.hint}</p>
+              {affordBody()}
+            </div>
+          )}
+        </section>
+        {costWhyModal()}
+      </>
     )
   }
 
@@ -687,6 +776,13 @@ export function Drilldown() {
       <div className="flex items-center gap-3 mb-2">
         {facts?.flag && <img src={facts.flag} alt="" className="w-10 h-auto rounded border border-turquoise-100" />}
         <h1 className="text-2xl font-medium text-turquoise-900">{placeName(place, lang)}</h1>
+        {isAdmin && (
+          <button onClick={regenerateAll} disabled={regenerating || loadingDetail}
+            title={t.drilldown.regenHint}
+            className="ml-auto shrink-0 text-xs border border-turquoise-200 text-turquoise-700 rounded-md px-2.5 py-1 hover:bg-turquoise-50 disabled:opacity-50 flex items-center gap-1.5">
+            {regenerating ? <><Spinner /> {t.drilldown.regenerating}</> : `↻ ${t.drilldown.regenerate}`}
+          </button>
+        )}
       </div>
       {summary && <p className="text-turquoise-800/80 mb-5">{summary}</p>}
 
@@ -730,25 +826,31 @@ export function Drilldown() {
       {/* Budget / affordability calculator — does this user's budget cover living here */}
       {affordSection()}
 
-      {/* Visa pathways — the gate: how this user could legally settle here */}
-      {visa && visa.categories.length > 0 && (
-        <section className="mb-6">
-          <h2 className="text-lg font-medium text-turquoise-900 mb-1">{t.drilldown.visa.title}</h2>
-          <p className="text-sm text-turquoise-800/60 mb-3">{t.drilldown.visa.hint}</p>
-          <div className="space-y-3">{visa.categories.map(visaCard)}</div>
-        </section>
-      )}
+      {/* Visa pathways — the gate: how this user could legally settle here (collapsible, lazy) */}
+      <section className="mb-6">
+        <button onClick={toggleVisa}
+          className="w-full flex items-center gap-2 text-left bg-turquoise-50/70 border border-turquoise-100 rounded-lg px-3 py-2">
+          <span className="inline-block w-4 text-turquoise-600">{visaOpen ? '▾' : '▸'}</span>
+          <span className="text-lg font-medium text-turquoise-900">{t.drilldown.visa.title}</span>
+          {visaOpen && (visa == null || visa.categories.some((c: any) => c.pending)) && <Spinner />}
+        </button>
+        {visaOpen && (
+          <div className="mt-2">
+            <p className="text-sm text-turquoise-800/60 mb-3">{t.drilldown.visa.hint}</p>
+            {visa == null ? (
+              <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2">
+                <Spinner /> {t.drilldown.generating}
+              </p>
+            ) : (
+              <div className="space-y-3">{visa.categories.map(visaCard)}</div>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Per-criterion detail, grouped by category (collapsed except the clicked one) */}
       <div className="flex items-center gap-3 mb-3">
         <h2 className="text-lg font-medium text-turquoise-900">{t.drilldown.detailTitle}</h2>
-        {isAdmin && (
-          <button onClick={regenerateAll} disabled={regenerating || loadingDetail}
-            title={t.drilldown.regenHint}
-            className="text-xs border border-turquoise-200 text-turquoise-700 rounded-md px-2.5 py-1 hover:bg-turquoise-50 disabled:opacity-50 flex items-center gap-1.5">
-            {regenerating ? <><Spinner /> {t.drilldown.regenerating}</> : `↻ ${t.drilldown.regenerate}`}
-          </button>
-        )}
       </div>
       {loadingDetail && (
         <p className="text-turquoise-800/60 mb-4 flex items-center gap-2">

@@ -7,10 +7,14 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.services import affordability, ai_client
 
-# Single-person monthly cost breakdown the AI would return (euros).
+# Single-person monthly cost breakdown the AI would return (euros), with per-component notes.
 _BREAKDOWN = {
     "rent_eur": 800, "utilities_eur": 150, "food_eur": 300,
     "healthcare_eur": 100, "transport_eur": 80, "other_eur": 170,  # total 1600
+    **{f"{c}_note_fr": f"note {c} fr" for c in
+       ("rent", "utilities", "food", "healthcare", "transport", "other")},
+    **{f"{c}_note_en": f"note {c} en" for c in
+       ("rent", "utilities", "food", "healthcare", "transport", "other")},
     "summary_fr": "fr", "summary_en": "en", "sources": ["https://x.test"],
 }
 
@@ -51,6 +55,8 @@ def test_evaluate_breakdown_caches_meta(db_session, monkeypatch):
     assert ev.key == "cost_breakdown"
     assert ev.meta["total_single_eur"] == 1600
     assert ev.meta["components"]["rent"] == 800
+    # Per-component FR/EN justification notes are captured for the explanation popup.
+    assert ev.meta["notes"]["rent"] == {"fr": "note rent fr", "en": "note rent en"}
     # Cache-first: a second call returns the same row without another AI call.
     ev2 = affordability.evaluate_breakdown(db_session, place)
     assert calls["n"] == 1 and ev2.id == ev.id
@@ -113,3 +119,28 @@ def test_affordability_endpoint_pending_then_filled(auth_client, db_session, mon
     assert r2["pending"] is False
     assert r2["cost_total_eur"] == 1600 and r2["verdict"] == "comfortable"
     assert len(r2["breakdown"]) == len(affordability.COMPONENTS)
+    rent = next(b for b in r2["breakdown"] if b["key"] == "rent")
+    assert rent["note_en"] == "note rent en" and rent["note_fr"] == "note rent fr"
+
+
+def test_affordability_force_is_admin_only(auth_client, db_session, monkeypatch):
+    place = _country(db_session)
+    # A regular user cannot force a re-research.
+    assert auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en",
+                            json={"force": True}).status_code == 403
+
+    # As admin, force re-runs even when the breakdown is already cached (the regenerate action).
+    u = db_session.query(User).filter(User.email == "test@example.com").first()
+    u.is_admin = True
+    db_session.commit()
+    calls = {"n": 0}
+
+    def fake(*a, **k):
+        calls["n"] += 1
+        return _BREAKDOWN
+
+    monkeypatch.setattr(ai_client, "respond_json", fake)
+    auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en", json={})       # caches
+    auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en",
+                     json={"force": True})                                                       # re-runs
+    assert calls["n"] == 2

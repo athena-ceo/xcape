@@ -172,6 +172,8 @@ def get_visa_pathways(
 
 class GenerateVisaRequest(BaseModel):
     limit: int = 2  # how many pathway categories to evaluate this call (the page loops)
+    force: bool = False  # admin only: re-evaluate even categories already cached
+    categories: list[str] | None = None  # explicit set to (re)evaluate; default = the pending ones
 
 
 @router.post("/{place_id}/visa-pathways/generate")
@@ -183,15 +185,23 @@ def generate_visa_pathways(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Evaluate up to `limit` of the still-pending relevant pathway categories on-demand, then
-    return the assembled panel. Called repeatedly so pathways fill in progressively."""
+    """Evaluate up to `limit` of the relevant pathway categories on-demand, then return the
+    assembled panel. Called repeatedly so pathways fill in progressively. By default only the
+    still-pending categories are evaluated; admins can pass `force` (with an explicit `categories`
+    chunk) to re-research even cached ones — the per-country "regenerate" action."""
+    if body.force and not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     cats = visa_pathways.relevant_categories(user.profile, place)
-    have = visa_pathways.cached_rows(db, place.id)
-    pending = [c for c in cats if c not in have]
-    visa_pathways.ensure_for_place(db, place, pending[: max(0, body.limit)], user_id=user.id)
+    if body.categories is not None:
+        targets = [c for c in body.categories if c in cats]
+    else:
+        have = visa_pathways.cached_rows(db, place.id)
+        targets = [c for c in cats if c not in have]
+    visa_pathways.ensure_for_place(
+        db, place, targets[: max(0, body.limit)], force=body.force, user_id=user.id)
     return _visa_panel(db, place, user, lang)
 
 
@@ -218,6 +228,7 @@ def get_affordability(
 class GenerateAffordabilityRequest(BaseModel):
     budget: int | None = None
     household: int | None = None
+    force: bool = False  # admin only: re-research even a cached breakdown
 
 
 @router.post("/{place_id}/affordability/generate")
@@ -229,13 +240,17 @@ def generate_affordability(
     db: Session = Depends(get_db),
 ):
     """Generate the country's cost breakdown on-demand (one AI call, cached + shared), and ensure
-    the income-based visa pathways are evaluated so the income tie-in is populated. Returns the
+    the income-based visa pathways are evaluated so the income tie-in is populated. Admins can pass
+    `force` to re-research a cached breakdown (the per-country "regenerate" action). Returns the
     assembled calculator payload."""
+    if body.force and not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
-    affordability.evaluate_breakdown(db, place, user_id=user.id)
-    # Populate the income-based routes the tie-in checks (cache-first; shared with the visa panel).
+    affordability.evaluate_breakdown(db, place, force=body.force, user_id=user.id)
+    # Populate the income-based routes the tie-in checks (always cache-first — the visa panel /
+    # the visa regenerate flow own pathway freshness, so we don't re-force them here).
     relevant = set(visa_pathways.relevant_categories(user.profile, place))
     visa_pathways.ensure_for_place(
         db, place, [c for c in affordability.INCOME_CATEGORIES if c in relevant], user_id=user.id)
