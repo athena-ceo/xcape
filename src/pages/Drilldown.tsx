@@ -212,12 +212,32 @@ export function Drilldown() {
 
   function cleanSummary(s: string): string {
     return s
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')  // markdown link → its text (prose stays clean)
       .replace(/https?:\/\/\S+/g, '')
       .replace(/\s*\b(Voir|Sources?|See)\b\s*:?/gi, '')
       .replace(/\s*[;,]\s*\./g, '.')
       .replace(/\s{2,}/g, ' ')
       .replace(/\s+([.,;])/g, '$1')
       .trim()
+  }
+
+  // Render inline text, turning markdown links [label](url) and bare URLs into clickable links
+  // (used for the trend "metric" line, which cites a source inline).
+  function renderInline(text: string): (string | JSX.Element)[] {
+    const out: (string | JSX.Element)[] = []
+    const re = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s)]+)/g
+    let last = 0, i = 0, m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) out.push(text.slice(last, m.index))
+      const url = m[2] || m[3]
+      let label = m[1]
+      if (!label) { try { label = new URL(url).hostname.replace(/^www\./, '') } catch { label = url } }
+      out.push(<a key={i++} href={url} target="_blank" rel="noreferrer"
+        className="text-turquoise-600 hover:underline">{label}</a>)
+      last = re.lastIndex
+    }
+    if (last < text.length) out.push(text.slice(last))
+    return out
   }
 
   function fact(label: string, value: any) {
@@ -251,7 +271,7 @@ export function Drilldown() {
           </span>
         )}
         {meta?.window && <span className="text-turquoise-800/50">({meta.window})</span>}
-        {meta?.metric && <span className="basis-full text-turquoise-800/60 italic">{meta.metric}</span>}
+        {meta?.metric && <span className="basis-full text-turquoise-800/60 italic">{renderInline(String(meta.metric))}</span>}
       </div>
     )
   }
