@@ -31,15 +31,19 @@ export function ExplorePage() {
   const [added, setAdded] = useState<Set<number>>(new Set())
   type Spark = { place_id: number; name: string; iso_code: string | null; score: number; standout_key: string; standout_value: number }
   const [sparks, setSparks] = useState<Spark[] | null>(null)
+  // The search's custom criteria — needed to localize custom keys (e.g. community safety) in
+  // violation reasons; labelOf falls back to the raw key without them.
+  const [customs, setCustoms] = useState<{ key: string; label: string }[]>([])
 
   useEffect(() => { api.explore(sid).then(setRows).catch(() => setRows([])) }, [sid])
+  useEffect(() => { api.listCustomCriteria(sid).then(setCustoms).catch(() => {}) }, [sid])
   function shuffleSparks() { setSparks(null); api.wildcards(sid).then(setSparks).catch(() => setSparks([])) }
   useEffect(() => { shuffleSparks() }, [sid])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Localise a criterion key, incl. service component sub-keys (healthcare:access).
   function critLabel(key: string): string {
     const [base, comp] = key.split(':')
-    const label = labelOf(reg, base, lang)
+    const label = labelOf(reg, base, lang, customs)  // customs → resolves custom-criterion labels
     return comp ? `${label} · ${(t.trend as Record<string, string>)[comp] ?? comp}` : label
   }
 
