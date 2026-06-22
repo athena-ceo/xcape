@@ -38,6 +38,17 @@ export function Drilldown() {
   const [showZero, setShowZero] = useState(false)
   const [visa, setVisa] = useState<{ categories: any[]; best: string | null } | null>(null)
   const visaDrainRef = useRef(false)
+  const [afford, setAfford] = useState<any>(null)
+  const [budgetInput, setBudgetInput] = useState<number | null>(null)
+  const [householdInput, setHouseholdInput] = useState<number | null>(null)
+  // The calculator is collapsed by default and loads lazily — no fetch or AI cost-breakdown
+  // generation happens until the user expands it. Open/closed is persisted.
+  const [afOpen, setAfOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('xcape_afford_open') === '1' } catch { return false }
+  })
+  const afLoadRef = useRef(false)
+  const afGenRef = useRef(false)
+  const afTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isAdmin = useAuth((s) => s.isAdmin)
   const [regenerating, setRegenerating] = useState(false)
 
@@ -230,6 +241,58 @@ export function Drilldown() {
     return () => { cancelled = true }
   }, [id, lang, searchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset the (lazily-loaded) calculator when the country or language changes, so reopening it
+  // refetches for the new context.
+  useEffect(() => { setAfford(null); afLoadRef.current = false }, [id, lang])
+
+  function toggleAfford() {
+    setAfOpen((o) => {
+      const next = !o
+      try { localStorage.setItem('xcape_afford_open', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  // Load the calculator only once the user expands it: the instant payload (cost breakdown from
+  // cache, the budget comparison, the visa income tie-in), prefilling the editable inputs from the
+  // profile defaults the server returns, then generating the per-country cost breakdown on-demand
+  // if it isn't cached yet. Gated on `afOpen` so a collapsed panel costs nothing.
+  useEffect(() => {
+    if (!afOpen || afLoadRef.current) return
+    afLoadRef.current = true
+    let cancelled = false
+    api.getAffordability(id, lang)
+      .then(async (r) => {
+        if (cancelled) return
+        setAfford(r)
+        setBudgetInput(r.budget_monthly ?? null)
+        setHouseholdInput(r.household_size ?? 1)
+        if (r.pending && !afGenRef.current) {
+          afGenRef.current = true
+          try {
+            const g = await api.generateAffordability(
+              id, { budget: r.budget_monthly ?? undefined, household: r.household_size ?? undefined }, lang)
+            if (!cancelled) setAfford(g)
+          } finally { afGenRef.current = false }
+        }
+      })
+      .catch(() => { if (!cancelled) { setAfford(null); afLoadRef.current = false } })
+    return () => { cancelled = true }
+  }, [afOpen, id, lang]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-run the (server-side, deterministic) calculation when the user edits budget or household —
+  // debounced; the breakdown is cached so this is instant.
+  async function recomputeAfford(budget: number | null, household: number | null) {
+    try {
+      const r = await api.getAffordability(id, lang, budget ?? undefined, household ?? undefined)
+      setAfford(r)
+    } catch { /* ignore */ }
+  }
+  function scheduleRecompute(budget: number | null, household: number | null) {
+    if (afTimerRef.current) clearTimeout(afTimerRef.current)
+    afTimerRef.current = setTimeout(() => void recomputeAfford(budget, household), 350)
+  }
+
   // After detail first renders, scroll to the clicked criterion with a brief highlight.
   useEffect(() => {
     if (loadingDetail || !hash) return
@@ -393,6 +456,180 @@ export function Drilldown() {
     )
   }
 
+  // Budget / affordability calculator body: editable budget + household, estimated cost vs budget
+  // with a verdict + breakdown, and the visa income tie-in (which income-based routes the income
+  // clears). Rendered only once the (collapsible) panel is expanded.
+  function affordBody() {
+    const a = afford
+    const af = t.drilldown.afford as any
+    if (!a) {
+      return (
+        <div className="bg-white border border-turquoise-100 rounded-lg p-4">
+          <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2">
+            <Spinner /> {af.generating}
+          </p>
+        </div>
+      )
+    }
+    const comps = af.components as Record<string, string>
+    const money = (x: any) => (x == null ? '—' : `${Number(x).toLocaleString(lang)} €`)
+    const hasBudget = a.budget_monthly != null
+    const ratio = a.ratio as number | null
+    const fillPct = ratio != null ? Math.min(100, Math.round((1 / ratio) * 100)) : 0
+    const verdictCls =
+      a.verdict === 'comfortable' ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+      : a.verdict === 'manageable' ? 'text-turquoise-800 bg-turquoise-50 border-turquoise-200'
+      : a.verdict === 'tight' ? 'text-amber-800 bg-amber-50 border-amber-200'
+      : 'text-red-800 bg-red-50 border-red-200'
+    const barCls =
+      a.verdict === 'comfortable' ? 'bg-emerald-500'
+      : a.verdict === 'manageable' ? 'bg-turquoise-500'
+      : a.verdict === 'tight' ? 'bg-amber-500' : 'bg-red-500'
+    const incomeRoutes = (a.income_pathways ?? []) as any[]
+
+    return (
+        <div className="bg-white border border-turquoise-100 rounded-lg p-4">
+          {/* Inputs */}
+          <div className="flex flex-wrap gap-4 mb-3">
+            <label className="flex flex-col gap-1 text-xs text-turquoise-800/60">
+              {af.budgetLabel}
+              <input type="number" min={0} step={100} value={budgetInput ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value === '' ? null : Number(e.target.value)
+                  setBudgetInput(v); scheduleRecompute(v, householdInput)
+                }}
+                className="w-32 border border-turquoise-200 rounded px-2 py-1 text-sm text-turquoise-900" />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-turquoise-800/60">
+              {af.householdLabel}
+              <input type="number" min={1} max={12} step={1} value={householdInput ?? 1}
+                onChange={(e) => {
+                  const v = Math.max(1, Number(e.target.value) || 1)
+                  setHouseholdInput(v); scheduleRecompute(budgetInput, v)
+                }}
+                className="w-24 border border-turquoise-200 rounded px-2 py-1 text-sm text-turquoise-900" />
+            </label>
+          </div>
+
+          {a.pending ? (
+            <p className="text-sm text-turquoise-800/50 italic flex items-center gap-2">
+              <Spinner /> {af.generating}
+            </p>
+          ) : a.cost_total_eur != null && (
+            <>
+              {/* Cost vs budget */}
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-2">
+                <span className="text-turquoise-800/70">{af.estimatedCost}:
+                  <b className="text-turquoise-900"> {money(a.cost_total_eur)}{af.perMonth}</b></span>
+                {hasBudget && (
+                  <span className="text-turquoise-800/70">{af.yourBudget}:
+                    <b className="text-turquoise-900"> {money(a.budget_monthly)}{af.perMonth}</b></span>
+                )}
+                {hasBudget && a.surplus_eur != null && (
+                  <span className={a.surplus_eur >= 0 ? 'text-emerald-700' : 'text-red-700'}>
+                    {a.surplus_eur >= 0 ? af.surplus : af.deficit}:
+                    <b> {money(Math.abs(a.surplus_eur))}{af.perMonth}</b>
+                  </span>
+                )}
+              </div>
+              {hasBudget && ratio != null && (
+                <div className="h-2 w-full bg-turquoise-50 rounded-full overflow-hidden mb-2">
+                  <div className={`h-full ${barCls}`} style={{ width: `${fillPct}%` }} />
+                </div>
+              )}
+              {hasBudget && a.verdict ? (
+                <p className={`text-sm rounded-md border px-3 py-2 ${verdictCls}`}>
+                  {af.verdict[a.verdict]}
+                </p>
+              ) : !hasBudget && (
+                <p className="text-sm text-turquoise-800/50 italic">{af.noBudget}</p>
+              )}
+
+              {/* Breakdown */}
+              {Array.isArray(a.breakdown) && a.breakdown.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-turquoise-800/50 mb-1">{af.breakdownTitle}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {a.breakdown.map((b: any) => (
+                      <div key={b.key} className="bg-turquoise-50/60 rounded-md px-3 py-2">
+                        <p className="text-xs text-turquoise-800/60">{comps[b.key] ?? b.key}</p>
+                        <p className="text-sm font-medium text-turquoise-900">{money(b.amount_eur)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(lang === 'fr' ? a.summary_fr : a.summary_en) && (
+                <p className="text-sm text-turquoise-800/70 mt-3">
+                  {cleanSummary(lang === 'fr' ? a.summary_fr : a.summary_en)}
+                </p>
+              )}
+              {Array.isArray(a.sources) && a.sources.length > 0 && (
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                  <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>
+                  {a.sources.map((s: string, i: number) => {
+                    const p = parseSource(s)
+                    return p ? <a key={i} href={p.url} target="_blank" rel="noreferrer"
+                      className="text-xs text-turquoise-600 hover:underline">{p.label}</a> : null
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Visa income tie-in */}
+          {incomeRoutes.length > 0 && (
+            <div className="mt-4 border-t border-turquoise-50 pt-3">
+              <p className="text-sm font-medium text-turquoise-900">{af.incomeTitle}</p>
+              {a.annual_income_eur != null && (
+                <p className="text-xs text-turquoise-800/60 mb-2">
+                  {af.incomeHint.replace('{income}', money(a.annual_income_eur))}
+                </p>
+              )}
+              <div className="space-y-1.5">
+                {incomeRoutes.map((r: any) => (
+                  <div key={r.category} className="flex items-center gap-2 text-sm">
+                    <span className="text-turquoise-900">{r.label ?? r.category}</span>
+                    <span className="text-xs text-turquoise-800/60">
+                      {af.threshold}: {money(r.income_eur)}{af.perYear}
+                    </span>
+                    <span className={`ml-auto text-xs font-medium rounded-full px-2 py-0.5 ${
+                      r.qualifies ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
+                      {r.qualifies ? `✓ ${af.qualifies}` : af.belowThreshold}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+    )
+  }
+
+  // Collapsible wrapper: the calculator is hidden behind a toggle so it doesn't crowd the page —
+  // expanding it lazily loads the data (and generates the cost breakdown) on first open.
+  function affordSection() {
+    const af = t.drilldown.afford as any
+    return (
+      <section className="mb-6">
+        <button onClick={toggleAfford}
+          className="w-full flex items-center gap-2 text-left bg-turquoise-50/70 border border-turquoise-100 rounded-lg px-3 py-2">
+          <span className="inline-block w-4 text-turquoise-600">{afOpen ? '▾' : '▸'}</span>
+          <span className="text-lg font-medium text-turquoise-900">{af.title}</span>
+          {afOpen && afford == null && <Spinner />}
+          <span className="ml-auto text-xs text-turquoise-800/50">€</span>
+        </button>
+        {afOpen && (
+          <div className="mt-2">
+            <p className="text-sm text-turquoise-800/60 mb-3">{af.hint}</p>
+            {affordBody()}
+          </div>
+        )}
+      </section>
+    )
+  }
+
   function criterionBox(key: string) {
     const d = detailByKey[key]
     if (!d) return null
@@ -489,6 +726,9 @@ export function Drilldown() {
           ))}
         </div>
       )}
+
+      {/* Budget / affordability calculator — does this user's budget cover living here */}
+      {affordSection()}
 
       {/* Visa pathways — the gate: how this user could legally settle here */}
       {visa && visa.categories.length > 0 && (

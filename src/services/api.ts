@@ -173,6 +173,18 @@ export const api = {
       `/places/${id}/visa-pathways/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
       { method: 'POST', body: JSON.stringify(body) },
     ),
+  // Budget / affordability calculator (drill-down): cost-vs-budget verdict + breakdown + visa
+  // income tie-in. `budget`/`household` override the profile defaults (live, not persisted).
+  getAffordability: (id: number, lang: string, budget?: number, household?: number) => {
+    const q = new URLSearchParams({ lang })
+    if (budget != null) q.set('budget', String(budget))
+    if (household != null) q.set('household', String(household))
+    return request<any>(`/places/${id}/affordability?${q.toString()}`)
+  },
+  generateAffordability: (id: number, body: { budget?: number; household?: number }, lang: string) =>
+    request<any>(`/places/${id}/affordability/generate?lang=${lang}`,
+      { method: 'POST', body: JSON.stringify(body) }),
+
   getMedia: (id: number) => request<any[]>(`/places/${id}/media`),
 
   getAdminUsers: () => request<any[]>('/admin/users'),

@@ -14,7 +14,8 @@ from pydantic import BaseModel
 
 from app.schemas.place import MediaOut, PlaceOut
 from app.services import (
-    ai_client, board, country_facts, criteria, criterion_eval, place_research, visa_pathways,
+    affordability, ai_client, board, country_facts, criteria, criterion_eval, place_research,
+    visa_pathways,
 )
 
 router = APIRouter()
@@ -192,6 +193,54 @@ def generate_visa_pathways(
     pending = [c for c in cats if c not in have]
     visa_pathways.ensure_for_place(db, place, pending[: max(0, body.limit)], user_id=user.id)
     return _visa_panel(db, place, user, lang)
+
+
+@router.get("/{place_id}/affordability")
+def get_affordability(
+    place_id: int,
+    lang: str = "fr",
+    budget: int | None = None,      # editable override; falls back to the profile budget
+    household: int | None = None,   # editable override; falls back to the persona household size
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The budget / affordability calculator for the drill-down — INSTANT, from cache. Returns the
+    cost-vs-budget verdict + breakdown when the country's cost breakdown is cached, else
+    `pending:true` (fill it via POST .../affordability/generate). The visa income tie-in uses
+    whatever income-based pathways are already cached."""
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    return affordability.compute(
+        db, place, user.profile, budget_monthly=budget, household_size=household, lang=lang)
+
+
+class GenerateAffordabilityRequest(BaseModel):
+    budget: int | None = None
+    household: int | None = None
+
+
+@router.post("/{place_id}/affordability/generate")
+def generate_affordability(
+    place_id: int,
+    body: GenerateAffordabilityRequest,
+    lang: str = "fr",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate the country's cost breakdown on-demand (one AI call, cached + shared), and ensure
+    the income-based visa pathways are evaluated so the income tie-in is populated. Returns the
+    assembled calculator payload."""
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    affordability.evaluate_breakdown(db, place, user_id=user.id)
+    # Populate the income-based routes the tie-in checks (cache-first; shared with the visa panel).
+    relevant = set(visa_pathways.relevant_categories(user.profile, place))
+    visa_pathways.ensure_for_place(
+        db, place, [c for c in affordability.INCOME_CATEGORIES if c in relevant], user_id=user.id)
+    return affordability.compute(
+        db, place, user.profile, budget_monthly=body.budget, household_size=body.household, lang=lang)
 
 
 @router.get("/{place_id}/media", response_model=list[MediaOut])

@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+### 2026-06-22 — Budget / affordability calculator on the drill-down
+
+- New **budget & affordability calculator** on the country drill-down — a **collapsed-by-default,
+  lazily-loaded panel** (no fetch or AI cost-breakdown generation until the user expands it; the
+  open/closed choice is remembered). Inside: editable monthly budget (prefilled from the profile)
+  and household size, an AI-estimated per-country monthly cost breakdown (rent / utilities / food /
+  healthcare / transport / other) scaled to the household, and an **estimated cost vs budget**
+  verdict (comfortable / manageable / tight / insufficient) with surplus/deficit and a coverage bar.
+- **Cost breakdown** is generated on-demand and cached in `place_custom_evals` under
+  `key = "cost_breakdown"` (versioned `prompt_fp`, shared cross-user) — same pattern as the
+  objective evals and the visa catalog, so no schema change.
+- **Visa income tie-in**: annualised income (budget × 12) is compared against the cached visa
+  pathways' `income_eur` thresholds to flag which income-based routes (retirement, digital nomad)
+  the income qualifies for.
+- New auth'd routes `GET/POST /places/{id}/affordability[/generate]`; service
+  `app/services/affordability.py`; tests in `tests/test_affordability.py`.
+
 ### 2026-06-16 — evaluate-all covers bucket-only cells by default
 
 - `evaluate-all` now evaluates every (country, criterion) cell — including those relying only on
