@@ -32,6 +32,10 @@
   verdict (comfortable / manageable / tight / insufficient) with surplus/deficit and a coverage bar.
   Each breakdown entry is **clickable for a "how this is estimated" popup** — the AI returns a
   per-component FR/EN justification, shown alongside the per-person base and the household scaling.
+- **Housing follows the user's tenure**: the breakdown caches both a monthly **rent** and a monthly
+  **mortgage** (buy) figure, and shows the mortgage for users who said they want to buy (rent
+  otherwise) — no more estimating rent for a buyer. The two figures share one user-neutral cache;
+  tenure just selects which to display.
 - The drill-down's **visa-pathways panel is now collapsible and lazy** too (collapsed by default,
   open/closed remembered) — matching the budget calculator, so neither generates AI content until
   the user expands it. The admin regenerate still force-refreshes both even while collapsed.

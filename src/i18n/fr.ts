@@ -376,7 +376,7 @@ export const fr = {
       close: 'Fermer',
       noBudget: 'Renseignez un budget mensuel dans votre profil pour le comparer aux coûts locaux.',
       components: {
-        rent: 'Loyer', utilities: 'Charges', food: 'Alimentation',
+        rent: 'Loyer', buy: 'Crédit immobilier', utilities: 'Charges', food: 'Alimentation',
         healthcare: 'Santé', transport: 'Transport', other: 'Autres',
       },
       verdict: {

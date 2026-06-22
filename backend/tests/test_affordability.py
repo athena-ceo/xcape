@@ -8,13 +8,14 @@ from app.models.user import User
 from app.services import affordability, ai_client, fx
 
 # Single-person monthly cost breakdown the AI would return (euros), with per-component notes.
+# rent-based total = 1600 (rent 800); the buy/mortgage housing figure (1100) is cached alongside.
 _BREAKDOWN = {
-    "rent_eur": 800, "utilities_eur": 150, "food_eur": 300,
-    "healthcare_eur": 100, "transport_eur": 80, "other_eur": 170,  # total 1600
+    "rent_eur": 800, "buy_eur": 1100, "utilities_eur": 150, "food_eur": 300,
+    "healthcare_eur": 100, "transport_eur": 80, "other_eur": 170,
     **{f"{c}_note_fr": f"note {c} fr" for c in
-       ("rent", "utilities", "food", "healthcare", "transport", "other")},
+       ("rent", "buy", "utilities", "food", "healthcare", "transport", "other")},
     **{f"{c}_note_en": f"note {c} en" for c in
-       ("rent", "utilities", "food", "healthcare", "transport", "other")},
+       ("rent", "buy", "utilities", "food", "healthcare", "transport", "other")},
     "summary_fr": "fr", "summary_en": "en", "sources": ["https://x.test"],
 }
 
@@ -99,6 +100,24 @@ def test_compute_converts_to_user_currency(db_session, monkeypatch):
     assert out["breakdown"][0]["amount"] == 1600  # rent 800 EUR × 2
 
 
+def test_compute_housing_follows_tenure(db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _BREAKDOWN)
+    place = _country(db_session)
+    affordability.evaluate_breakdown(db_session, place)
+
+    # Buyer → the housing slot is the monthly mortgage (1100), not rent (800).
+    buyer = affordability.compute(
+        db_session, place, Profile(tenure="buy"), budget_monthly=3000, household_size=1)
+    assert buyer["breakdown"][0]["key"] == "buy" and buyer["breakdown"][0]["amount"] == 1100
+    assert buyer["cost_total"] == 1900  # 1100 + 150 + 300 + 100 + 80 + 170
+
+    # Renter (and the unspecified default) → rent.
+    renter = affordability.compute(
+        db_session, place, Profile(tenure="rent"), budget_monthly=3000, household_size=1)
+    assert renter["breakdown"][0]["key"] == "rent" and renter["breakdown"][0]["amount"] == 800
+    assert renter["cost_total"] == 1600
+
+
 def test_compute_pending_without_breakdown(db_session):
     place = _country(db_session)  # nothing cached
     out = affordability.compute(db_session, place, None, budget_monthly=2000, household_size=1)
@@ -134,7 +153,7 @@ def test_affordability_endpoint_pending_then_filled(auth_client, db_session, mon
                           json={"budget": 3000, "household": 1}).json()
     assert r2["pending"] is False
     assert r2["cost_total"] == 1600 and r2["verdict"] == "comfortable"
-    assert len(r2["breakdown"]) == len(affordability.COMPONENTS)
+    assert len(r2["breakdown"]) == 6  # one housing slot + utilities/food/healthcare/transport/other
     rent = next(b for b in r2["breakdown"] if b["key"] == "rent")
     assert rent["note_en"] == "note rent en" and rent["note_fr"] == "note rent fr"
 

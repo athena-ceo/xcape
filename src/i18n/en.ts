@@ -379,7 +379,7 @@ export const en: Dict = {
       close: 'Close',
       noBudget: 'Set a monthly budget in your profile to compare it against local costs.',
       components: {
-        rent: 'Rent', utilities: 'Utilities', food: 'Food',
+        rent: 'Rent', buy: 'Mortgage', utilities: 'Utilities', food: 'Food',
         healthcare: 'Healthcare', transport: 'Transport', other: 'Other',
       },
       verdict: {

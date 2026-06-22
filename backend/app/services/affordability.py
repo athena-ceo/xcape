@@ -35,20 +35,29 @@ from app.services import ai_client, fx, visa_pathways
 from app.services.criterion_eval import _fresh, level_from_score
 
 # Bump when the breakdown prompt/schema below changes in a way that should invalidate cached rows.
-COST_PROMPT_VERSION = "2"  # v2: per-component FR/EN justification notes
+COST_PROMPT_VERSION = "3"  # v3: tenure-aware housing (rent vs buy) cached alongside each other
 BREAKDOWN_KEY = "cost_breakdown"
 
-# The breakdown's cost components, in display order. The single-person figures the AI returns are
-# scaled to the household by the per-component marginal factor below.
-COMPONENTS = ("rent", "utilities", "food", "healthcare", "transport", "other")
+# Every figure the AI returns and we cache (shared, EUR). The two housing figures — `rent` and
+# `buy` (a typical monthly mortgage payment) — are BOTH cached so the per-user tenure just selects
+# which one to show; the cache stays user-neutral. The figures are scaled to the household by the
+# per-component marginal factor below.
+COMPONENTS = ("rent", "buy", "utilities", "food", "healthcare", "transport", "other")
 
 # How each component grows with each ADDITIONAL household member (factor = 1 + marginal × (N-1)).
-# Housing and utilities are largely shared (one home), food scales nearly per-head, healthcare is
-# per-person; transport and the rest sit in between. N=1 → every factor is 1.0.
+# Housing (rent/buy) and utilities are largely shared (one home), food scales nearly per-head,
+# healthcare is per-person; transport and the rest sit in between. N=1 → every factor is 1.0.
 _HH_MARGINAL = {
-    "rent": 0.35, "utilities": 0.25, "food": 0.85,
+    "rent": 0.35, "buy": 0.35, "utilities": 0.25, "food": 0.85,
     "healthcare": 1.0, "transport": 0.6, "other": 0.55,
 }
+
+
+def _display_components(tenure: str | None) -> tuple[str, ...]:
+    """The components actually shown for a user, in order — the housing slot is the monthly
+    mortgage (`buy`) when they want to buy, otherwise rent. Never both (that would double-count)."""
+    housing = "buy" if tenure == "buy" else "rent"
+    return (housing, "utilities", "food", "healthcare", "transport", "other")
 
 # Default household SIZE inferred from the coarse household_type (the calculator input is editable).
 _DEFAULT_SIZE = {"single": 1, "couple": 2, "family": 4}
@@ -121,7 +130,11 @@ def evaluate_breakdown(
         f"foreign resident, in euros (€). Assume a modest, mid-range lifestyle in a typical city "
         f"(not the most expensive neighbourhood, not the cheapest rural area), renting a small "
         f"one-bedroom home. Break the total into these components, each a monthly figure in euros:\n"
-        f"- rent_eur: rent for a small one-bedroom flat.\n"
+        f"- rent_eur: monthly rent for a small one-bedroom flat.\n"
+        f"- buy_eur: the typical MONTHLY cost of BUYING that same small one-bedroom home instead of "
+        f"renting — i.e. the monthly mortgage repayment for such a property purchased with a normal "
+        f"local down payment at current local mortgage rates. (In the note, state the assumed price, "
+        f"deposit and rate.)\n"
         f"- utilities_eur: electricity, water, heating, internet, mobile.\n"
         f"- food_eur: groceries and a few modest meals out.\n"
         f"- healthcare_eur: typical private health insurance / out-of-pocket for a foreign "
@@ -153,7 +166,8 @@ def evaluate_breakdown(
         c: {"fr": data.get(f"{c}_note_fr") or "", "en": data.get(f"{c}_note_en") or ""}
         for c in COMPONENTS
     }
-    total = round(sum(comps.values()))
+    # Reference total uses the rent housing slot (not rent + buy, which would double-count housing).
+    total = round(sum(comps.get(c, 0.0) for c in _display_components(None)))
     meta = {"components": comps, "notes": notes, "total_single_eur": total}
     fields = dict(
         label="Monthly cost breakdown", score=None, level=level_from_score(None),
@@ -234,23 +248,29 @@ def compute(
     rate = fx.eur_rate(currency)  # units of `currency` per 1 EUR
 
     ev = cached_breakdown(db, place.id)
+    # A row produced by an older prompt version (e.g. before the rent/buy split) is treated as
+    # pending so the page regenerates it on demand, rather than computing from stale fields.
+    fresh = ev is not None and _fresh(ev, _fp(), 0)
     annual = budget * 12 if budget else None
     base: dict = {
-        "pending": ev is None,
+        "pending": not fresh,
         "currency": currency,
         "budget_monthly": budget,
         "household_size": size,
         "annual_income": annual,
         "income_pathways": income_pathways(db, place.id, annual, lang, rate=rate),
     }
-    if ev is None:
+    if not fresh:
         return base
 
     comps = (ev.meta or {}).get("components") or {}
     notes = (ev.meta or {}).get("notes") or {}
     breakdown = []
     cost_total = 0.0
-    for c in COMPONENTS:
+    # Housing slot follows the user's tenure (mortgage for buyers, rent otherwise) — see
+    # _display_components. The breakdown row's key carries the chosen housing kind so the UI labels
+    # it correctly ("Rent" vs "Mortgage").
+    for c in _display_components(getattr(profile, "tenure", None) if profile else None):
         single_eur = float(comps.get(c) or 0)
         amount = round(single_eur * household_factor(c, size) * rate)
         cost_total += amount
