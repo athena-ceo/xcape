@@ -25,6 +25,9 @@ class User(Base):
     # and any spouse/children). Drives visa / ease-of-movement scoring, which depends on
     # citizenship, not residence (e.g. a US citizen residing in France has no EU mobility).
     citizenships: Mapped[list | None] = mapped_column(JSON, default=list)
+    # ISO alpha-2 codes where the household may claim residence/citizenship by ANCESTRY or
+    # descent (user-declared — can't be inferred). A strong, easy visa pathway to those places.
+    ancestry_countries: Mapped[list | None] = mapped_column(JSON, default=list)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     locale: Mapped[str] = mapped_column(String(5), default="fr", nullable=False)

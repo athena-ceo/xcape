@@ -135,9 +135,16 @@ def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> fl
         else set()
     )
     base = criteria.scales().get("visa", {}).get(str(attrs.get("visa", "")).lower(), 0.5)
+    dest = (place.iso_code or "").upper() if place else ""
+    # A declared ancestry/descent tie to the destination is a strong, accessible pathway
+    # (citizenship or residence by descent) — it overrides the generic accessibility.
+    ancestry: set[str] = set()
+    if profile and profile.user and getattr(profile.user, "ancestry_countries", None):
+        ancestry = {str(c).upper() for c in profile.user.ancestry_countries}
+    if dest and dest in ancestry:
+        return 1.0
     if not citz:
         return base  # citizenship unknown — fall back to general accessibility
-    dest = (place.iso_code or "").upper() if place else ""
     return min(_single_citizenship_visa(c, dest, base) for c in citz)
 
 

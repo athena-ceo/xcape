@@ -23,6 +23,7 @@ interface Form {
   last_name: string
   current_country: string
   citizenships: string[]
+  ancestry_countries: string[]
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
@@ -63,6 +64,7 @@ export function ProfilePage() {
         last_name: me.last_name ?? '',
         current_country: me.current_country ?? '',
         citizenships: me.citizenships ?? [],
+        ancestry_countries: me.ancestry_countries ?? [],
         household_type: p?.household_type ?? null,
         intends_children: p?.intends_children ?? null,
         reasons_leaving: p?.reasons_leaving ?? [],
@@ -102,6 +104,7 @@ export function ProfilePage() {
         last_name: f.last_name || undefined,
         current_country: f.current_country.trim() || undefined,
         citizenships: f.citizenships,
+        ancestry_countries: f.ancestry_countries,
       })
       await api.updateProfile({
         household_type: f.household_type,
@@ -153,6 +156,13 @@ export function ProfilePage() {
             value={f.citizenships}
             onChange={(v) => set('citizenships', v)}
             addLabel={t.onboarding.citizenship.add}
+          />
+          <p className="text-sm font-medium text-turquoise-900 mt-4 mb-1">{t.onboarding.ancestry.q}</p>
+          <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.ancestry.hint}</p>
+          <CountryMultiSelect
+            value={f.ancestry_countries}
+            onChange={(v) => set('ancestry_countries', v)}
+            addLabel={t.onboarding.ancestry.add}
           />
         </Section>
 

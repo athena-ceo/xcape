@@ -92,6 +92,11 @@ export const fr = {
       hint: 'La nationalité — pas le pays de résidence — détermine la facilité d’installation (ex. un citoyen de l’UE circule librement dans l’UE). Incluez le conjoint et les enfants.',
       add: 'Ajouter une nationalité',
     },
+    ancestry: {
+      q: 'Origines ou liens familiaux ? (facultatif)',
+      hint: 'Pays où vous pourriez obtenir la résidence ou la nationalité par ascendance — une voie d’installation bien plus facile.',
+      add: 'Ajouter un pays',
+    },
     household: {
       q: 'Qui déménage ?',
       single: 'Juste moi',

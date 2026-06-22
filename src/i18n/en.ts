@@ -94,6 +94,11 @@ export const en: Dict = {
       hint: 'Citizenship — not residence — drives how easily you can settle somewhere (e.g. an EU citizen moves freely within the EU). Include a spouse and children.',
       add: 'Add a citizenship',
     },
+    ancestry: {
+      q: 'Ancestry or family ties? (optional)',
+      hint: 'Countries where you may qualify for residence or citizenship by ancestry/descent — a much easier path to settle there.',
+      add: 'Add a country',
+    },
     household: {
       q: "Who's making the move?",
       single: 'Just me',

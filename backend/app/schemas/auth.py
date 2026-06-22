@@ -30,6 +30,7 @@ class UserUpdate(BaseModel):
     last_name: str | None = None
     current_country: str | None = None
     citizenships: list[str] | None = None
+    ancestry_countries: list[str] | None = None
     locale: str | None = None
 
 
@@ -46,6 +47,7 @@ class UserOut(BaseModel):
     last_name: str | None = None
     current_country: str | None = None
     citizenships: list[str] | None = None  # NULL for accounts created before this field
+    ancestry_countries: list[str] | None = None
     is_admin: bool
     is_verified: bool
     locale: str

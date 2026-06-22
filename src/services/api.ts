@@ -41,11 +41,12 @@ export const api = {
   me: () =>
     request<{
       id: number; email: string; is_admin: boolean; locale: string
-      first_name?: string; last_name?: string; current_country?: string; citizenships?: string[]
+      first_name?: string; last_name?: string; current_country?: string
+      citizenships?: string[]; ancestry_countries?: string[]
     }>('/auth/me'),
   updateMe: (body: {
     first_name?: string; last_name?: string; current_country?: string
-    citizenships?: string[]; locale?: string
+    citizenships?: string[]; ancestry_countries?: string[]; locale?: string
   }) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
   getCriteria: () => request<any>('/criteria'),

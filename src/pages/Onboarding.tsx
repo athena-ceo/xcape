@@ -35,6 +35,7 @@ const GATED_STEPS: StepId[] = ['communities', 'budget', 'climate']
 interface Answers {
   current_country: string
   citizenships: string[]
+  ancestry_countries: string[]
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
@@ -51,6 +52,7 @@ interface Answers {
 const EMPTY: Answers = {
   current_country: '',
   citizenships: [],
+  ancestry_countries: [],
   household_type: null,
   intends_children: null,
   reasons_leaving: [],
@@ -83,6 +85,7 @@ export function Onboarding() {
         ...cur,
         current_country: me.current_country ?? cur.current_country,
         citizenships: me.citizenships ?? cur.citizenships,
+        ancestry_countries: me.ancestry_countries ?? cur.ancestry_countries,
       }))
     })
     api.getProfile().then((p: any) => {
@@ -148,7 +151,7 @@ export function Onboarding() {
   async function finish() {
     setBusy(true)
     try {
-      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships })
+      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships, ancestry_countries: a.ancestry_countries })
       // Re-read identity from the server so the cached store reflects the new truth.
       await refreshAuth()
       await api.updateProfile({
@@ -235,6 +238,13 @@ export function Onboarding() {
                 value={a.citizenships}
                 onChange={(v) => setA({ ...a, citizenships: v })}
                 addLabel={t.onboarding.citizenship.add}
+              />
+              <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.ancestry.q}</p>
+              <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.ancestry.hint}</p>
+              <CountryMultiSelect
+                value={a.ancestry_countries}
+                onChange={(v) => setA({ ...a, ancestry_countries: v })}
+                addLabel={t.onboarding.ancestry.add}
               />
             </>
           )}

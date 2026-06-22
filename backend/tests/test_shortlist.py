@@ -158,6 +158,26 @@ def test_weight_zero_makes_hard_filter_dormant():
     assert "climate" not in filter_status(place, prof)["violations"]
 
 
+def test_ancestry_country_gives_easy_visa_pathway():
+    """A declared ancestry tie to the destination is a strong pathway (citizenship/residence
+    by descent) → max visa ease, overriding the generic accessibility bucket."""
+    from app.models.place import Place
+    from app.models.profile import Profile
+    from app.models.user import User
+    from app.services.shortlist import _visa_value
+
+    italy = Place(kind="country", name="Italy", iso_code="IT", attributes={"visa": "hard"})
+    # American passport, no ancestry → judged by the "hard" bucket (well below 1.0).
+    plain = Profile(user=User(citizenships=["US"], ancestry_countries=[]))
+    assert _visa_value(italy.attributes, plain, italy) < 0.9
+    # Same passport but Italian ancestry declared → easy pathway.
+    with_roots = Profile(user=User(citizenships=["US"], ancestry_countries=["IT"]))
+    assert _visa_value(italy.attributes, with_roots, italy) == 1.0
+    # Ancestry elsewhere doesn't help for Italy.
+    elsewhere = Profile(user=User(citizenships=["US"], ancestry_countries=["IE"]))
+    assert _visa_value(italy.attributes, elsewhere, italy) < 0.9
+
+
 def test_component_filter_targets_service_subscore():
     """A `healthcare:access` filter checks the access sub-score independently of the headline,
     and follows the parent criterion's weight for dormancy."""
