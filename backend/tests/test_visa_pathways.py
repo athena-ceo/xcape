@@ -71,11 +71,12 @@ def test_visa_panel_pending_then_filled(auth_client, db_session, monkeypatch):
     assert "work" in cats and "family" in cats
     assert all(c["pending"] for c in r["categories"]) and r["best"] is None
 
-    # Generate fills the pending categories on-demand; best = an existing pathway.
+    # Generate fills the pending categories on-demand. We deliberately do NOT crown a "best"
+    # route (eligibility isn't validated), so best stays None.
     monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: {**_PATHWAY, "difficulty": 60})
     r2 = auth_client.post(f"/api/v1/places/{place.id}/visa-pathways/generate?lang=en",
                           json={"limit": 9}).json()
     assert all(not c["pending"] for c in r2["categories"])
-    assert r2["best"] in cats
+    assert r2["best"] is None
     filled = next(c for c in r2["categories"] if c["category"] == "work")
     assert filled["difficulty"] == 60 and filled["label"]

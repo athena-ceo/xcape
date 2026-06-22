@@ -147,20 +147,8 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
   }
 
   function filterCell(key: string) {
-    if (key === 'language_ease') return (
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={!!f.language_ease} className="accent-turquoise-600"
-          onChange={(e) => setF({ ...f, language_ease: e.target.checked })} />
-        {t.comparison.filterLanguageOnly}
-      </label>
-    )
-    if (key === 'visa') return (
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={!!f.visa} className="accent-turquoise-600"
-          onChange={(e) => setF({ ...f, visa: e.target.checked })} />
-        {t.comparison.filterVisaOnly}
-      </label>
-    )
+    // visa & language_ease use the same generic ≥ OK / ≥ Good threshold as the board (their
+    // computed value supports it), so they fall through to the generic control below.
     if (key === 'inclusion') return (
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={!!f.inclusion} className="accent-turquoise-600"

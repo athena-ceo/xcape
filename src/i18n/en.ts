@@ -305,6 +305,9 @@ export const en: Dict = {
     boardFull: 'The board is full (5 countries). Remove one to add another.',
     customGroup: 'Your criteria',
     customCriterion: 'Custom criterion',
+    addCustomCta: 'Add your own criterion',
+    addCustomTitle: 'Add your own criterion',
+    addCustomHelp: 'Name something the AI should judge for every country (e.g. “Vegan-friendly”), and optionally describe what to look for.',
     customNamePrompt: 'Short name (e.g. Vegan)',
     customDescPrompt: 'What should the AI judge? (e.g. availability of vegan food & restaurants)',
     customAdding: 'Evaluating…',
@@ -341,7 +344,7 @@ export const en: Dict = {
     regenConfirm: 'Regenerate all criterion text for this country? This makes fresh AI calls and overwrites the cached assessments.',
     visa: {
       title: 'Visa pathways',
-      hint: 'How you could legally settle here — the routes that fit your situation, easiest first.',
+      hint: 'Routes that could let you settle here. Which you qualify for depends on your circumstances (a family route needs relatives here; ancestry needs a declared tie).',
       best: 'Best route',
       noRoute: 'No recognised route in this category.',
       income: 'Income',

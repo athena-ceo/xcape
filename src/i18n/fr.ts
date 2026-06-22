@@ -302,6 +302,9 @@ export const fr = {
     boardFull: 'Le tableau est complet (5 pays). Retirez-en un pour en ajouter un autre.',
     customGroup: 'Vos critères',
     customCriterion: 'Critère personnalisé',
+    addCustomCta: 'Ajouter votre propre critère',
+    addCustomTitle: 'Ajouter votre propre critère',
+    addCustomHelp: 'Nommez un aspect que l’IA évaluera pour chaque pays (ex. « Adapté aux végétaliens »), et décrivez-le éventuellement.',
     customNamePrompt: 'Nom court (ex. Végane)',
     customDescPrompt: 'Que doit évaluer l’IA ? (ex. offre de cuisine et restaurants véganes)',
     customAdding: 'Évaluation…',
@@ -338,7 +341,7 @@ export const fr = {
     regenConfirm: 'Régénérer tous les textes de critères pour ce pays ? Cela lance de nouveaux appels IA et écrase les évaluations en cache.',
     visa: {
       title: 'Voies d’immigration',
-      hint: 'Comment vous installer ici légalement — les voies adaptées à votre situation, la plus simple d’abord.',
+      hint: 'Voies envisageables pour vous installer ici. Votre éligibilité dépend de votre situation (le regroupement familial suppose de la famille sur place ; l’ascendance, un lien déclaré).',
       best: 'Meilleure voie',
       noRoute: 'Aucune voie reconnue dans cette catégorie.',
       income: 'Revenu',

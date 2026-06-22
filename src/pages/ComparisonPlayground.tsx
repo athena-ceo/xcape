@@ -37,6 +37,7 @@ export function ComparisonPlayground() {
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
+  const [showCustomForm, setShowCustomForm] = useState(false)
 
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [filters, setFilters] = useState<Record<string, any>>({})
@@ -252,6 +253,7 @@ export function ComparisonPlayground() {
       await api.addCustomCriterion(sid, label, newCustomDesc.trim() || undefined)
       setNewCustom('')
       setNewCustomDesc('')
+      setShowCustomForm(false)
       await reload() // picks up the new column, labels and re-scored candidates
     } finally {
       setAddingCustom(false)
@@ -420,8 +422,8 @@ export function ComparisonPlayground() {
   // Weight-0 criteria are ignored entirely (score AND filter — see filter_status), so they're
   // simply hidden behind "other criteria"; a dormant filter never produces a violation flag.
   const visibleLeaf = (key: string) => weightOf(key) > 0
-  // Collapsed by default; the user's choice persists (see openCats / toggleCat).
-  const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? false
+  // Expanded by default (showing the non-zero-weight criteria); the user's choice persists.
+  const isOpen = (g: { key: string; leaves: string[] }) => openCats[g.key] ?? true
   // Roll-up colour tier for a category column = weighted average of its WEIGHTED leaves'
   // tiers. Weight-0 criteria are excluded (they don't affect the score), so the roll-up is
   // identical whether or not "other criteria" are shown.
@@ -473,9 +475,10 @@ export function ComparisonPlayground() {
   }
 
   // Inline hard-filter control (Any / ≥ OK / ≥ Good), the filter analog of the weight stepper.
-  // Skipped for the bespoke filters (climate/visa/language/inclusion) — those stay in Criteria
-  // settings. Built-ins set profile filters; custom criteria set their per-search min.
-  const SPECIAL_FILTER_KEYS = new Set(['climate', 'visa', 'language_ease', 'inclusion'])
+  // Visa and language route through the generic threshold (≥ OK / ≥ Good on their computed value);
+  // climate (list) and inclusion (community) keep their bespoke controls in Criteria settings.
+  // Built-ins set profile filters; custom criteria set their per-search min.
+  const SPECIAL_FILTER_KEYS = new Set(['climate', 'inclusion'])
   function filterTierOf(key: string): string {
     const cust = customCrit.find((c) => c.key === key)
     if (cust) return cust.min != null && cust.min >= 0.7 ? 'good' : cust.min != null && cust.min > 0 ? 'ok' : ''
@@ -632,7 +635,9 @@ export function ComparisonPlayground() {
               <th className="p-3 font-medium">{t.comparison.criterion}</th>
               {baseline && (
                 <th className="p-3 font-medium text-center bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
-                  {placeName(baseline, lang)}
+                  <Link to={`/drilldown/${baseline.id}?search=${sid}`} className="text-turquoise-700 hover:underline">
+                    {placeName(baseline, lang)}
+                  </Link>
                 </th>
               )}
               {candidates.map((c) => (
@@ -690,16 +695,22 @@ export function ComparisonPlayground() {
                       </span>
                     </td>
                     {baseline && (
-                      <td className={`p-2.5 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
-                        {tierWord(rollupTier(baseline, g.leaves))}
+                      <td className={`p-0 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
+                        <Link to={`/drilldown/${baseline.id}?search=${sid}`} onClick={(e) => e.stopPropagation()}
+                          className="block p-2.5 hover:underline">
+                          {tierWord(rollupTier(baseline, g.leaves))}
+                        </Link>
                       </td>
                     )}
                     {candidates.map((c) => {
                       const viol = catViolations(c, g.leaves)
                       return (
-                        <td key={c.id} className={`p-2.5 text-center text-xs ${viol.length ? 'bg-amber-100 text-amber-900' : qualityClass(rollupTier(c, g.leaves))}`}
+                        <td key={c.id} className={`p-0 text-center text-xs ${viol.length ? 'bg-amber-100 text-amber-900' : qualityClass(rollupTier(c, g.leaves))}`}
                           title={viol.length ? `${t.comparison.flagTitle}: ${viol.map(critLabel).join(', ')}` : undefined}>
-                          {viol.length ? `⚠ ${tierWord(rollupTier(c, g.leaves))}` : tierWord(rollupTier(c, g.leaves))}
+                          <Link to={`/drilldown/${c.place_id}?search=${sid}`} onClick={(e) => e.stopPropagation()}
+                            className="block p-2.5 hover:underline">
+                            {viol.length ? `⚠ ${tierWord(rollupTier(c, g.leaves))}` : tierWord(rollupTier(c, g.leaves))}
+                          </Link>
                         </td>
                       )
                     })}
@@ -833,24 +844,40 @@ export function ComparisonPlayground() {
           </button>
         </div>
         )}
-        {/* User-defined criterion: a short column name + an optional longer description
-            that guides the AI, which then scores each country on it. */}
-        <div className="flex items-center gap-2">
-          <input value={newCustom} onChange={(e) => setNewCustom(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-            placeholder={t.comparison.customNamePrompt}
-            className="w-40 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
-          <input value={newCustomDesc} onChange={(e) => setNewCustomDesc(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-            placeholder={t.comparison.customDescPrompt}
-            className="w-64 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
-          <button onClick={addCustom} disabled={!newCustom.trim() || addingCustom}
-            className="border border-turquoise-100 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
-            {addingCustom && <Spinner />}
-            {addingCustom ? t.comparison.customAdding : `+ ${t.comparison.customCriterion}`}
+        {/* User-defined criterion: revealed on demand so the board stays uncluttered and the
+            purpose is explicit (a short name + an optional description guiding the AI). */}
+        {!showCustomForm && (
+          <button onClick={() => setShowCustomForm(true)}
+            className="self-center border border-dashed border-turquoise-300 text-turquoise-700 rounded-md px-3 py-1.5 text-sm hover:bg-turquoise-50">
+            + {t.comparison.addCustomCta}
           </button>
-        </div>
+        )}
       </div>
+
+      {/* Add-your-own-criterion form (revealed by the button above) */}
+      {showCustomForm && (
+        <div className="mb-5 rounded-lg border border-turquoise-100 bg-turquoise-50/40 p-3">
+          <p className="text-sm font-medium text-turquoise-900 mb-0.5">{t.comparison.addCustomTitle}</p>
+          <p className="text-xs text-turquoise-800/60 mb-2">{t.comparison.addCustomHelp}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={newCustom} onChange={(e) => setNewCustom(e.target.value)} autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+              placeholder={t.comparison.customNamePrompt}
+              className="w-40 border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
+            <input value={newCustomDesc} onChange={(e) => setNewCustomDesc(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+              placeholder={t.comparison.customDescPrompt}
+              className="flex-1 min-w-[16rem] border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
+            <button onClick={addCustom} disabled={!newCustom.trim() || addingCustom}
+              className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+              {addingCustom && <Spinner className="border-turquoise-100 border-t-white" />}
+              {addingCustom ? t.comparison.customAdding : `+ ${t.comparison.customCriterion}`}
+            </button>
+            <button onClick={() => { setShowCustomForm(false); setNewCustom(''); setNewCustomDesc('') }}
+              className="text-sm text-turquoise-800/50 hover:text-turquoise-900 px-2">{t.comparison.close}</button>
+          </div>
+        </div>
+      )}
 
       {/* Quiet entry to the full ranked list (progressive disclosure — keeps the board minimal). */}
       <div className="mb-5">

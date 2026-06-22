@@ -86,9 +86,9 @@
       "ask": ["budget", "climate"],
       "filters": ["healthcare", "safety"],
       "custom_criteria": [
-        {"label_en": "Retirement visa", "label_fr": "Visa retraite",
+        {"label_en": "Retirement visa", "label_fr": "Visa retraite", "category": "practical", "weight": 3,
          "description": "Retirement / pensioner visa pathways, minimum income or pension requirements, and ease of long-term residency for retirees. Cite official immigration sources."},
-        {"label_en": "Healthcare for retirees", "label_fr": "Santé pour les retraités",
+        {"label_en": "Healthcare for retirees", "label_fr": "Santé pour les retraités", "category": "wellbeing", "weight": 3,
          "description": "Access to and cost of healthcare for older residents and retirees, including eligibility for the public system. Cite official / health sources."}
       ]
     },

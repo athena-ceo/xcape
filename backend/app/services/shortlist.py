@@ -309,6 +309,8 @@ def filter_status(
         if not _active(key):
             continue
         if key == "language_ease":
+            # Binary by nature: a language filter (any tier) means "a language I can communicate
+            # in is spoken there". Visa, by contrast, falls through to the generic threshold below.
             known = {str(x).lower() for x in (profile.language_skills or {}).get("known", [])} if profile else set()
             langs = {str(x).lower() for x in (attrs.get("languages") or [])}
             if not (known and langs and (known & langs)):
@@ -316,9 +318,6 @@ def filter_status(
         elif key == "climate":
             allowed = fval if isinstance(fval, list) else [fval]
             if attrs.get("climate") not in allowed:
-                violations.append(key)
-        elif key == "visa":
-            if _visa_value(attrs, profile, place) < 0.9:
                 violations.append(key)
         elif key == "inclusion":
             if _inclusion_value(attrs, profile) < 0.5:

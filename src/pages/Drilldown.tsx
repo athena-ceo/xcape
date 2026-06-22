@@ -345,7 +345,6 @@ export function Drilldown() {
   // One visa-pathway category card (the gate: how this user could legally settle there).
   function visaCard(c: any) {
     const v = t.drilldown.visa as Record<string, string>
-    const best = visa?.best === c.category
     const summary = lang === 'fr' ? c.summary_fr : c.summary_en
     const money = (x: any) => (x == null ? null : `${Number(x).toLocaleString(lang)} €`)
     const years = (x: any) => (x == null ? null : `${x} ${v.years}`)
@@ -353,11 +352,9 @@ export function Drilldown() {
     const term = (label: string, val: string | null) =>
       val && <span>{label}: <b className="text-turquoise-900">{val}</b></span>
     return (
-      <div key={c.category}
-        className={`bg-white border rounded-lg p-4 ${best ? 'border-turquoise-300 ring-1 ring-turquoise-200' : 'border-turquoise-100'}`}>
+      <div key={c.category} className="bg-white border border-turquoise-100 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-sm font-medium text-turquoise-900">{c.label}</p>
-          {best && <span className="text-[10px] uppercase tracking-wide bg-turquoise-600 text-turquoise-50 rounded px-1.5 py-0.5">{v.best}</span>}
           {!c.pending && c.exists && (
             <span className={`ml-auto text-sm font-medium ${tier(c.difficulty ?? 0)}`}>{c.difficulty}/100</span>
           )}

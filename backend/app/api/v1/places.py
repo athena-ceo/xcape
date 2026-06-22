@@ -130,12 +130,16 @@ def generate_detail(
 
 def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:
     """Assemble the visa-pathways panel: the categories relevant to this user for this place,
-    each cached row's terms (or pending), and the best (easiest existing) pathway."""
+    each cached row's terms (or pending).
+
+    We deliberately do NOT crown a single "best route": program difficulty is generic, while
+    actual eligibility depends on personal circumstances we haven't validated (a family route
+    needs relatives there; an ancestry route needs a declared tie). The panel presents the
+    candidate routes; the user judges which they qualify for."""
     profile = user.profile
     cats = visa_pathways.relevant_categories(profile, place)
     rows = visa_pathways.cached_rows(db, place.id)
     out = []
-    best_cat, best_diff = None, -1
     for c in cats:
         entry = {"category": c, "label": visa_pathways.category_label(c, lang)}
         ev = rows.get(c)
@@ -144,10 +148,8 @@ def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:
         else:
             entry["pending"] = False
             entry.update(visa_pathways.pathway_payload(ev, lang))
-            if entry.get("exists") and (entry.get("difficulty") or 0) > best_diff:
-                best_cat, best_diff = c, entry.get("difficulty") or 0
         out.append(entry)
-    return {"categories": out, "best": best_cat}
+    return {"categories": out, "best": None}
 
 
 @router.get("/{place_id}/visa-pathways")

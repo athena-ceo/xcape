@@ -69,14 +69,16 @@ def criterion_reason(place: Place, profile: Profile | None, key: str) -> dict:
         citz = {str(c).upper() for c in (profile.user.citizenships or [])} if (
             profile and profile.user and profile.user.citizenships) else set()
         dest = (place.iso_code or "").upper()
-        if not citz:
-            return {"code": "visa_level", "v": val}
+        # The ease word must reflect the COMPUTED value (citizenship/ancestry-aware), not the raw
+        # attribute — many countries have no coarse `visa` bucket, which left the popup blank.
+        ease = shortlist._visa_value(attrs, profile, place)
+        word = "easy" if ease >= 0.7 else "medium" if ease >= 0.45 else "hard"
         if dest and dest in citz:
             return {"code": "visa_citizen"}
         if dest in shortlist._EU_FOM:
             return {"code": "visa_free"} if all(c in shortlist._EU_FOM for c in citz) \
                 else {"code": "visa_restricted"}
-        return {"code": "visa_level", "v": val}
+        return {"code": "visa_level", "v": word}
 
     if key == "cost_of_living":
         budget = getattr(profile, "budget_monthly", None) if profile else None

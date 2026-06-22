@@ -23,18 +23,45 @@ from app.models.user import User
 _COMMUNITY_PREFIX = "custom_safety_for_my_community"
 
 
+def _persona_categories() -> dict[str, str]:
+    """{criterion key: category} for every persona custom criterion that declares a category,
+    so older stored defs (added before the category existed) can be re-filed under the right
+    built-in category instead of 'Your criteria' (e.g. retiree's pension visa → Practical)."""
+    from app.services import criteria  # avoid circular import at module load
+    from app.services.criterion_eval import slugify
+
+    out: dict[str, str] = {}
+    for p in criteria.personas():
+        for cc in p.get("custom_criteria", []):
+            cat = cc.get("category")
+            if not cat:
+                continue
+            for lbl_key in ("label_en", "label_fr", "label"):
+                lbl = cc.get(lbl_key)
+                if lbl:
+                    out[slugify(lbl)] = cat
+    return out
+
+
 def heal_categories(db: Session, search: Search) -> None:
     """Self-heal stored custom-criteria defs: give per-community safety criteria the
-    'protection' category if an older def is missing it, so they group with Safety & security
-    in the board and drill-down (not under 'Your criteria')."""
+    'protection' category, and re-file any other persona criterion under its registry category,
+    when an older def is missing it — so they group with the right built-in category in the
+    board and drill-down (not under 'Your criteria')."""
+    persona_cats = _persona_categories()
     defs = list(search.custom_criteria or [])
     changed = False
     healed = []
     for c in defs:
         c = dict(c)
-        if c.get("key", "").startswith(_COMMUNITY_PREFIX) and not c.get("category"):
-            c["category"] = "protection"
-            changed = True
+        key = c.get("key", "")
+        if not c.get("category"):
+            if key.startswith(_COMMUNITY_PREFIX):
+                c["category"] = "protection"
+                changed = True
+            elif key in persona_cats:
+                c["category"] = persona_cats[key]
+                changed = True
         healed.append(c)
     if changed:
         search.custom_criteria = healed

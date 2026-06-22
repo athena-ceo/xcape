@@ -158,6 +158,33 @@ def test_weight_zero_makes_hard_filter_dormant():
     assert "climate" not in filter_status(place, prof)["violations"]
 
 
+def test_visa_filter_uses_threshold():
+    """The visa hard-filter now grades on the computed ease (≥ OK / ≥ Good), so a hard-visa
+    destination fails ≥ Good while an easy one passes."""
+    from app.models.place import Place
+    from app.models.profile import Profile
+    from app.models.user import User
+    from app.services.shortlist import filter_status
+
+    prof = Profile(filters={"visa": "good"}, criteria_weights={"visa": 2.0},
+                   reasons_leaving=[], household_type="single", minority_groups=[],
+                   user=User(citizenships=["US"]))
+    hard = Place(kind="country", name="Hardland", iso_code="XX", attributes={"visa": "hard"})
+    assert "visa" in filter_status(hard, prof)["violations"]
+    easy = Place(kind="country", name="Easyland", iso_code="YY", attributes={"visa": "easy"})
+    assert "visa" not in filter_status(easy, prof)["violations"]
+
+
+def test_persona_criteria_filed_under_registry_category():
+    """Persona custom criteria declare a category so heal can re-file old defs out of
+    'Your criteria' (retiree's pension visa → Practical, retiree healthcare → Health)."""
+    from app.services.custom_criteria import _persona_categories
+
+    m = _persona_categories()
+    assert m.get("custom_retirement_visa") == "practical"
+    assert m.get("custom_healthcare_for_retirees") == "wellbeing"
+
+
 def test_ancestry_country_gives_easy_visa_pathway():
     """A declared ancestry tie to the destination is a strong pathway (citizenship/residence
     by descent) → max visa ease, overriding the generic accessibility bucket."""

@@ -480,13 +480,15 @@ def apply_persona(
         desc = cc.get("description", "")
         category = cc.get("category")
         mn = cc.get("min")
+        weight = cc.get("weight")  # persona-declared importance (e.g. retiree visa/health = critical)
         if cc.get("per_community"):
             for ck in user_comms:
                 c = comms.get(ck)
                 clabel = (c.get(f"label_{locale}") or c.get("label_en") or ck) if c else ck
-                _add(f"{base} — {clabel}", desc.replace("{community}", clabel), 2.0, category, mn)
+                _add(f"{base} — {clabel}", desc.replace("{community}", clabel),
+                     float(weight) if weight is not None else 2.0, category, mn)
         else:
-            _add(base, desc, 1.5, category, mn)
+            _add(base, desc, float(weight) if weight is not None else 1.5, category, mn)
 
     if added:
         search.custom_criteria = defs
