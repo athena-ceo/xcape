@@ -8,6 +8,7 @@ import { Chip } from '../components/Chip'
 import { CommunitySelect } from '../components/CommunitySelect'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
+import { Spinner } from '../components/Spinner'
 import { VoiceField } from '../components/VoiceField'
 import {
   CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
@@ -355,7 +356,18 @@ export function Onboarding() {
               <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.persona.hint}</p>
               {/* Pick a profile directly — no guessing. The selected one shows its focus criteria. */}
               <div className="space-y-2 mb-5">
-                {personaList.map((p) => {
+                {personaList.length === 0 ? (
+                  // The registry (which supplies the profiles) is still loading or retrying after a
+                  // hiccup — show feedback instead of a blank gap. `reg == null` covers both states
+                  // since useCriteria keeps retrying until it resolves.
+                  reg == null ? (
+                    <p className="text-sm text-turquoise-800/60 flex items-center gap-2 py-2">
+                      <Spinner /> {t.onboarding.persona.loading}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-turquoise-800/60 py-2">{t.onboarding.persona.unavailable}</p>
+                  )
+                ) : personaList.map((p) => {
                   const on = persona?.key === p.key
                   return (
                     <button key={p.key} type="button" onClick={() => setPersona(p)}

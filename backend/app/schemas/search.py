@@ -52,6 +52,9 @@ class CandidateOut(BaseModel):
 class AddCandidateRequest(BaseModel):
     place_id: int | None = None
     place_name: str | None = None  # if set and not in DB, triggers AI research
+    # When the board is already full, free a slot by de-selecting this place first (the explore
+    # "replace the weakest" flow — the client chose which country to drop).
+    evict_place_id: int | None = None
 
 
 class AddCriterionRequest(BaseModel):

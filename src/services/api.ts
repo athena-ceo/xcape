@@ -91,7 +91,7 @@ export const api = {
     qualified: number; board_size: number
     suggestions: { key: string; admits: number; best_score: number; best_country: string | null }[]
   }>(`/searches/${id}/filter-advice`),
-  addCandidate: (id: number, body: { place_id?: number; place_name?: string }) =>
+  addCandidate: (id: number, body: { place_id?: number; place_name?: string; evict_place_id?: number }) =>
     request<any>(`/searches/${id}/candidates`, { method: 'POST', body: JSON.stringify(body) }),
   removeCandidate: (id: number, candidateId: number) =>
     request<void>(`/searches/${id}/candidates/${candidateId}`, { method: 'DELETE' }),
@@ -109,6 +109,11 @@ export const api = {
   scoreExplanation: (id: number, candidateId: number) =>
     request<{ score: number; weight_total: number; rows: any[] }>(
       `/searches/${id}/candidates/${candidateId}/explanation`,
+    ),
+  // Score breakdown for the baseline (home country) column — same shape, no candidate id.
+  scoreExplanationBaseline: (id: number) =>
+    request<{ score: number; weight_total: number; rows: any[] }>(
+      `/searches/${id}/baseline/explanation`,
     ),
   addCriterion: (id: number, key: string) =>
     request<any[]>(`/searches/${id}/criteria`, { method: 'POST', body: JSON.stringify({ key }) }),

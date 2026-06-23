@@ -47,13 +47,15 @@ export function Header() {
   }
 
   return (
-    <header className="flex items-center gap-4 px-5 py-3 bg-white border-b border-turquoise-100">
+    <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 bg-white border-b border-turquoise-100">
       <Link to="/" className="flex items-center gap-2 font-medium text-turquoise-600 text-lg">
         <span className="w-7 h-7 rounded-lg bg-turquoise-600 text-turquoise-50 grid place-items-center">✈</span>
         {t.appName}
       </Link>
 
-      <nav className="ml-auto flex items-center gap-3 text-sm">
+      {/* Wrap on narrow screens so links never overflow past the viewport edge (which would
+          also widen the page and clip page content like the comparison table). */}
+      <nav className="ml-auto flex flex-wrap justify-end items-center gap-x-3 gap-y-1.5 text-sm">
         <select
           aria-label="language"
           value={lang}

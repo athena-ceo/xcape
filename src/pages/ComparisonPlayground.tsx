@@ -11,6 +11,7 @@ import { Waiting } from '../components/Waiting'
 import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
+import { addCountryToBoard } from '../services/board'
 import { categories, labelOf, useCriteria, valueLabel } from '../services/criteria'
 
 export function ComparisonPlayground() {
@@ -33,6 +34,7 @@ export function ComparisonPlayground() {
 
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)  // the "+ add a country" modal
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string; weight?: number; min?: number; category?: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
@@ -219,13 +221,22 @@ export function ComparisonPlayground() {
   }
 
   // Add a known country straight from the picker (no AI research needed).
+  // Current board members as {place_id, name, score} — for the shared "replace the weakest"
+  // pruning when the board is full (same logic as the Explore list, not duplicated).
+  function boardMembers() {
+    return candidates.map((c) => ({
+      place_id: c.place_id, name: placeName(places[c.place_id], lang),
+      score: Math.round(c.match_score ?? 0),
+    }))
+  }
+
   async function addPlace(place: any) {
-    if (candidates.length >= 5 || researching) return
+    if (researching) return
     setResearching(true)
     try {
-      await api.addCandidate(sid, { place_id: place.id })
-      setNewCountry('')
-      await reload()
+      const res = await addCountryToBoard(
+        sid, { place_id: place.id, label: placeName(place, lang) }, boardMembers(), t.explore.replaceConfirm)
+      if (res === 'added') { setNewCountry(''); setAddOpen(false); await reload() }
     } finally {
       setResearching(false)
     }
@@ -233,12 +244,12 @@ export function ComparisonPlayground() {
 
   // Fallback: a name not in our list → research it via AI.
   async function addCountry() {
-    if (!newCountry.trim() || researching || candidates.length >= 5) return
+    if (!newCountry.trim() || researching) return
     setResearching(true)
     try {
-      await api.addCandidate(sid, { place_name: newCountry.trim() })
-      setNewCountry('')
-      await reload()
+      const res = await addCountryToBoard(
+        sid, { place_name: newCountry.trim(), label: newCountry.trim() }, boardMembers(), t.explore.replaceConfirm)
+      if (res === 'added') { setNewCountry(''); setAddOpen(false); await reload() }
     } finally {
       setResearching(false)
     }
@@ -360,6 +371,12 @@ export function ComparisonPlayground() {
     const data = await api.scoreExplanation(sid, candidate.id)
     setExplain({ candidate, data })
   }
+  // Same breakdown for the baseline (home country) — it has no candidate id, so a dedicated call.
+  async function showBaselineExplanation() {
+    if (!baseline) return
+    const data = await api.scoreExplanationBaseline(sid)
+    setExplain({ candidate: { place_id: baseline.id, name: placeName(baseline, lang) }, data })
+  }
 
   // Apply criteria settings: persist weights + filters (+ custom-criterion weight/threshold),
   // then repopulate so filters change which countries qualify — keeping the selected board
@@ -478,7 +495,7 @@ export function ComparisonPlayground() {
     : []
 
   // A compact −/value/+ weight stepper (capped 0–5, half-steps), reused by each criterion row.
-  const WEIGHT_MAX = 5
+  const WEIGHT_MAX = 8  // high-importance criteria reach ~6 on the persona scale; allow headroom
   function weightControl(key: string) {
     const w = weightOf(key)
     const set = (v: number) => applyWeight(key, Math.max(0, Math.min(WEIGHT_MAX, Math.round(v * 2) / 2)))
@@ -579,7 +596,7 @@ export function ComparisonPlayground() {
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
-        <td className="p-3 pl-8 text-turquoise-800/70">
+        <td className="p-3 pl-8 text-turquoise-800/70 sticky left-0 z-10 bg-white">
           <div className="flex items-center gap-2">
             <span>{critLabel(key)}</span>
             {controlChip(key)}
@@ -704,7 +721,15 @@ export function ComparisonPlayground() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-turquoise-50 text-left">
-              <th className="p-3 font-medium">{t.comparison.criterion}</th>
+              <th className="p-3 font-medium sticky left-0 z-20 bg-turquoise-50">
+                <span className="inline-flex items-center gap-2">
+                  {t.comparison.criterion}
+                  {/* Small affordance to add a country without leaving for the full list. */}
+                  <button onClick={() => setAddOpen(true)} title={t.comparison.addCountry}
+                    aria-label={t.comparison.addCountry}
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-turquoise-300 text-turquoise-600 text-sm leading-none hover:bg-turquoise-50">+</button>
+                </span>
+              </th>
               {baseline && (
                 <th className="p-3 font-medium text-center bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
                   <Link to={`/drilldown/${baseline.id}?search=${sid}`} className="text-turquoise-700 hover:underline">
@@ -753,7 +778,7 @@ export function ComparisonPlayground() {
                 <Fragment key={g.key}>
                   <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none hover:bg-turquoise-100/70"
                     onClick={() => toggleCat(g.key, open)}>
-                    <td className="p-2.5 font-medium text-turquoise-900">
+                    <td className="p-2.5 font-medium text-turquoise-900 sticky left-0 z-10 bg-turquoise-50">
                       <span className="inline-flex items-center gap-2">
                         <span className="inline-grid place-items-center w-5 h-5 rounded border border-turquoise-300 text-turquoise-600 text-xs">
                           {open ? '▾' : '▸'}
@@ -767,7 +792,7 @@ export function ComparisonPlayground() {
                       </span>
                     </td>
                     {baseline && (
-                      <td className={`p-0 text-center text-xs ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
+                      <td className={`p-0 text-center text-sm ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
                         <Link to={`/drilldown/${baseline.id}?search=${sid}`} onClick={(e) => e.stopPropagation()}
                           className="block p-2.5 hover:underline">
                           {tierWord(rollupTier(baseline, g.leaves))}
@@ -777,7 +802,7 @@ export function ComparisonPlayground() {
                     {candidates.map((c) => {
                       const viol = catViolations(c, g.leaves)
                       return (
-                        <td key={c.id} className={`p-0 text-center text-xs ${viol.length ? 'bg-amber-100 text-amber-900' : qualityClass(rollupTier(c, g.leaves))}`}
+                        <td key={c.id} className={`p-0 text-center text-sm ${viol.length ? 'bg-amber-100 text-amber-900' : qualityClass(rollupTier(c, g.leaves))}`}
                           title={viol.length ? `${t.comparison.flagTitle}: ${viol.map(critLabel).join(', ')}` : undefined}>
                           <Link to={`/drilldown/${c.place_id}?search=${sid}`} onClick={(e) => e.stopPropagation()}
                             className="block p-2.5 hover:underline">
@@ -822,10 +847,15 @@ export function ComparisonPlayground() {
               )
             })()}
             <tr className="border-t border-turquoise-200 bg-turquoise-50">
-              <td className="p-3 font-medium">{t.comparison.matchScore}</td>
+              <td className="p-3 font-medium sticky left-0 z-10 bg-turquoise-50">{t.comparison.matchScore}</td>
               {baseline && (
                 <td className="p-3 text-center bg-turquoise-100/60 font-medium text-turquoise-700">
-                  {baseline.match_score != null ? `${Math.round(baseline.match_score)}%` : '—'}
+                  {baseline.match_score != null ? (
+                    <button onClick={showBaselineExplanation} className="underline decoration-dotted hover:text-turquoise-800"
+                      title={t.comparison.explainTitle}>
+                      {Math.round(baseline.match_score)}%
+                    </button>
+                  ) : '—'}
                 </td>
               )}
               {candidates.map((c) => (
@@ -886,36 +916,8 @@ export function ComparisonPlayground() {
         </div>
       )}
 
-      {/* Add country / add criterion */}
+      {/* Add criterion (adding a country is the "+" in the table header → modal below) */}
       <div className="flex flex-wrap gap-3 mb-5">
-        {candidates.length >= 5 ? (
-          <p className="text-sm text-turquoise-800/60 self-center">{t.comparison.boardFull}</p>
-        ) : (
-        <div className="flex items-center gap-2">
-          <div className="relative w-56">
-            <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') (countryMatches[0] ? addPlace(countryMatches[0]) : addCountry()) }}
-              placeholder={t.comparison.addCountryPrompt}
-              className="w-full border border-turquoise-100 rounded-md px-3 py-1.5 text-sm" />
-            {newCountry.trim() && countryMatches.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-turquoise-100 rounded-md shadow-lg max-h-56 overflow-y-auto">
-                {countryMatches.map((p) => (
-                  <button key={p.id} onClick={() => addPlace(p)}
-                    className="block w-full text-left px-3 py-1.5 text-sm hover:bg-turquoise-50">
-                    {placeName(p, lang)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <button onClick={() => (countryMatches[0] ? addPlace(countryMatches[0]) : addCountry())}
-            disabled={researching || !newCountry.trim()}
-            className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
-            {researching && <Spinner className="border-turquoise-100 border-t-white" />}
-            {researching ? t.comparison.researching : `+ ${t.comparison.addCountry}`}
-          </button>
-        </div>
-        )}
         {/* User-defined criterion: revealed on demand so the board stays uncluttered and the
             purpose is explicit (a short name + an optional description guiding the AI). */}
         {!showCustomForm && (
@@ -1011,6 +1013,46 @@ export function ComparisonPlayground() {
         </div>
       )}
 
+      {/* Add-a-country modal (opened by the + in the table header). Full board → the shared helper
+          prompts to replace the weakest member. */}
+      {addOpen && (
+        <div onClick={() => setAddOpen(false)}
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-4 z-50">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-xl max-w-sm w-full p-5">
+            <div className="flex items-start gap-3 mb-1">
+              <h2 className="text-lg font-medium text-turquoise-900">{t.comparison.addCountry}</h2>
+              <button onClick={() => setAddOpen(false)} aria-label={t.comparison.close}
+                className="ml-auto text-turquoise-800/50 hover:text-turquoise-900">×</button>
+            </div>
+            <p className="text-sm text-turquoise-800/60 mb-3">{t.comparison.addCountryHint}</p>
+            <div className="relative">
+              <input autoFocus value={newCountry} onChange={(e) => setNewCountry(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (countryMatches[0] ? addPlace(countryMatches[0]) : addCountry()) }}
+                placeholder={t.comparison.addCountryPrompt}
+                className="w-full border border-turquoise-100 rounded-md px-3 py-2 text-sm" />
+              {newCountry.trim() && countryMatches.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-turquoise-100 rounded-md shadow-lg max-h-56 overflow-y-auto">
+                  {countryMatches.map((p) => (
+                    <button key={p.id} onClick={() => addPlace(p)}
+                      className="block w-full text-left px-3 py-1.5 text-sm hover:bg-turquoise-50">
+                      {placeName(p, lang)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => (countryMatches[0] ? addPlace(countryMatches[0]) : addCountry())}
+                disabled={researching || !newCountry.trim()}
+                className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+                {researching && <Spinner className="border-turquoise-100 border-t-white" />}
+                {researching ? t.comparison.researching : `+ ${t.comparison.addCountry}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Score explanation modal */}
       {explain && (
         <div onClick={() => setExplain(null)}
@@ -1019,7 +1061,8 @@ export function ComparisonPlayground() {
             className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5">
             <div className="flex items-start gap-3 mb-1">
               <h2 className="text-lg font-medium text-turquoise-900">
-                {placeName(places[explain.candidate.place_id], lang)} — {t.comparison.explainTitle}
+                {/* Candidate names come from `places`; the baseline isn't in it, so carry its name. */}
+                {explain.candidate.name ?? placeName(places[explain.candidate.place_id], lang)} — {t.comparison.explainTitle}
               </h2>
               <button onClick={() => setExplain(null)}
                 className="ml-auto text-turquoise-800/50 hover:text-turquoise-900" aria-label={t.comparison.close}>×</button>

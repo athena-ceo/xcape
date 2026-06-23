@@ -192,6 +192,22 @@ def add_candidate(
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
 
+    # Board full → the client asked to replace a specific weakest member: de-select it to free a
+    # slot so the new country can take its place. Clearing the pin lets it be reclaimed normally
+    # later. Done before the add below so _selected_count sees the freed slot.
+    if body.evict_place_id is not None and body.evict_place_id != place.id:
+        evicted = (
+            db.query(Candidate)
+            .filter(Candidate.search_id == search_id, Candidate.place_id == body.evict_place_id,
+                    Candidate.status == "active", Candidate.selected.is_(True))
+            .first()
+        )
+        if evicted is not None:
+            evicted.selected = False
+            if evicted.override == "in":
+                evicted.override = None  # no longer pinned, so a repopulate won't reclaim the slot
+            db.flush()
+
     existing = (
         db.query(Candidate)
         .filter(Candidate.search_id == search_id, Candidate.place_id == place.id)
@@ -240,6 +256,21 @@ def explain(
     if candidate is None or candidate.search_id != search_id:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return shortlist_service.explain_candidate(db, user, candidate)
+
+
+@router.get("/{search_id}/baseline/explanation")
+def explain_baseline(
+    search_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """How the baseline (the user's current country) score was derived — the same per-criterion
+    breakdown as a candidate, so the home-country column's score is explainable too."""
+    search = _owned(db, user, search_id)
+    baseline = comparison.get_current_country_place(db, user, research=False)
+    if baseline is None:
+        raise HTTPException(status_code=404, detail="No baseline country")
+    return shortlist_service.explain_place(db, user, baseline, search)
 
 
 @router.patch("/{search_id}/candidates/{candidate_id}", response_model=CandidateOut)

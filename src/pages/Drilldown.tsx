@@ -229,7 +229,7 @@ export function Drilldown() {
   const weightOf = (key: string) => (key in customWeights ? customWeights[key] : (weights[key] ?? 0))
   // Edit a criterion's importance inline; persists (custom → the per-search def, else the profile).
   async function setWeight(key: string, raw: number) {
-    const v = Math.max(0, Math.min(5, raw))
+    const v = Math.max(0, Math.min(8, raw))
     if (key in customWeights) {
       setCustomWeights((w) => ({ ...w, [key]: v }))
       if (searchId != null) await api.updateCustomCriterion(searchId, key, { weight: v }).catch(() => {})
@@ -746,15 +746,15 @@ export function Drilldown() {
         className="bg-white border border-turquoise-100 rounded-lg p-4 scroll-mt-4 transition-shadow">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-sm font-medium text-turquoise-900">
-            {/* Prefer the registry's localized label (covers every built-in criterion, e.g.
-                tax_treaty → "Conventions fiscales"); fall back to a custom criterion's own
-                label, then the raw key. */}
-            {(() => { const l = labelOf(reg, key, lang); return l !== key ? l : (d.label ?? key) })()}
+            {/* Registry's localized label (e.g. tax_treaty → "Conventions fiscales"), else the
+                custom criterion's own label (passed through), else a humanized key — all via the
+                central labelOf. */}
+            {labelOf(reg, key, lang, d.label ? [{ key, label: d.label }] : undefined)}
             {d.score != null && <span className="text-turquoise-600"> · {d.score}/100</span>}
           </p>
           <label className="ml-auto flex items-center gap-1 text-xs text-turquoise-800/50">
             {t.comparison.importance}
-            <input type="number" min={0} max={5} step={0.5} value={weightOf(key)}
+            <input type="number" min={0} max={8} step={0.5} value={weightOf(key)}
               onChange={(e) => setWeight(key, Number(e.target.value))}
               className="w-12 border border-turquoise-100 rounded px-1 py-0.5 text-turquoise-800/70" />
           </label>

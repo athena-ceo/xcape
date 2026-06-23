@@ -424,27 +424,24 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     return candidates
 
 
-def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:
-    """Break down how a candidate's score was derived: each weighted criterion's
-    quality (0-100), its weight, and the contribution it adds to the final score.
-    Contributions sum to the score.
-    """
+def explain_place(db: Session, user: User, place: Place | None, search: Search | None) -> dict:
+    """Break down how a place's score was derived under this search: each weighted criterion's
+    quality (0-100), its weight, and the contribution it adds to the final score. Contributions
+    sum to the score. Works for any place — a board candidate OR the baseline (home country)."""
     from app.services import criteria, criterion_eval  # avoid circular import at module load
 
     profile = user.profile
     weights = _effective_weights(profile)
-    place = candidate.place
     attrs = (place.attributes or {}) if place else {}
     prioritized = set((profile.criteria_weights or {}).keys()) if profile else set()
 
     # Include the search's custom criteria weights + cached evals, matching rescore.
-    search = db.get(Search, candidate.search_id)
     custom_defs = (search.custom_criteria or []) if search else []
     for c in custom_defs:
         if c.get("key"):
             weights[c["key"]] = float(c.get("weight", 1.0))
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
-    evals = criterion_eval.values_for_place(db, candidate.place_id, eval_keys) if place else {}
+    evals = criterion_eval.values_for_place(db, place.id, eval_keys) if place else {}
 
     active = {k: w for k, w in weights.items() if w > 0}
     wsum = sum(active.values())
@@ -461,6 +458,12 @@ def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:
     rows.sort(key=lambda r: r["contribution"], reverse=True)
     score = round(sum(r["contribution"] for r in rows), 1)
     return {"score": score, "weight_total": round(wsum, 2), "rows": rows}
+
+
+def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:
+    """Score breakdown for a board candidate (thin wrapper over explain_place)."""
+    search = db.get(Search, candidate.search_id)
+    return explain_place(db, user, candidate.place, search)
 
 
 def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Candidate]:

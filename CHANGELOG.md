@@ -5,6 +5,74 @@
 
 ## [Unreleased]
 
+### 2026-06-22 — Comparison table polish + chat: home country isn't a candidate
+
+- **Sticky first column**: the criterion-name column now stays pinned while you scroll the country
+  columns horizontally (each first cell pinned with an opaque background), so on mobile you never
+  lose track of which row is which.
+- **Consistent value type scale**: the category rollup values were `text-xs` while criterion values
+  and category labels were `text-sm`, making category labels look oversized. All value words are
+  now `text-sm`; category labels keep a subtle bold emphasis.
+- **Chat — home country is the baseline, not a destination**: the assistant used to offer to "add
+  France to your shortlist" when France is the user's home country. The prompt now states the
+  country of residence is the comparison BASELINE, never a candidate to add — it may still
+  recommend *staying put*, framed as such.
+
+### 2026-06-22 — Add-country affordance, home-country explanation, weight spread, proximity
+
+- **Add a country from the board**: a "+" affordance in the comparison table header opens a modal
+  to search/add a country — no need to detour through the full "All countries" list. When the board
+  is full it reuses the **same "replace the weakest" pruning** as the Explore list (extracted into a
+  shared `services/board.ts` helper — not duplicated).
+- **Home-country score is now explainable**: the baseline (current-country) column's score opens the
+  same per-criterion breakdown as candidates. Backend `explain_candidate` refactored into
+  `explain_place(place, search)` with a new `GET /searches/{id}/baseline/explanation`.
+- **Bigger distinction between criteria**: persona weights were rescaled so the high/"élevée" tier
+  (was 2.5–3) reaches **5–6** while low/contextual tiers stay put — widening the high-to-low ratio
+  so criteria you care about dominate (a weighted *average* is invariant to uniform scaling, so only
+  the ratio matters). The importance stepper cap is raised 5 → 8.
+- **Proximity** (distance to your home country) now carries a modest weight in **every persona**
+  (was 0 everywhere, so it never counted). Confirmed it's computed **per-user** from the current
+  country and never cached cross-user — no contamination by the first user's home country.
+- NOTE: the persona/registry change lives in the DB (`app_config['criteria']`); run
+  `./xcape.sh reseed-criteria <env>` to roll it out (done for dev).
+
+### 2026-06-22 — Mobile: comparison table no longer clipped off-screen
+
+- On phones the comparison board (and the header nav) ran off the right edge with no way to reach
+  the cut-off columns. Cause: the non-wrapping header nav was wider than the viewport, and with no
+  `overflow-x` guard that widened iOS Safari's layout viewport — inflating the centered `max-w-3xl`
+  content so the wide table was pushed partly off-screen (its own inner scroll couldn't help,
+  because its container was off-screen too).
+- Fix: `overflow-x-hidden` on the app shell so no single wide element widens the page, and the
+  header nav now **wraps** instead of overflowing. The comparison table keeps its own inner
+  horizontal scroll, so all country columns are reachable by swiping the table.
+
+### 2026-06-22 — Explore: always show excluded; add-to-board when full replaces the weakest
+
+- Removed the **"Show excluded" toggle** — excluded countries are now always listed (each still
+  carries its inline "doesn't match" warning), so nothing is hidden behind a checkbox.
+- **Add-to-board no longer fails silently when the board is full.** Previously the country was added
+  to the pool but left off the board (board caps at 5), with no feedback. Now, if the board is full,
+  it asks to **replace the lowest-ranked member** (named, with its score) and on confirm swaps it in
+  — the board stays at 5. New `evict_place_id` on the add-candidate endpoint de-selects the chosen
+  member (clearing its pin) before adding; the explore list refetches so membership stays accurate.
+
+### 2026-06-22 — Criteria registry: self-healing load (fixes blank personas / labels)
+
+- A single transient `GET /criteria` failure (cold start, dropped request, brief token gap) used
+  to **blank the entire registry-driven UI for the whole session** — no personas in onboarding, no
+  criterion labels/categories — because `loadCriteria` cached the *rejected* promise and returned
+  it to every later caller, and `useCriteria` swallowed the error and never retried.
+- `loadCriteria` now clears its cache on failure (re-fetchable) and `useCriteria` **retries with
+  capped exponential backoff** (1s→15s) until the registry loads, so the UI self-heals without a
+  manual reload — important on mobile where reloading isn't easy.
+- Central guard: `labelOf` (the single function every criterion label flows through — board, score
+  popup, drill-down, profile, explore) now falls back to a **humanized key** ("cost_of_living" →
+  "Cost of living") instead of exposing the raw slug while the registry loads. No more per-screen
+  patches — the onboarding persona step keeps a loading spinner only because its *list* is empty
+  (nothing to label) until the registry arrives.
+
 ### 2026-06-22 — Per-user budgeting currency
 
 - **Budgeting is no longer euro-only.** Added `profile.currency` (ISO-4217), editable in the

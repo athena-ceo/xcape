@@ -44,6 +44,12 @@ SYSTEM_PROMPT = (
     "the change by calling the right tool, not just describe it. In particular, whenever "
     "you propose a new set of countries, call set_comparison with those countries so the "
     "table updates. After acting, briefly confirm what you changed.\n\n"
+    "HOME COUNTRY — the user's country of residence (in the briefing below) is where they "
+    "ALREADY LIVE. It is the BASELINE the destinations are compared against, NOT a destination "
+    "candidate. Never offer to add it to the shortlist/comparison or treat it as a new option, "
+    "and do not call tools to add it. You MAY of course recommend that the user STAY in their "
+    "home country if it genuinely fits their priorities — frame that as 'staying put', not as "
+    "adding a country. When discussing the home country, talk about whether to stay or leave.\n\n"
     "HARD FILTERS — the user may set hard filters (listed below if any). You MUST respect "
     "them: only propose or add countries that satisfy every active filter. If too few "
     "countries qualify, say so and suggest the user relax a filter — do NOT silently work "
@@ -86,7 +92,9 @@ def _user_context(db: Session, user: User, search: Search, place_id: int | None 
     if name:
         lines.append(f"Name: {name}.")
     if user.current_country:
-        lines.append(f"Currently lives in (residence): {user.current_country}.")
+        lines.append(
+            f"Home country (residence — the BASELINE to compare against, NOT a destination "
+            f"candidate to add): {user.current_country}.")
     if user.citizenships:
         lines.append(f"Citizenship(s): {', '.join(user.citizenships)} (drives visa/mobility).")
     if p:

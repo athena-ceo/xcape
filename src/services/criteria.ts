@@ -43,7 +43,15 @@ let _promise: Promise<Registry> | null = null
 
 export function loadCriteria(): Promise<Registry> {
   if (_cache) return Promise.resolve(_cache)
-  if (!_promise) _promise = api.getCriteria().then((r: Registry) => { _cache = r; return r })
+  if (!_promise) {
+    _promise = api.getCriteria()
+      .then((r: Registry) => { _cache = r; return r })
+      // Never cache a FAILURE: a rejected promise stored here would be returned to every
+      // subsequent caller for the whole session, permanently blanking the criteria UI
+      // (no personas, no labels…) after a single transient error. Clear it so the next
+      // call re-fetches, and re-throw so the caller can react / retry.
+      .catch((e) => { _promise = null; throw e })
+  }
   return _promise
 }
 
@@ -55,7 +63,28 @@ export function refreshCriteria(): void {
 
 export function useCriteria(): Registry | null {
   const [reg, setReg] = useState<Registry | null>(_cache)
-  useEffect(() => { if (!reg) loadCriteria().then(setReg).catch(() => {}) }, [reg])
+  useEffect(() => {
+    if (reg) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let attempt = 0
+    const attemptLoad = () => {
+      loadCriteria()
+        .then((r) => { if (!cancelled) setReg(r) })
+        .catch(() => {
+          // A transient failure (cold start, dropped request, brief token gap) used to leave the
+          // registry-driven UI blank forever with no way to recover on a device that can't reload.
+          // Retry with capped exponential backoff until it loads; loadCriteria() cleared its cache
+          // on failure, so each attempt genuinely re-fetches. Stops once mounted state is cancelled.
+          if (cancelled) return
+          attempt += 1
+          const delay = Math.min(1000 * 2 ** (attempt - 1), 15000)  // 1s, 2s, 4s, … capped at 15s
+          timer = setTimeout(attemptLoad, delay)
+        })
+    }
+    attemptLoad()
+    return () => { cancelled = true; if (timer) clearTimeout(timer) }
+  }, [reg])
   return reg
 }
 
@@ -64,10 +93,21 @@ export function nodeOf(reg: Registry | null, key: string): CritNode | undefined 
   return reg?.nodes.find((n) => n.key === key)
 }
 
+// Last-resort readable label when the registry hasn't loaded yet (or a key is genuinely unknown):
+// turn a raw criterion key like "cost_of_living" into "Cost of living" rather than exposing the
+// slug. The registry holds the real localized labels — this only bridges the brief load window
+// (the criteria fetch keeps retrying) so no surface ever shows snake_case keys to a user.
+export function humanizeKey(key: string): string {
+  return key.replace(/^custom_/, '').replace(/_/g, ' ').trim().replace(/^\w/, (c) => c.toUpperCase())
+}
+
+// The single entry point for every user-facing criterion label across the app: registry label in
+// the active language → an explicitly-supplied custom label → a humanized key. Always pass any
+// known custom label via `custom` so it wins over the humanized fallback.
 export function labelOf(reg: Registry | null, key: string, lang: string, custom?: { key: string; label: string }[]): string {
   const n = nodeOf(reg, key)
-  if (n) return (lang === 'fr' ? n.label_fr : n.label_en) || n.label_en || key
-  return custom?.find((c) => c.key === key)?.label ?? key
+  if (n) return (lang === 'fr' ? n.label_fr : n.label_en) || n.label_en || humanizeKey(key)
+  return custom?.find((c) => c.key === key)?.label ?? humanizeKey(key)
 }
 
 export function leafKeys(reg: Registry | null): string[] {

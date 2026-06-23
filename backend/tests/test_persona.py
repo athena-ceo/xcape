@@ -51,6 +51,22 @@ def test_no_persona_uses_defaults():
     assert w.get("healthcare", 0) > 0
 
 
+def test_every_persona_weights_proximity():
+    # Proximity (distance to the user's home country) should count in nearly every persona — a
+    # modest, real-but-secondary factor.
+    for p in criteria.personas():
+        assert p["weights"].get("proximity", 0) > 0, f"{p['key']} is missing a proximity weight"
+
+
+def test_high_importance_tier_is_stretched():
+    # The "high/élevée" tier is stretched so important criteria dominate (top ~5-6, not ~2.5).
+    retiree = _effective_weights(_Profile(persona="retiree"))
+    assert retiree.get("healthcare", 0) >= 6      # the persona's flagship criterion
+    assert retiree.get("cost_of_living", 0) >= 5
+    # Low/contextual tiers stay modest, preserving a wide high-to-low ratio.
+    assert retiree.get("language_ease", 0) <= 1.5
+
+
 def test_public_registry_includes_personas():
     reg = criteria.public_registry()
     assert "personas" in reg

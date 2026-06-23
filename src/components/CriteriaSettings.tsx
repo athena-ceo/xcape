@@ -76,7 +76,7 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
     return w[key] ?? nodeOf(reg, key)?.default_weight ?? 0
   }
   function setWeight(key: string, val: number) {
-    setW({ ...w, [key]: Math.max(0, Math.min(5, val)) })
+    setW({ ...w, [key]: Math.max(0, Math.min(8, val)) })
   }
   function toggleClimate(c: string) {
     const next = climateSel.includes(c) ? climateSel.filter((x) => x !== c) : [...climateSel, c]
@@ -197,7 +197,7 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
   function weightInput(value: number, onChange: (v: number) => void) {
     return (
       <div className="flex items-center gap-2">
-        <input type="number" min={0} max={5} step={0.5} value={value}
+        <input type="number" min={0} max={8} step={0.5} value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           className="w-16 border border-turquoise-100 rounded-md px-2 py-1" />
         <div className="flex gap-1">
@@ -247,7 +247,7 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
                 <tr key={c.key} className="border-t border-turquoise-50">
                   <td className="py-1.5 pr-2 pl-3">{c.label}</td>
                   <td className="py-1.5 pr-2">
-                    {weightInput(c.weight ?? 1, (v) => setCustom(c.key, { weight: Math.max(0, Math.min(5, v)) }))}
+                    {weightInput(c.weight ?? 1, (v) => setCustom(c.key, { weight: Math.max(0, Math.min(8, v)) }))}
                   </td>
                   <td className="py-1.5">{filterWithNote(thresholdSelect(customTier(c.min), (v) => setCustomTier(c.key, v)), (c.weight ?? 1) <= 0 && c.min != null)}</td>
                 </tr>

@@ -39,7 +39,10 @@ export default function App() {
   }, [token, refresh])
 
   return (
-    <div className="min-h-screen">
+    // overflow-x-hidden: keep any single wide element (a comparison table, a long nav) from
+    // widening the mobile layout viewport — which would push page content off-screen. Wide tables
+    // get their OWN horizontal scroll via an inner overflow-x-auto, so nothing is lost.
+    <div className="min-h-screen overflow-x-hidden">
       <Header />
       <Routes>
         <Route path="/" element={<HomePage />} />

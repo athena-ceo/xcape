@@ -9,6 +9,25 @@
 """
 
 from app.models.place import Place
+from app.models.user import User
+
+
+def test_baseline_score_is_explainable(auth_client, db_session):
+    """The home-country (baseline) column's score has the same per-criterion breakdown as a
+    candidate — previously only candidates were explainable."""
+    user = db_session.query(User).filter(User.email == "test@example.com").first()
+    user.current_country = "France"
+    db_session.add(Place(kind="country", name="France", iso_code="FR",
+                         attributes={"safety": "high", "cost_of_living": "high"}))
+    db_session.commit()
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+
+    r = auth_client.get(f"/api/v1/searches/{sid}/baseline/explanation")
+    assert r.status_code == 200
+    data = r.json()
+    assert "score" in data and isinstance(data["rows"], list)
+    # Contributions sum to the headline score (same invariant as the candidate breakdown).
+    assert abs(sum(row["contribution"] for row in data["rows"]) - data["score"]) < 0.5
 
 
 def _places(db_session, easy: int, hard: int) -> dict[str, list[int]]:
@@ -75,6 +94,33 @@ def test_excluded_country_stays_off_through_repopulate(auth_client, db_session):
     me = next(c for c in after if c["id"] == victim["id"])
     assert me["selected"] is False and me["override"] == "out"
     assert sum(1 for c in after if c["selected"]) == 5  # board still full from the others
+
+
+def test_add_when_full_replaces_the_evicted_member(auth_client, db_session):
+    """When the board is full, adding a country with evict_place_id de-selects that named member
+    and selects the new one — the explore 'replace the weakest' flow keeps the board at 5."""
+    _places(db_session, easy=5, hard=0)  # board fills with these 5
+    newland = Place(kind="country", name="Newland", iso_code="NL", attributes={"visa": "easy"})
+    db_session.add(newland)
+    db_session.commit()
+    new_id = newland.id
+
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/repopulate")
+    selected = [c for c in auth_client.get(f"/api/v1/searches/{sid}/candidates").json() if c["selected"]]
+    assert len(selected) == 5
+    evict = selected[0]
+
+    added = auth_client.post(
+        f"/api/v1/searches/{sid}/candidates",
+        json={"place_id": new_id, "evict_place_id": evict["place_id"]},
+    ).json()
+    assert added["selected"] is True and added["override"] == "in"
+
+    after = auth_client.get(f"/api/v1/searches/{sid}/candidates").json()
+    assert sum(1 for c in after if c["selected"]) == 5  # still exactly full
+    evicted_now = next(c for c in after if c["place_id"] == evict["place_id"])
+    assert evicted_now["selected"] is False  # the named member was dropped to make room
 
 
 def test_restore_clears_override_back_to_neutral_pool(auth_client, db_session):

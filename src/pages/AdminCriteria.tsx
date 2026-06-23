@@ -65,7 +65,7 @@ export function AdminCriteria() {
         </td>
         <td className="py-1.5 pr-2">
           {n.kind && (
-            <input type="number" min={0} max={5} step={0.5} value={n.default_weight ?? 0}
+            <input type="number" min={0} max={8} step={0.5} value={n.default_weight ?? 0}
               onChange={(e) => setNode(n.key, { default_weight: Number(e.target.value) })}
               className="w-14 border border-turquoise-100 rounded px-1 py-0.5 text-sm" />
           )}
