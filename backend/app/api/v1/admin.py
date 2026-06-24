@@ -2,6 +2,7 @@
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
@@ -16,8 +17,9 @@ from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
 from app.models.candidate import Candidate
-from app.schemas.auth import AdminPasswordReset, UserOut
+from app.schemas.auth import AdminPasswordReset, AdminUserActive, AdminUserCreate, UserOut
 from app.services import criteria as criteria_service
+from app.services import pricing
 
 router = APIRouter()
 
@@ -220,9 +222,109 @@ def reset_user(user_id: int, _: User = Depends(require_admin), db: Session = Dep
     account.reset_user_data(db, target)
 
 
-@router.get("/users", response_model=list[UserOut])
+@router.get("/users")
 def list_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    return db.query(User).order_by(User.created_at.desc()).all()
+    """All accounts with their status, last login, and most-recent search (title + when)."""
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    # Latest search per user in one pass (title of the most-recently-updated search).
+    latest: dict[int, Search] = {}
+    for s in db.query(Search).order_by(Search.updated_at.desc()).all():
+        latest.setdefault(s.user_id, s)
+    # AI usage per user: tokens + estimated cost, aggregated by (user, model) so each model's
+    # price applies, then rolled up per user.
+    usage: dict[int, dict] = {}
+    rows = (
+        db.query(
+            AIQueryLog.user_id, AIQueryLog.model,
+            func.coalesce(func.sum(AIQueryLog.tokens_in), 0),
+            func.coalesce(func.sum(AIQueryLog.tokens_out), 0),
+            func.count(AIQueryLog.id),
+        )
+        .filter(AIQueryLog.user_id.isnot(None))
+        .group_by(AIQueryLog.user_id, AIQueryLog.model)
+        .all()
+    )
+    for uid, model, tin, tout, calls in rows:
+        u = usage.setdefault(uid, {"tokens_in": 0, "tokens_out": 0, "calls": 0, "cost": 0.0})
+        u["tokens_in"] += int(tin)
+        u["tokens_out"] += int(tout)
+        u["calls"] += int(calls)
+        u["cost"] += pricing.estimate_cost(model, tin, tout)
+    out = []
+    for u in users:
+        s = latest.get(u.id)
+        usg = usage.get(u.id, {"tokens_in": 0, "tokens_out": 0, "calls": 0, "cost": 0.0})
+        out.append({
+            "id": u.id,
+            "email": u.email,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "is_admin": u.is_admin,
+            "is_active": u.is_active,
+            "last_login_at": u.last_login_at,
+            "latest_search": s.title if s else None,
+            "latest_search_at": s.updated_at if s else None,
+            "ai_calls": usg["calls"],
+            "tokens_in": usg["tokens_in"],
+            "tokens_out": usg["tokens_out"],
+            "cost_estimate": round(usg["cost"], 4),
+        })
+    return out
+
+
+@router.post("/users", response_model=UserOut, status_code=201)
+def create_user(
+    body: AdminUserCreate, _: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    """Admin creates a new account directly (no email verification step)."""
+    if db.query(User).filter(func.lower(User.email) == body.email.lower()).first():
+        raise HTTPException(status_code=409, detail="Email already registered")
+    user = User(
+        email=body.email,
+        password_hash=hash_password(body.password),
+        first_name=body.first_name,
+        last_name=body.last_name,
+        locale=body.locale,
+        is_admin=body.is_admin,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/users/{user_id}/active", status_code=204)
+def set_user_active(
+    user_id: int, body: AdminUserActive,
+    admin: User = Depends(require_admin), db: Session = Depends(get_db),
+):
+    """Enable or disable an account (soft). A disabled user keeps all data but can't log in."""
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == admin.id and not body.is_active:
+        raise HTTPException(status_code=400, detail="You cannot disable your own account.")
+    target.is_active = body.is_active
+    db.commit()
+
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user(
+    user_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    """Permanently delete an account and all its data. Guards against removing yourself or the
+    last remaining admin."""
+    from app.services import account
+
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == admin.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account.")
+    if target.is_admin and db.query(User).filter(User.is_admin.is_(True)).count() <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last admin account.")
+    account.delete_user(db, target)
 
 
 # Test/automation accounts (smoke tests register smoke-*@example.com on every deploy; dev
@@ -298,18 +400,29 @@ def refresh_evals(
 
 @router.get("/ai-log")
 def ai_log(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    rows = db.query(AIQueryLog).order_by(AIQueryLog.created_at.desc()).limit(500).all()
+    """Every AI call: which user triggered it, a summary of the request (the search conducted)
+    and of the return value, plus model/token/latency/cost observability."""
+    rows = (
+        db.query(AIQueryLog, User.email)
+        .outerjoin(User, AIQueryLog.user_id == User.id)
+        .order_by(AIQueryLog.created_at.desc())
+        .limit(500)
+        .all()
+    )
     return [
         {
             "id": r.id,
             "user_id": r.user_id,
+            "user_email": email,
             "kind": r.kind,
             "model": r.model,
+            "prompt_summary": r.prompt_summary,
+            "result_summary": r.result_summary,
             "tokens_in": r.tokens_in,
             "tokens_out": r.tokens_out,
             "latency_ms": r.latency_ms,
-            "cost_estimate": r.cost_estimate,
+            "cost_estimate": round(pricing.estimate_cost(r.model, r.tokens_in, r.tokens_out), 5),
             "created_at": r.created_at,
         }
-        for r in rows
+        for r, email in rows
     ]

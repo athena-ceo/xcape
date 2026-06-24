@@ -38,6 +38,19 @@ class AdminPasswordReset(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class AdminUserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    first_name: str | None = None
+    last_name: str | None = None
+    locale: str = "fr"
+    is_admin: bool = False
+
+
+class AdminUserActive(BaseModel):
+    is_active: bool
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,5 +63,6 @@ class UserOut(BaseModel):
     ancestry_countries: list[str] | None = None
     is_admin: bool
     is_verified: bool
+    is_active: bool = True
     locale: str
     created_at: datetime

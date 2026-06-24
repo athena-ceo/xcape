@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, String, func
+from sqlalchemy import JSON, Boolean, DateTime, String, func, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -30,6 +30,9 @@ class User(Base):
     ancestry_countries: Mapped[list | None] = mapped_column(JSON, default=list)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Soft-disable: a deactivated account is blocked from logging in but keeps all its data and
+    # can be re-enabled by an admin (distinct from a permanent delete).
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default=true())
     locale: Mapped[str] = mapped_column(String(5), default="fr", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

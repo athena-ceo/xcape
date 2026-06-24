@@ -5,6 +5,31 @@
 
 ## [Unreleased]
 
+### 2026-06-24 — Admin: full user management + richer AI log
+
+- **User management.** The admin Users tab can now **add** an account (inline form), **change
+  password**, **reset data**, **disable/enable** (soft — blocks login, keeps data, reversible),
+  and **permanently remove** (hard delete, guarded by typed-email confirmation). The list now shows
+  **last login** and **latest search** (title + date), and a *disabled* badge.
+  - Backend: `POST /admin/users`, `PATCH /admin/users/{id}/active`, `DELETE /admin/users/{id}`
+    (guards: can't disable/delete yourself, can't delete the last admin). New `users.is_active`
+    column (migration `0023`); login and `get_current_user` reject disabled accounts (403).
+- **Two overlapping reset labels fixed.** The password button read just "Reset" next to "Reset
+  data"; it's now "Change password" so the two actions are unambiguous.
+- **AI log shows who/what/result.** Each AI call now records a **result summary** (the return value,
+  migration `0024` — `ai_query_logs.result_summary`) alongside the existing request summary, and the
+  log surfaces the **triggering user's email**. The admin AI tab is now a one-line-per-call view
+  (user · kind · model · request · result) with an expandable panel for the full request/result and
+  token/latency diagnostics — modelled on golden-path's activity log.
+- Tests: create/duplicate, disable→login-blocked→re-enable, delete + self/last-admin guards, users
+  list fields, AI-log user/summaries.
+- **Token usage & estimated cost per user.** The Users tab now shows each account's **AI calls**,
+  **total input/output tokens**, and an **estimated USD cost**, so spend can be gauged per user;
+  each AI-log call also shows its own estimated cost. Cost comes from a small editable price table
+  (`services/pricing.py`, USD per 1M tokens by model) computed on read — never persisted — so a
+  price correction applies to the whole history. Per-user totals aggregate by model so each model's
+  rate applies. Update `MODEL_PRICING` when provider prices change.
+
 ### 2026-06-23 — Lodging cost is bedroom-aware; criteria sort by importance; mobile voice diagnostics
 
 - **Housing scales by bedrooms, not a flat per-head factor.** The affordability calculator now sizes

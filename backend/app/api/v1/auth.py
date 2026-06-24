@@ -53,6 +53,8 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(func.lower(User.email) == body.email.lower()).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="This account has been disabled.")
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
     return TokenResponse(access_token=create_access_token(str(user.id)))

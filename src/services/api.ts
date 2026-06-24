@@ -210,6 +210,12 @@ export const api = {
     }),
   adminResetUser: (userId: number) =>
     request<void>(`/admin/users/${userId}/reset`, { method: 'POST' }),
+  adminCreateUser: (body: { email: string; password: string; first_name?: string; last_name?: string; is_admin?: boolean }) =>
+    request<any>('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
+  adminSetUserActive: (userId: number, isActive: boolean) =>
+    request<void>(`/admin/users/${userId}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: isActive }) }),
+  adminDeleteUser: (userId: number) =>
+    request<void>(`/admin/users/${userId}`, { method: 'DELETE' }),
   getAdminCriteria: () => request<any>('/admin/criteria'),
   putAdminCriteria: (registry: any) =>
     request<{ ok: boolean }>('/admin/criteria', { method: 'PUT', body: JSON.stringify(registry) }),

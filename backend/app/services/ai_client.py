@@ -44,6 +44,7 @@ def _log(
     kind: str,
     model: str,
     summary: str | None,
+    result: str | None = None,
     usage: Any,
     latency_ms: int,
 ) -> None:
@@ -56,6 +57,7 @@ def _log(
                 kind=kind,
                 model=model,
                 prompt_summary=(summary or "")[:500] or None,
+                result_summary=(result or "")[:500] or None,
                 tokens_in=getattr(usage, "input_tokens", None),
                 tokens_out=getattr(usage, "output_tokens", None),
                 latency_ms=latency_ms,
@@ -77,6 +79,7 @@ def _create(kwargs: dict, *, db, user_id, kind, summary):
         kind=kind,
         model=kwargs.get("model", settings.openai_model),
         summary=summary,
+        result=getattr(resp, "output_text", None),  # the return value, truncated by _log
         usage=getattr(resp, "usage", None),
         latency_ms=latency,
     )
@@ -262,6 +265,7 @@ def transcribe_audio(
         kind="voice",
         model=settings.openai_transcribe_model,
         summary=f"transcribe {filename}",
+        result=getattr(result, "text", None),
         usage=None,
         latency_ms=latency,
     )

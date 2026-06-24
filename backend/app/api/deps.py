@@ -29,6 +29,8 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None:
         raise creds_error
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been disabled.")
     return user
 
 

@@ -21,6 +21,7 @@ class AIQueryLog(Base):
     kind: Mapped[str] = mapped_column(String(30), index=True)  # shortlist/discriminate/research/chat/media/voice
     model: Mapped[str] = mapped_column(String(40))
     prompt_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)  # truncated AI output
     tokens_in: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_out: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
