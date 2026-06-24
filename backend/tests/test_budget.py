@@ -35,3 +35,18 @@ def test_household_size_raises_the_bar():
     family = _criterion_value("cost_of_living", low, _Profile(budget=1500, household="family"))
     # The same budget stretches less for a family.
     assert family < single
+
+
+def test_generous_budget_does_not_eliminate_family_in_mid_cost_country():
+    """Regression: on a generous €4000 budget a family was scored 0 (effectively eliminated)
+    across mid-cost countries because the flat household multiplier inflated the estimate and
+    the curve floored to 0. Housing is largely shared, so the score must stay clearly positive."""
+    medium = {"cost_of_living": "medium"}
+    family = _criterion_value("cost_of_living", medium, _Profile(budget=4000, household="family"))
+    assert family > 0.6  # comfortably affordable, not eliminated
+
+    # A genuinely expensive country still reads as a stretch for a family on the same budget,
+    # but is not hard-zeroed (the user can weigh the trade-off, not have it silently dropped).
+    high = {"cost_of_living": "high"}
+    family_high = _criterion_value("cost_of_living", high, _Profile(budget=4000, household="family"))
+    assert 0.0 < family_high < family

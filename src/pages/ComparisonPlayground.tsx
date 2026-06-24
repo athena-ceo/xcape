@@ -55,7 +55,7 @@ export function ComparisonPlayground() {
   const [downloading, setDownloading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [showZero, setShowZero] = useState(false)  // reveal weight-0 (unimportant) criteria
-  const [sortMode, setSortMode] = useState<'category' | 'importance'>('category')
+  const [sortMode, setSortMode] = useState<'category' | 'importance'>('importance')
 
   const [baseline, setBaseline] = useState<any>(null)
   const [explain, setExplain] = useState<{ candidate: any; data: any } | null>(null)
@@ -596,9 +596,9 @@ export function ComparisonPlayground() {
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
-        <td className="p-3 pl-8 text-turquoise-800/70 sticky left-0 z-10 bg-white">
-          <div className="flex items-center gap-2">
-            <span>{critLabel(key)}</span>
+        <td className="p-2 sm:p-3 pl-4 sm:pl-8 text-turquoise-800/70 sticky left-0 z-10 bg-white max-w-[34vw] sm:max-w-none">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="truncate">{critLabel(key)}</span>
             {controlChip(key)}
           </div>
         </td>
@@ -607,7 +607,7 @@ export function ComparisonPlayground() {
           const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
           return (
             <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
-              <button onClick={() => openWhy(bcol, key)} className="block w-full p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
+              <button onClick={() => openWhy(bcol, key)} className="block w-full p-2 sm:p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                 {bpending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : cellValue(key, baseline.attributes, baseline.quality?.[key])}
@@ -622,7 +622,7 @@ export function ComparisonPlayground() {
             <td key={c.id}
               className={`p-0 text-center ${pending ? '' : (viol ? 'bg-amber-100 text-amber-900' : qualityClass(c.quality?.[key]))}`}
               title={viol ? `${t.comparison.flagTitle}: ${critLabel(key)}` : undefined}>
-              <button onClick={() => openWhy(c, key)} className="block w-full p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
+              <button onClick={() => openWhy(c, key)} className="block w-full p-2 sm:p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                 {pending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : <>{viol && '⚠ '}{cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}</>}
@@ -721,7 +721,7 @@ export function ComparisonPlayground() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-turquoise-50 text-left">
-              <th className="p-3 font-medium sticky left-0 z-20 bg-turquoise-50">
+              <th className="p-2 sm:p-3 font-medium sticky left-0 z-20 bg-turquoise-50 max-w-[34vw] sm:max-w-none">
                 <span className="inline-flex items-center gap-2">
                   {t.comparison.criterion}
                   {/* Small affordance to add a country without leaving for the full list. */}
@@ -731,14 +731,14 @@ export function ComparisonPlayground() {
                 </span>
               </th>
               {baseline && (
-                <th className="p-3 font-medium text-center bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
+                <th className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-center bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
                   <Link to={`/drilldown/${baseline.id}?search=${sid}`} className="text-turquoise-700 hover:underline">
                     {placeName(baseline, lang)}
                   </Link>
                 </th>
               )}
               {candidates.map((c) => (
-                <th key={c.id} className="p-3 font-medium text-center whitespace-nowrap">
+                <th key={c.id} className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-center whitespace-nowrap">
                   <Link to={`/drilldown/${c.place_id}?search=${sid}`} className="text-turquoise-600 hover:underline">
                     {placeName(places[c.place_id], lang)}
                   </Link>
@@ -778,14 +778,14 @@ export function ComparisonPlayground() {
                 <Fragment key={g.key}>
                   <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none hover:bg-turquoise-100/70"
                     onClick={() => toggleCat(g.key, open)}>
-                    <td className="p-2.5 font-medium text-turquoise-900 sticky left-0 z-10 bg-turquoise-50">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="inline-grid place-items-center w-5 h-5 rounded border border-turquoise-300 text-turquoise-600 text-xs">
+                    <td className="p-2 sm:p-2.5 font-medium text-turquoise-900 sticky left-0 z-10 bg-turquoise-50 max-w-[34vw] sm:max-w-none">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="inline-grid place-items-center w-5 h-5 shrink-0 rounded border border-turquoise-300 text-turquoise-600 text-xs">
                           {open ? '▾' : '▸'}
                         </span>
-                        {g.label}
+                        <span className="truncate">{g.label}</span>
                         {!open && (
-                          <span className="text-xs font-normal text-turquoise-600/70">
+                          <span className="text-xs font-normal text-turquoise-600/70 whitespace-nowrap shrink-0">
                             {vis.length} · {t.comparison.expandHint}
                           </span>
                         )}

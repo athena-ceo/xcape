@@ -9,7 +9,8 @@ from app.services import ai_client, visa_pathways
 _PATHWAY = {
     "exists": True, "difficulty": 70, "income_eur": 24000, "investment_eur": None,
     "pr_years": 5, "citizenship_years": 10,
-    "requirements": ["clean record", "health insurance"],
+    "requirements_fr": ["casier vierge", "assurance santé"],
+    "requirements_en": ["clean record", "health insurance"],
     "summary_fr": "fr", "summary_en": "en", "sources": ["https://x.test"],
 }
 
@@ -50,6 +51,12 @@ def test_evaluate_pathway_caches_meta(db_session, monkeypatch):
     assert ev.key == "visa_retirement" and ev.score == 70
     assert ev.meta["category"] == "retirement" and ev.meta["income_eur"] == 24000
     assert ev.meta["pr_years"] == 5
+    # Requirement bullets are cached per-language so the card never mixes FR/EN.
+    assert ev.meta["requirements_fr"] == ["casier vierge", "assurance santé"]
+    assert ev.meta["requirements_en"] == ["clean record", "health insurance"]
+    payload = visa_pathways.pathway_payload(ev)
+    assert payload["requirements_fr"][0] == "casier vierge"
+    assert payload["requirements_en"][0] == "clean record"
     # Cache-first: a second call returns the same row without another AI call.
     ev2 = visa_pathways.evaluate_pathway(db_session, place, "retirement")
     assert calls["n"] == 1 and ev2.id == ev.id

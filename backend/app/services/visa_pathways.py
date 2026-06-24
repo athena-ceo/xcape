@@ -32,7 +32,7 @@ from app.services.criterion_eval import _fresh, level_from_score
 
 # Bump when the pathway prompt/schema below changes in a way that should invalidate cached
 # pathway rows (independent of the criterion-eval version).
-VISA_PROMPT_VERSION = "1"
+VISA_PROMPT_VERSION = "2"
 
 # Catalog categories — destination PROGRAMS (free movement is citizenship-based, handled by the
 # overlay in shortlist, so it is NOT part of the on-demand catalog). Order = display order.
@@ -117,13 +117,15 @@ def _schema() -> dict:
             "investment_eur": nullable_int,   # min qualifying investment / capital, €
             "pr_years": nullable_num,         # years of residence → permanent residence
             "citizenship_years": nullable_num,  # years of residence → naturalisation
-            "requirements": {"type": "array", "items": {"type": "string"}},
+            "requirements_fr": {"type": "array", "items": {"type": "string"}},
+            "requirements_en": {"type": "array", "items": {"type": "string"}},
             "summary_fr": {"type": "string"},
             "summary_en": {"type": "string"},
             "sources": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["exists", "difficulty", "income_eur", "investment_eur", "pr_years",
-                     "citizenship_years", "requirements", "summary_fr", "summary_en", "sources"],
+                     "citizenship_years", "requirements_fr", "requirements_en",
+                     "summary_fr", "summary_en", "sources"],
         "additionalProperties": False,
     }
 
@@ -161,8 +163,10 @@ def evaluate_pathway(
         f"- pr_years: typical years of continuous residence to reach permanent residence, else "
         f"null. citizenship_years: typical years of residence to be eligible for naturalisation, "
         f"else null.\n"
-        f"- requirements: 3-6 short bullet strings of the key conditions (e.g. job offer, "
-        f"language level, clean criminal record, private health insurance, minimum stay).\n"
+        f"- requirements_fr and requirements_en: 3-6 short bullet strings of the key conditions "
+        f"(e.g. job offer, language level, clean criminal record, private health insurance, "
+        f"minimum stay). Provide the SAME bullets in both French (requirements_fr) and English "
+        f"(requirements_en); the two arrays must correspond one-to-one.\n"
         f"Add a concrete 1-2 sentence summary in French (summary_fr) and English (summary_en), "
         f"written as a neutral, friendly advisor — do NOT write in the first person (no \"I\", "
         f"\"we\", \"my\", \"our\"). Name the actual program if it has one, and do NOT restate the "
@@ -189,7 +193,8 @@ def evaluate_pathway(
         "investment_eur": data.get("investment_eur"),
         "pr_years": data.get("pr_years"),
         "citizenship_years": data.get("citizenship_years"),
-        "requirements": data.get("requirements") or [],
+        "requirements_fr": data.get("requirements_fr") or [],
+        "requirements_en": data.get("requirements_en") or [],
     }
     fields = dict(
         label=label, score=difficulty, level=level_from_score(difficulty),
@@ -253,7 +258,8 @@ def pathway_payload(
         "investment": round(investment_eur * rate) if investment_eur is not None else None,
         "pr_years": m.get("pr_years"),
         "citizenship_years": m.get("citizenship_years"),
-        "requirements": m.get("requirements") or [],
+        "requirements_fr": m.get("requirements_fr") or m.get("requirements") or [],
+        "requirements_en": m.get("requirements_en") or m.get("requirements") or [],
         "summary_fr": ev.summary_fr or "",
         "summary_en": ev.summary_en or "",
         "sources": ev.sources or [],

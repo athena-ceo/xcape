@@ -511,7 +511,7 @@
       "iso_code": "BG",
       "attributes": {
         "climate": "mild",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Bulgarian"
@@ -860,7 +860,7 @@
       "iso_code": "HR",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Croatian"
@@ -935,7 +935,7 @@
       "iso_code": "CZ",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Czech"
@@ -1102,7 +1102,7 @@
       "iso_code": "EE",
       "attributes": {
         "climate": "cold",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Estonian"
@@ -1534,7 +1534,7 @@
       "iso_code": "HU",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Hungarian"
@@ -1931,7 +1931,7 @@
       "iso_code": "LV",
       "attributes": {
         "climate": "cold",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Latvian"
@@ -2028,7 +2028,7 @@
       "iso_code": "LT",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Lithuanian"
@@ -2777,7 +2777,7 @@
       "iso_code": "PL",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Polish"
@@ -2869,7 +2869,7 @@
       "iso_code": "RO",
       "attributes": {
         "climate": "mild",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Romanian"
@@ -2885,7 +2885,7 @@
       "iso_code": "RU",
       "attributes": {
         "climate": "cold",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Russian"
@@ -3091,7 +3091,7 @@
       "iso_code": "SK",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Slovak"
@@ -3107,7 +3107,7 @@
       "iso_code": "SI",
       "attributes": {
         "climate": "temperate",
-        "cost_of_living": "high",
+        "cost_of_living": "medium",
         "healthcare": "strong",
         "languages": [
           "Slovene"

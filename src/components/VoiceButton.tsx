@@ -70,10 +70,25 @@ export function VoiceButton({ onTranscript, title, className }: Props) {
   async function start() {
     if (busy) return
     setError(null)
+    // Mobile browsers only expose getUserMedia in a SECURE context (https or localhost). Over a
+    // plain-http LAN address (e.g. http://192.168.x.x:3030 on a phone) `navigator.mediaDevices`
+    // is undefined — surface that explicitly instead of the generic "mic blocked", which is the
+    // usual reason voice "doesn't work on mobile" while it works on a desktop at localhost.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fail(window.isSecureContext ? t.voice.unsupported : t.voice.insecure)
+      return
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      fail(t.voice.unsupported)
+      return
+    }
     let stream: MediaStream
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch {
+    } catch (e) {
+      // Log the real error name (NotAllowedError, NotFoundError, …) so mobile failures are
+      // diagnosable from the console even though the user-facing hint stays simple.
+      console.error('[voice] getUserMedia', (e as Error)?.name, e)
       fail(t.voice.micBlocked)
       return
     }
@@ -120,9 +135,12 @@ export function VoiceButton({ onTranscript, title, className }: Props) {
         setBusy(false)
       }
     }
-    // Timeslice so ondataavailable fires periodically (more reliable on iOS than a single
-    // final chunk).
-    mr.start(1000)
+    // Record WITHOUT a timeslice. On iOS Safari, MediaRecorder.start(timeslice) emits fragmented
+    // mp4 chunks that don't reassemble into a decodable file (the combined Blob lacks a proper
+    // moov atom), so the upload transcribes to nothing — the main reason voice failed on iPhones.
+    // With no timeslice, ondataavailable fires once on stop with a single, finalised file that
+    // every browser (incl. iOS) can decode.
+    mr.start()
     recorderRef.current = mr
     setRecording(true)
   }

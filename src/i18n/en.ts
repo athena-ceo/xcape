@@ -379,6 +379,7 @@ export const en: Dict = {
       howCalculated: 'How this is estimated',
       perPerson: 'Per person',
       yourHouseholdN: 'Your household ({n})',
+      bedroomsN: '{n} BR',
       close: 'Close',
       noBudget: 'Set a monthly budget in your profile to compare it against local costs.',
       components: {
@@ -497,6 +498,8 @@ export const en: Dict = {
   voice: {
     label: 'Voice input',
     micBlocked: 'Microphone access was blocked. Allow mic access for this site and retry.',
+    insecure: 'Voice needs a secure (https) connection. Open the site over https and retry.',
+    unsupported: 'Voice recording isn’t supported by this browser.',
     failed: 'Transcription failed',
     noSpeech: 'No speech detected.',
     needAuth: 'Sign in to use voice.',

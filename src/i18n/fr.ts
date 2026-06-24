@@ -376,6 +376,7 @@ export const fr = {
       howCalculated: 'Comment c’est estimé',
       perPerson: 'Par personne',
       yourHouseholdN: 'Votre foyer ({n})',
+      bedroomsN: '{n} ch.',
       close: 'Fermer',
       noBudget: 'Renseignez un budget mensuel dans votre profil pour le comparer aux coûts locaux.',
       components: {
@@ -494,6 +495,8 @@ export const fr = {
   voice: {
     label: 'Saisie vocale',
     micBlocked: 'Accès au micro bloqué. Autorisez le micro pour ce site, puis réessayez.',
+    insecure: 'La voix nécessite une connexion sécurisée (https). Ouvrez le site en https, puis réessayez.',
+    unsupported: 'L’enregistrement vocal n’est pas pris en charge par ce navigateur.',
     failed: 'Échec de la transcription',
     noSpeech: 'Aucune parole détectée.',
     needAuth: 'Connectez-vous pour utiliser la voix.',

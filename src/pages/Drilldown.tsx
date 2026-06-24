@@ -471,6 +471,9 @@ export function Drilldown() {
   function visaCard(c: any) {
     const v = t.drilldown.visa as Record<string, string>
     const summary = lang === 'fr' ? c.summary_fr : c.summary_en
+    const requirements = (lang === 'fr' ? c.requirements_fr : c.requirements_en)
+      // Fall back to the other language for cards cached before bilingual bullets existed.
+      || c.requirements_en || c.requirements_fr || c.requirements || []
     const money = (x: any) => fmtMoney(x, c.currency)
     const years = (x: any) => (x == null ? null : `${x} ${v.years}`)
     const tier = (d: number) => (d >= 70 ? 'text-emerald-700' : d >= 45 ? 'text-turquoise-700' : 'text-amber-700')
@@ -497,9 +500,9 @@ export function Drilldown() {
               {term(v.pr, years(c.pr_years))}
               {term(v.citizenship, years(c.citizenship_years))}
             </div>
-            {Array.isArray(c.requirements) && c.requirements.length > 0 && (
+            {requirements.length > 0 && (
               <ul className="mt-2 list-disc list-inside text-xs text-turquoise-800/70 space-y-0.5">
-                {c.requirements.map((r: string, i: number) => <li key={i}>{r}</li>)}
+                {requirements.map((r: string, i: number) => <li key={i}>{r}</li>)}
               </ul>
             )}
             {Array.isArray(c.sources) && c.sources.length > 0 && (
@@ -621,6 +624,9 @@ export function Drilldown() {
                         className="text-left bg-turquoise-50/60 hover:bg-turquoise-100/60 rounded-md px-3 py-2 transition-colors">
                         <p className="text-xs text-turquoise-800/60 flex items-center gap-1">
                           {comps[b.key] ?? b.key}
+                          {b.bedrooms != null && (
+                            <span className="text-turquoise-500/80">· {af.bedroomsN.replace('{n}', String(b.bedrooms))}</span>
+                          )}
                           <span className="text-turquoise-400" aria-hidden>ⓘ</span>
                         </p>
                         <p className="text-sm font-medium text-turquoise-900">{money(b.amount)}</p>

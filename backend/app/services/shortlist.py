@@ -153,7 +153,12 @@ def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> fl
 # to score affordability against the user's budget. The per-country AI drill-down gives
 # real figures; this only needs to rank countries sensibly relative to a budget.
 _COST_BAND = {"low": 1200, "medium": 2200, "high": 3500}
-_HOUSEHOLD_FACTOR = {"single": 1.0, "couple": 1.6, "family": 2.4}
+# How a HOUSEHOLD's total cost grows vs a single person. Housing and utilities — the biggest
+# lines — are largely shared (one home), so a couple is far from 2× and a family of four far
+# from 4×. These aggregate factors mirror the per-component marginal model used by the
+# affordability drill-down (`affordability._HH_MARGINAL`), where rent scales at only 0.35/head.
+# Kept deliberately gentle so a genuinely generous budget isn't zeroed out for a family.
+_HOUSEHOLD_FACTOR = {"single": 1.0, "couple": 1.35, "family": 1.9}
 
 
 def _cost_value(attrs: dict, profile: Profile | None) -> float:
@@ -165,12 +170,14 @@ def _cost_value(attrs: dict, profile: Profile | None) -> float:
     level = str(attrs.get("cost_of_living", "")).lower()
     budget = getattr(profile, "budget_monthly", None) if profile else None
     if budget and level in _COST_BAND:
-        factor = _HOUSEHOLD_FACTOR.get(getattr(profile, "household_type", None), 1.3)
+        factor = _HOUSEHOLD_FACTOR.get(getattr(profile, "household_type", None), 1.25)
         estimate = _COST_BAND[level] * factor  # bands are EUR → compare the budget in EUR
         budget_eur = fx.to_eur(budget, getattr(profile, "currency", None))
         ratio = budget_eur / estimate
-        # ratio 0.5 (budget half the cost) -> 0; ratio 1.2 (comfortable surplus) -> 1.
-        return max(0.0, min(1.0, (ratio - 0.5) / 0.7))
+        # ratio 0.4 (budget covers <40% of cost) -> 0 (eliminated); ratio 1.1 -> full marks.
+        # The 0.4 floor means only a genuine 2.5× shortfall zeroes a country, so a comfortable
+        # budget that merely trims the surplus still scores well.
+        return max(0.0, min(1.0, (ratio - 0.4) / 0.7))
     return criteria.scales().get("cost_of_living", {}).get(level, 0.5)
 
 

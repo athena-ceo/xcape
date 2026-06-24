@@ -44,13 +44,33 @@ BREAKDOWN_KEY = "cost_breakdown"
 # per-component marginal factor below.
 COMPONENTS = ("rent", "buy", "utilities", "food", "healthcare", "transport", "other")
 
-# How each component grows with each ADDITIONAL household member (factor = 1 + marginal × (N-1)).
-# Housing (rent/buy) and utilities are largely shared (one home), food scales nearly per-head,
-# healthcare is per-person; transport and the rest sit in between. N=1 → every factor is 1.0.
+# How each NON-housing component grows with each additional household member
+# (factor = 1 + marginal × (N-1)). Utilities are largely shared (one home); food scales nearly
+# per-head, healthcare is per-person; transport and the rest sit in between. N=1 → every factor
+# is 1.0. Housing (rent/buy) is handled separately by `housing_factor`, which scales by the
+# number of BEDROOMS the household needs rather than a flat per-head marginal.
 _HH_MARGINAL = {
-    "rent": 0.35, "buy": 0.35, "utilities": 0.25, "food": 0.85,
+    "utilities": 0.25, "food": 0.85,
     "healthcare": 1.0, "transport": 0.6, "other": 0.55,
 }
+
+# Marginal cost of each ADDITIONAL bedroom beyond the first, as a fraction of a one-bedroom home.
+# The first bedroom carries the fixed cost (kitchen, bathroom, living space); each extra room adds
+# proportionally less, so a 3-bed is ~2× a 1-bed, not 3×.
+_BEDROOM_MARGINAL = 0.5
+
+
+def bedrooms_for_size(size: int) -> int:
+    """Bedrooms a household of ``size`` needs: one shared by the primary occupant or couple, plus
+    one for each additional member (typically children). 1–2 people → 1 BR, 3 → 2 BR, 4 → 3 BR."""
+    n = max(1, int(size or 1))
+    return max(1, n - 1)
+
+
+def housing_factor(size: int) -> float:
+    """Multiplier applied to a single-person (one-bedroom) housing cost for a household of
+    ``size``, driven by the bedroom count it needs rather than a flat per-head marginal."""
+    return 1.0 + _BEDROOM_MARGINAL * (bedrooms_for_size(size) - 1)
 
 
 def _display_components(tenure: str | None) -> tuple[str, ...]:
@@ -76,7 +96,11 @@ def default_household_size(profile: Profile | None) -> int:
 
 
 def household_factor(component: str, size: int) -> float:
-    """Multiplier applied to a single-person component cost for a household of ``size``."""
+    """Multiplier applied to a single-person component cost for a household of ``size``. Housing
+    (rent/buy) scales by the number of bedrooms needed; every other component by its per-head
+    marginal."""
+    if component in ("rent", "buy"):
+        return housing_factor(size)
     n = max(1, int(size or 1))
     return 1.0 + _HH_MARGINAL.get(component, 0.6) * (n - 1)
 
@@ -275,10 +299,15 @@ def compute(
         amount = round(single_eur * household_factor(c, size) * rate)
         cost_total += amount
         note = notes.get(c) or {}
-        breakdown.append({
+        row = {
             "key": c, "single": round(single_eur * rate), "amount": amount,
             "note_fr": note.get("fr") or "", "note_en": note.get("en") or "",
-        })
+        }
+        # Housing carries the bedroom count it was sized for, so the UI can explain the figure
+        # ("3-bedroom for a household of 4") rather than show an unexplained multiple.
+        if c in ("rent", "buy"):
+            row["bedrooms"] = bedrooms_for_size(size)
+        breakdown.append(row)
     cost_total = round(cost_total)
 
     surplus = (budget - cost_total) if budget is not None else None

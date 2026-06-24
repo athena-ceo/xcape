@@ -35,6 +35,33 @@ def test_household_factor_scales_per_component():
     assert affordability.household_factor("healthcare", 3) == 3.0
 
 
+def test_housing_scales_by_bedrooms():
+    # One bedroom for the primary occupant or couple; one more per additional member.
+    assert affordability.bedrooms_for_size(1) == 1
+    assert affordability.bedrooms_for_size(2) == 1   # a couple still shares one bedroom
+    assert affordability.bedrooms_for_size(3) == 2
+    assert affordability.bedrooms_for_size(4) == 3
+    # So a couple needs no more housing than a single person...
+    assert affordability.household_factor("rent", 2) == affordability.household_factor("rent", 1)
+    # ...but each additional person adds a bedroom and raises the housing cost.
+    assert affordability.household_factor("rent", 4) > affordability.household_factor("rent", 3)
+    # Mortgage (buy) housing scales the same bedroom way.
+    assert affordability.household_factor("buy", 4) == affordability.housing_factor(4)
+
+
+def test_breakdown_reports_bedrooms_for_housing(db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _BREAKDOWN)
+    place = _country(db_session)
+    affordability.evaluate_breakdown(db_session, place)
+    fam = affordability.compute(db_session, place, None, budget_monthly=3000, household_size=4)
+    housing = fam["breakdown"][0]
+    assert housing["key"] == "rent" and housing["bedrooms"] == 3   # household of 4 → 3 bedrooms
+    # Couple → still a single bedroom, so housing cost equals the single-person figure.
+    couple = affordability.compute(db_session, place, None, budget_monthly=3000, household_size=2)
+    assert couple["breakdown"][0]["bedrooms"] == 1
+    assert couple["breakdown"][0]["amount"] == 800
+
+
 def test_default_household_size_from_type():
     assert affordability.default_household_size(Profile(household_type="single")) == 1
     assert affordability.default_household_size(Profile(household_type="couple")) == 2

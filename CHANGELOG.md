@@ -5,6 +5,60 @@
 
 ## [Unreleased]
 
+### 2026-06-23 — Lodging cost is bedroom-aware; criteria sort by importance; mobile voice diagnostics
+
+- **Housing scales by bedrooms, not a flat per-head factor.** The affordability calculator now sizes
+  the home by the bedrooms a household needs — one for the primary occupant or couple, plus one per
+  additional member (typically children): 1–2 people → 1 BR, 3 → 2 BR, 4 → 3 BR. Each extra bedroom
+  adds ~50% of a one-bedroom's cost (a 3-bed ≈ 2× a 1-bed). A couple now pays the same housing as a
+  single person instead of an unexplained 1.35×. The housing breakdown row shows the bedroom count
+  it was sized for. (`affordability.housing_factor` / `bedrooms_for_size`; non-housing components
+  keep their per-head marginals.)
+- **Comparison criteria sort by importance by default** (was category), so the most-weighted criteria
+  are at the top on first load.
+- **Voice input fixed on iPhones.** `MediaRecorder` was started with a 1s timeslice; on iOS Safari
+  that emits fragmented mp4 chunks that don't reassemble into a decodable file (the combined Blob
+  has no moov atom), so the upload transcribed to nothing. Now recorded without a timeslice — a
+  single finalised file every browser (incl. iOS) can decode. Also hardened the failure paths:
+  distinct messages for an insecure (non-https) origin, an unsupported browser, and a denied mic
+  permission, plus the real `getUserMedia` error name logged for diagnosis.
+
+### 2026-06-23 — Cost-of-living scoring no longer over-eliminates on a generous budget
+
+- **Affordability recalibrated.** A generous budget (e.g. €4000/mo) was eliminating most desirable
+  countries, especially for couples/families. Two causes fixed in `shortlist._cost_value`:
+  - The flat household multiplier (×1.6 couple, ×2.4 family) was applied to the *whole* basket,
+    including rent — but housing is largely shared. Softened to ×1.35 / ×1.9 (unknown → ×1.25),
+    matching the per-component model the affordability drill-down already uses.
+  - The score floored to 0 (eliminated) once budget covered <50% of the estimate. Lowered to 40%,
+    so only a genuine 2.5× shortfall zeroes a country; a budget that merely trims the surplus
+    still scores well.
+- **Cost bands re-bucketed.** 12 mid-cost countries were miscategorised as `high` cost and lumped
+  with Switzerland/Monaco/Norway at the same €3500 single-person estimate: Bulgaria, Croatia,
+  Czechia, Estonia, Hungary, Latvia, Lithuania, Poland, Romania, Slovak Republic, Slovenia, and the
+  Russian Federation moved `high → medium` in `places_seed.json`. Apply to an existing DB with
+  `./xcape.sh reseed-data <env>`.
+- Regression test added: a family on €4000 is no longer eliminated from mid-cost countries, while a
+  genuinely expensive country still reads as a stretch (low but non-zero).
+
+### 2026-06-23 — Comparison table readable on narrow phones (portrait)
+
+- **Compact mobile layout for the comparison table.** The frozen criterion-name column was so wide
+  on a portrait phone that no country columns were visible. On mobile the sticky column is now
+  width-capped (≤34vw) with truncated labels, cell padding is reduced, and country headers shrink,
+  so at least two country columns sit alongside the criterion column; the full-size table is
+  unchanged from `sm` upward.
+
+### 2026-06-23 — Immigration pathway bullets respect the UI language
+
+- **Mixed FR/EN in pathway cards fixed**: the requirement bullets on each immigration-pathway card
+  (e.g. "Valid job offer…", "Clean criminal record…") were stored as a single language-agnostic
+  `requirements` array and rendered verbatim, so in French mode the card's heading and summary were
+  French but the bullets stayed English. The model now returns `requirements_fr` / `requirements_en`
+  (same bullets, both languages), the payload carries both, and the drill-down picks the array that
+  matches the active language (falling back to the other if one is empty). `VISA_PROMPT_VERSION`
+  bumped to `2` so cached cards re-evaluate bilingually the next time a place is opened.
+
 ### 2026-06-22 — Comparison table polish + chat: home country isn't a candidate
 
 - **Sticky first column**: the criterion-name column now stays pinned while you scroll the country
