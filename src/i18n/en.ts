@@ -433,6 +433,8 @@ export const en: Dict = {
       threshold: 'Min income',
       qualifies: 'Income qualifies',
       belowThreshold: 'Below threshold',
+      propertyTitle: 'Residency by investment',
+      propertyHint: 'Buying a home here may count toward the {program} — residency by investment from {amount}.',
       taxBasisLabel: 'Income tax basis',
       taxBasis: {
         territorial: 'territorial — only locally-sourced income is taxed',

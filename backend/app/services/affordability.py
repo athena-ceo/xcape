@@ -35,7 +35,7 @@ from app.services import ai_client, fx, visa_pathways
 from app.services.criterion_eval import _fresh, level_from_score
 
 # Bump when the breakdown prompt/schema below changes in a way that should invalidate cached rows.
-COST_PROMPT_VERSION = "3"  # v3: tenure-aware housing (rent vs buy) cached alongside each other
+COST_PROMPT_VERSION = "4"  # v4: currency-neutral prose (no amounts in notes/summary — they convert)
 BREAKDOWN_KEY = "cost_breakdown"
 
 # Every figure the AI returns and we cache (shared, EUR). The two housing figures — `rent` and
@@ -157,8 +157,9 @@ def evaluate_breakdown(
         f"- rent_eur: monthly rent for a small one-bedroom flat.\n"
         f"- buy_eur: the typical MONTHLY cost of BUYING that same small one-bedroom home instead of "
         f"renting — i.e. the monthly mortgage repayment for such a property purchased with a normal "
-        f"local down payment at current local mortgage rates. (In the note, state the assumed price, "
-        f"deposit and rate.)\n"
+        f"local down payment at current local mortgage rates. (In the note, describe the assumption "
+        f"qualitatively — a typical local price, a normal down payment, current mortgage rates — "
+        f"WITHOUT stating specific amounts.)\n"
         f"- utilities_eur: electricity, water, heating, internet, mobile.\n"
         f"- food_eur: groceries and a few modest meals out.\n"
         f"- healthcare_eur: typical private health insurance / out-of-pocket for a foreign "
@@ -171,9 +172,12 @@ def evaluate_breakdown(
         f"includes (e.g. the type of area, what the figure covers, a concrete reference point) — "
         f"so a reader can see why this number. Then add a concrete 1-2 sentence overall summary in "
         f"French (summary_fr) and English (summary_en). Write as a neutral, friendly advisor — do "
-        f"NOT write in the first person (no \"I\", \"we\", \"my\", \"our\") and do NOT merely "
-        f"restate every number. Put sources ONLY in the sources array as bare https URLs. Use web "
-        f"search and favour the most recent data (2025–2026)."
+        f"NOT write in the first person (no \"I\", \"we\", \"my\", \"our\"). IMPORTANT: do NOT write "
+        f"any monetary amount or currency symbol (€, $, £, etc.) ANYWHERE in the notes or summaries "
+        f"— the app shows every figure converted to the reader's own currency, so a euro amount in "
+        f"the text would contradict it; describe qualitatively instead (what the figure covers, the "
+        f"type of area, a reference point). Put sources ONLY in the sources array as bare https "
+        f"URLs. Use web search and favour the most recent data (2025–2026)."
     )
     try:
         data = ai_client.respond_json(
@@ -257,6 +261,25 @@ def income_pathways(
     return out
 
 
+def investment_route(db: Session, place_id: int, lang: str = "en", *, rate: float = 1.0) -> dict | None:
+    """The investment (golden-visa) pathway's capital threshold, if one exists — the real-estate
+    tie-in: buying property here may count toward it. Threshold converted from canonical EUR to the
+    viewing user's currency (so it's currency-neutral, like the income tie-in)."""
+    ev = visa_pathways.cached_rows(db, place_id).get("investment")
+    if ev is None:
+        return None
+    m = ev.meta or {}
+    threshold_eur = m.get("investment_eur")
+    if not m.get("exists", True) or threshold_eur is None:
+        return None
+    return {
+        "label": visa_pathways.category_label("investment", lang),
+        "investment": round(threshold_eur * rate),
+        "program_name": m.get("program_name"),
+        "min_stay_days": m.get("min_stay_days"),
+    }
+
+
 def compute(
     db: Session, place: Place, profile: Profile | None, *,
     budget_monthly: int | None, household_size: int | None, currency: str = "EUR", lang: str = "en",
@@ -289,6 +312,7 @@ def compute(
         "tax_basis": (place.attributes or {}).get("tax_basis"),  # territorial / worldwide / hybrid
         "us_person": us_person,
         "income_pathways": income_pathways(db, place.id, annual, lang, rate=rate),
+        "investment_route": investment_route(db, place.id, lang, rate=rate),  # real-estate tie-in
     }
     if not fresh:
         return base

@@ -229,6 +229,25 @@ def test_affordability_force_is_admin_only(auth_client, db_session, monkeypatch)
     assert calls["n"] == 2
 
 
+def test_investment_route_tie_in_converts_currency(db_session, monkeypatch):
+    """The real-estate tie-in surfaces the investment (golden-visa) threshold, converted from the
+    canonical EUR to the VIEWING user's currency — never the generating user's."""
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _BREAKDOWN)
+    place = _country(db_session)
+    db_session.add(PlaceCustomEval(
+        place_id=place.id, key="visa_investment", label="Investment", score=70, level="good",
+        summary_fr="", summary_en="", sources=[],
+        meta={"category": "investment", "exists": True, "investment_eur": 250000,
+              "program_name": "Golden Visa", "min_stay_days": 0}))
+    db_session.commit()
+    affordability.evaluate_breakdown(db_session, place)
+    monkeypatch.setattr(fx, "eur_rate", lambda c: 2.0 if c == "USD" else 1.0)
+    out = affordability.compute(db_session, place, None, budget_monthly=None,
+                                household_size=1, currency="USD")
+    assert out["investment_route"]["investment"] == 500000  # €250k × 2.0 → the viewer's currency
+    assert out["investment_route"]["program_name"] == "Golden Visa"
+
+
 def test_affordability_self_heals_tax_basis(auth_client, db_session, monkeypatch):
     """Opening the budget panel lazily fills the tax_basis attribute (no bulk backfill needed)."""
     place = _country(db_session)  # attributes={} → tax_basis missing

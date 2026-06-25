@@ -220,8 +220,10 @@ def evaluate_pathway(
         f"Add a concrete 1-2 sentence summary in French (summary_fr) and English (summary_en), "
         f"written as a neutral, friendly advisor — do NOT write in the first person (no \"I\", "
         f"\"we\", \"my\", \"our\"). Name the actual program if it has one, and do NOT restate the "
-        f"difficulty number. Put sources ONLY in the sources array as bare https URLs. Use web "
-        f"search and favour the most recent data (2025–2026)."
+        f"difficulty number. Do NOT put monetary amounts or currency symbols in the summaries or "
+        f"requirement bullets — the income/investment thresholds are shown separately and converted "
+        f"to the reader's own currency; refer to them qualitatively. Put sources ONLY in the sources "
+        f"array as bare https URLs. Use web search and favour the most recent data (2025–2026)."
         + (
             f" For this ANCESTRY / HERITAGE route, cover BOTH forms where they exist: (a) "
             f"citizenship/residence by DESCENT or lineage (e.g. jus sanguinis, a qualifying "

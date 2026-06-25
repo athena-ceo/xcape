@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### 2026-06-25 — Real-estate ↔ visa tie-in (Phase 3) + multi-currency sweep
+
+- **Real-estate tie-in (golden-visa Phase 3)**: the budget panel now shows, when a country has an
+  investment route, "buying a home here may count toward the {program} — residency by investment
+  from {amount}", tying the property cost to the golden-visa threshold. Built entirely over the
+  structured EUR threshold, converted to the viewer's currency — currency-neutral by construction.
+- **Multi-currency sweep**: confirmed all monetary data is cached in canonical **EUR** and converted
+  to each *viewing* user's currency at read time (shared cross-user caches never bake in the
+  generating user's currency). Fixed the one real leak: **AI narrative was embedding currency
+  amounts** (the cost breakdown's notes/summary asked the model to "state the assumed price" and
+  showed "≈ 3 060 €" even for a USD viewer, contradicting the converted cells). The cost and visa
+  prompts now forbid monetary amounts/symbols in prose — money lives only in the structured,
+  convertible fields. Cost prompt version bumped so existing rows self-heal on next view; the visa
+  change applies to future generations (the seeded finder thresholds already convert correctly).
+
 ### 2026-06-25 — Data pipeline consolidated: one `generate`, one `reseed`
 
 Nine overlapping db commands collapsed into two over a shared generator abstraction:

@@ -430,6 +430,8 @@ export const fr = {
       threshold: 'Revenu min.',
       qualifies: 'Revenu éligible',
       belowThreshold: 'Sous le seuil',
+      propertyTitle: 'Résidence par investissement',
+      propertyHint: 'Acheter un logement ici peut compter pour le {program} — résidence par investissement à partir de {amount}.',
       taxBasisLabel: 'Base d’imposition',
       taxBasis: {
         territorial: 'territoriale — seuls les revenus de source locale sont imposés',

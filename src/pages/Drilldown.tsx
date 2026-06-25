@@ -714,6 +714,18 @@ export function Drilldown() {
             </div>
           )}
 
+          {/* Real-estate tie-in: buying property here may count toward residency by investment */}
+          {a.investment_route && (
+            <div className="mt-4 border-t border-turquoise-50 pt-3">
+              <p className="text-sm font-medium text-turquoise-900">{af.propertyTitle}</p>
+              <p className="text-xs text-turquoise-800/60 mt-1">
+                {af.propertyHint
+                  .replace('{amount}', money(a.investment_route.investment) ?? '—')
+                  .replace('{program}', a.investment_route.program_name || a.investment_route.label)}
+              </p>
+            </div>
+          )}
+
           {/* Tax basis + US-person reminder (informational, not advice) */}
           {(a.tax_basis || a.us_person) && (
             <div className="mt-4 border-t border-turquoise-50 pt-3">
