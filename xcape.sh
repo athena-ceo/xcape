@@ -46,47 +46,25 @@ case "$CMD" in
     MSG="${1:-change}"
     $COMPOSE exec "$BACKEND_SVC" alembic revision --autogenerate -m "$MSG" ;;
   seed)     $COMPOSE exec "$BACKEND_SVC" python -m app.db.seed ;;
-  verify-evals)
-    # Read-only: report whether the live criterion evals match the committed seed file
-    # (i.e. whether the recalibration is present). Tells you if reseed-data is needed.
-    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.verify_evals ;;
-  reseed-data)
-    # Force-refresh country data (places + cached evals) from the bundled seed files,
-    # OVERWRITING existing rows. seed/deploy are insert-only, so use this to push committed
-    # data updates (refreshed evals, corrected attributes). User data is never touched.
-    echo "This OVERWRITES the $ENV country data (places + cached criterion evals) from the"
-    echo "bundled seed files. User searches/profiles and custom-criterion evals are untouched."
+  generate)
+    # ONE command to generate all shared AI-derived country data (attributes, criterion evals,
+    # finder visa pathways, cost breakdowns), cache-first/resumable/Ctrl-C-safe. Most of this
+    # also self-heals on demand when a country is opened, so this is a WARM-UP / finder-prep.
+    #   --only attributes,criteria,visas,cost   --force   --limit N   --check   --export
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.generate "$@" ;;
+  reseed)
+    # Load the committed seed into the DB, OVERWRITING existing rows (places + attributes + evals;
+    # --criteria also rolls the registry). seed/deploy are insert-only, so use this to push the
+    # data from `generate --export`. User searches/profiles/custom criteria are untouched.
+    echo "This OVERWRITES the $ENV country data (places + attributes + cached evals) from the"
+    echo "committed seed. User searches/profiles and custom-criterion evals are untouched."
     read -r -p "Proceed on $ENV? [y/N] " ans
     [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "Aborted."; exit 0; }
-    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.reseed_data ;;
-  reseed-criteria)
-    # Overwrite the editable criteria registry (criteria tree, personas, communities) from
-    # the bundled criteria.json. seed/deploy never touch an existing registry, so this is how
-    # registry changes (e.g. new personas) roll out. WARNING: replaces any admin UI edits.
-    echo "This OVERWRITES the $ENV criteria registry (tree, personas, communities) from"
-    echo "the bundled criteria.json, replacing any admin edits made in the UI."
-    read -r -p "Proceed on $ENV? [y/N] " ans
-    [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "Aborted."; exit 0; }
-    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.reseed_criteria ;;
-  backfill-social)
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
-  backfill-living)
-    # AI-fill the english (English usability) + tax_basis (territorial/worldwide/hybrid)
-    # attributes on seeded countries. Resumable; skips countries already filled.
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_living ;;
-  evaluate-all)
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_all "$@" ;;
-  evaluate-visas)
-    # Pre-compute the golden-visa finder's pathways (investment / retirement / digital-nomad)
-    # for every country, so the finder can rank across all of them. Cache-first/resumable.
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_visas "$@" ;;
-  regen-text)
-    # Regenerate cached drill-down text whose language/shape changed (trend-lens evidence and
-    # visa requirement bullets are now bilingual) and backfill localized custom-criterion
-    # labels. Cache-first/resumable: a plain run only regenerates version-stale rows.
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.regen_text "$@" ;;
-  export-evals)
-    $COMPOSE exec "$BACKEND_SVC" python -m app.db.export_evals ;;
+    $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.reseed "$@" ;;
+  dedupe-places)
+    # Merge duplicate country rows that share an ISO code (e.g. "Espagne" + "Spain"). Keeps the
+    # canonical row, moves any board entries onto it, deletes the rest. Pass --dry-run to preview.
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.dedupe_places "$@" ;;
   make-admin)
     EMAIL="${1:-}"
     [[ -z "$EMAIL" ]] && { echo "usage: ./xcape.sh make-admin <dev|prod> <email>"; exit 1; }
@@ -158,28 +136,15 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   health
   migrate                 apply Alembic migrations
   makemigration "msg"     autogenerate a migration
-  seed                    bootstrap the place database (+ cached evals; INSERT-ONLY — never
-                          overwrites existing rows)
-  verify-evals <env>      read-only: check whether live evals match the committed seed
-                          (i.e. the recalibration is present); reports match/differ/missing
-  reseed-data <env>       force-refresh country data (places + cached evals) from the seed
-                          files, overwriting existing rows; user data untouched
-  reseed-criteria <env>   overwrite the criteria registry (tree, personas, communities) from
-                          criteria.json — rolls out registry changes; replaces admin UI edits
-  backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
-  backfill-living         AI-fill english usability + tax basis (territorial/worldwide) on seeded countries
-  evaluate-all [--force] [--stale-days N] [--limit N] [--skip-buckets]
-                          AI-evaluate every objective criterion for every country (cross-user
-                          cache). Covers bucket-only cells by default; --skip-buckets for the
-                          cheaper gap-fill-only mode.
-  regen-text [--force] [--no-text] [--no-labels]
-                          regenerate cached drill-down text whose language/shape changed
-                          (bilingual trend evidence + visa bullets) and backfill localized
-                          custom-criterion labels. Cache-first/resumable; --force regenerates
-                          even current rows.
-  evaluate-visas [--force] [--limit N]
-                          pre-compute the golden-visa finder pathways (investment / retirement /
-                          digital-nomad) for every country. Cache-first/resumable.
+  seed                    bootstrap the place database (+ cached attributes/evals; INSERT-ONLY)
+  generate [--only attributes,criteria,visas,cost] [--force] [--limit N] [--check] [--export]
+                          ONE command for all shared AI-derived country data — cache-first,
+                          resumable, Ctrl-C-safe. Most of it self-heals on demand when a country
+                          is opened, so this is a warm-up / finder-prep. --check reports pending
+                          work (no AI calls); --export snapshots the caches to the git seed.
+  reseed <env> [--criteria]  load the committed seed into the DB, overwriting existing rows
+                          (places + attributes + evals); --criteria also rolls the registry
+  dedupe-places [--dry-run]  merge duplicate country rows sharing an ISO code (e.g. Espagne + Spain)
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
   purge-test-users <env>    delete @example.com / @xcape.test test users (confirm; prod-safe)

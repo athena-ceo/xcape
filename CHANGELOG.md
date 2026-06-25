@@ -5,6 +5,39 @@
 
 ## [Unreleased]
 
+### 2026-06-25 — Data pipeline consolidated: one `generate`, one `reseed`
+
+Nine overlapping db commands collapsed into two over a shared generator abstraction:
+
+- **`./xcape.sh generate [--only attributes,criteria,visas,cost] [--force] [--limit N] [--check]
+  [--export]`** — one command fills all shared AI-derived country data, cache-first, resumable,
+  Ctrl-C-safe. Each data kind is one entry in a generator registry (find what's missing/stale +
+  fill one cell); a single driver loops them. `--check` reports pending work with no AI calls;
+  `--export` snapshots the caches to the git seed — now including **place attributes** (which never
+  round-tripped before), so generate-on-dev → reseed-on-prod carries everything.
+  Replaces: `evaluate-all`, `evaluate-visas`, `backfill-social`, `backfill-living`, `regen-text`,
+  `export-evals`, `verify-evals`.
+- **`./xcape.sh reseed <env> [--criteria]`** — load the committed seed (places + attributes +
+  evals), overwrite; `--criteria` also rolls the registry. Replaces `reseed-data` + `reseed-criteria`.
+- Most of this data also **self-heals on view**, so `generate` is a warm-up / finder-prep, not a
+  requirement. Cheaper model (`gpt-5-mini`) now used for on-demand country research and the batch
+  attribute fill.
+
+### 2026-06-25 — Self-healing attributes, duplicate-country fix, graceful Ctrl-C
+
+- **English/tax-basis now self-heal on demand** instead of needing a bulk backfill: the drill-down's
+  generate path fills `english` (Language criterion) and `tax_basis` (budget panel) on first view via
+  the existing single-attribute filler — so only countries someone actually opens cost an AI call,
+  once. `backfill-living` is now an *optional* warm-up, not a requirement. (Most countries are never
+  visited, so bulk pre-computing AI across all ~218 is wasteful.)
+- **No more duplicate countries**: on-demand research now dedupes by **ISO code**, so searching
+  "Spain" when the DB already has "Espagne" (both ES) reuses the existing row instead of creating a
+  second. New `./xcape.sh dedupe-places [--dry-run]` merges any existing ISO duplicates (keeps the
+  canonical row, moves board entries onto it, deletes the rest).
+- **Ctrl-C is graceful**: the long-running db scripts (backfill-living/social, evaluate-visas,
+  evaluate-all, regen-text) now catch the interrupt and print "progress saved (resumable)" instead of
+  dumping a traceback — they already commit incrementally.
+
 ### 2026-06-25 — Ancestry & heritage right-of-return pathways
 
 Heritage-based immigration was under-covered: the ancestry route only surfaced when the

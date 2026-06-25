@@ -126,6 +126,14 @@ def generate_detail(
             if place_research.criterion_detail_one(db, place, key, user_id=user.id, force=body.force):
                 made += 1
         # proximity / unknown keys: nothing to generate
+    # Self-heal the English-prevalence attribute when the Language criterion is filled (lazy — no
+    # bulk backfill needed; only countries someone actually opens cost an AI call, once). A fresh
+    # country has language_ease pending, so this fires on first view.
+    if "language_ease" in body.keys:
+        try:
+            place_research.fill_criterion(db, place, "english", user_id=user.id)
+        except Exception:  # best-effort — never block the page on a display attribute
+            db.rollback()
     return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang)}
 
 
@@ -252,6 +260,12 @@ def generate_affordability(
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     affordability.evaluate_breakdown(db, place, force=body.force, user_id=user.id)
+    # Self-heal the tax-basis attribute shown in the budget panel (lazy — only opened countries
+    # cost an AI call, once — no bulk backfill required).
+    try:
+        place_research.fill_criterion(db, place, "tax_basis", user_id=user.id)
+    except Exception:  # best-effort — never block the calculator on a display attribute
+        db.rollback()
     # Populate the income-based routes the tie-in checks (always cache-first — the visa panel /
     # the visa regenerate flow own pathway freshness, so we don't re-force them here).
     relevant = set(visa_pathways.relevant_categories(user.profile, place))

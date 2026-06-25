@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from urllib.parse import urlparse, urlunparse
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -129,14 +130,27 @@ def research_place(db: Session, name: str, *, user_id: int | None = None) -> Pla
         schema_name="place",
         web_search=True,
         system=_SYSTEM,
+        model=settings.openai_chat_model,  # cheaper model — structured ratings, not long prose
         kind="research",
         db=db,
         user_id=user_id,
     )
+    # Dedup by ISO: the DB may already hold this country under a different (localized) name —
+    # e.g. searching "Spain" when the seed has "Espagne" (both ES). Never create a second row
+    # for the same country; reuse the existing one (back-filling any attributes it lacks).
+    iso = (data.get("iso_code") or "").upper().strip()
+    if iso:
+        existing = (
+            db.query(Place)
+            .filter(Place.kind == "country", func.upper(Place.iso_code) == iso)
+            .first()
+        )
+        if existing:
+            return existing
     place = Place(
         kind="country",
         name=data["name"],
-        iso_code=data.get("iso_code"),
+        iso_code=iso or data.get("iso_code"),
         attributes=data.get("attributes", {}),
         summary_fr=data.get("summary_fr"),
         summary_en=data.get("summary_en"),
@@ -151,6 +165,63 @@ def research_place(db: Session, name: str, *, user_id: int | None = None) -> Pla
 # Criteria with no single scalar attribute — derived from other fields, so they can't be
 # back-filled as one value (inclusion is computed from social_acceptance / openness).
 _DERIVED_CRITERIA = {"inclusion"}
+
+
+def _attr_schema(keys: list[str]) -> dict:
+    """JSON schema for a subset of AI-derivable place attributes (enums + languages + the
+    per-community acceptance object), so any missing ones can be filled in one call."""
+    props: dict = {}
+    for k in keys:
+        if k == "languages":
+            props[k] = {"type": "array", "items": {"type": "string"}}
+        elif k == "social_acceptance":
+            props[k] = {
+                "type": "object",
+                "properties": {g: {"type": "string", "enum": _GROUP_LEVELS} for g in criteria.community_keys()},
+                "required": criteria.community_keys(),
+                "additionalProperties": False,
+            }
+        else:
+            props[k] = {"type": "string", **({"enum": _ENUMS[k]} if k in _ENUMS else {})}
+    return {"type": "object", "properties": props, "required": keys, "additionalProperties": False}
+
+
+# Every attribute the AI derives for a country (the seed's scalar enums + languages + the
+# per-community acceptance map). Whatever a place is missing gets filled — lazily on view or in
+# bulk via `generate` — never bulk-precomputed eagerly for the ~218 countries nobody opens.
+def _all_attrs() -> list[str]:
+    return [*_ENUMS.keys(), "languages", "social_acceptance"]
+
+
+def fill_missing_attributes(db: Session, place: Place, *, force: bool = False,
+                            user_id: int | None = None) -> int:
+    """Fill any MISSING AI-derivable attributes for a place in ONE call (cache-first). Returns 1
+    if a call was made, else 0. `force` refills every attribute. Cheaper than per-attribute fills
+    and the single place where bulk/on-view attribute generation goes through."""
+    have = place.attributes or {}
+    targets = _all_attrs()
+    missing = targets if force else [k for k in targets if k not in have]
+    if not missing:
+        return 0
+    data = ai_client.respond_json(
+        f"Assess {place.name} for someone relocating there. Rate each attribute on its scale.",
+        _attr_schema(missing),
+        schema_name="place_attrs",
+        web_search=True,
+        system=_SYSTEM,
+        model=settings.openai_chat_model,  # cheaper model — scalar ratings, not prose
+        kind="research",
+        db=db,
+        user_id=user_id,
+    )
+    attrs = dict(have)
+    for k in missing:
+        if k in data and data[k] is not None:
+            attrs[k] = data[k]
+    place.attributes = attrs
+    place.source = place.source or "ai"
+    db.commit()
+    return 1
 
 
 def fill_criterion(db: Session, place: Place, key: str, *, user_id: int | None = None) -> str | None:

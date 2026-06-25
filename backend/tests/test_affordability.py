@@ -206,6 +206,8 @@ def test_affordability_endpoint_pending_then_filled(auth_client, db_session, mon
 
 def test_affordability_force_is_admin_only(auth_client, db_session, monkeypatch):
     place = _country(db_session)
+    place.attributes = {"tax_basis": "territorial"}  # already set → no lazy self-heal call to count
+    db_session.commit()
     # A regular user cannot force a re-research.
     assert auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en",
                             json={"force": True}).status_code == 403
@@ -225,3 +227,16 @@ def test_affordability_force_is_admin_only(auth_client, db_session, monkeypatch)
     auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en",
                      json={"force": True})                                                       # re-runs
     assert calls["n"] == 2
+
+
+def test_affordability_self_heals_tax_basis(auth_client, db_session, monkeypatch):
+    """Opening the budget panel lazily fills the tax_basis attribute (no bulk backfill needed)."""
+    place = _country(db_session)  # attributes={} → tax_basis missing
+
+    def fake(*a, schema_name=None, **k):
+        return {"value": "territorial"} if schema_name == "criterion" else _BREAKDOWN
+
+    monkeypatch.setattr(ai_client, "respond_json", fake)
+    auth_client.post(f"/api/v1/places/{place.id}/affordability/generate?lang=en", json={})
+    db_session.refresh(place)
+    assert (place.attributes or {}).get("tax_basis") == "territorial"

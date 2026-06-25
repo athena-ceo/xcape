@@ -33,15 +33,21 @@ def _upsert(db: Session, *, kind: str, name: str, overwrite: bool = True, **fiel
     return place
 
 
-def seed_criteria(db: Session) -> bool:
-    """Seed the editable criteria registry into app_config from the bundled file, once.
-    Idempotent: leaves an existing (possibly admin-edited) registry untouched."""
+def seed_criteria(db: Session, overwrite: bool = False) -> bool:
+    """Seed the editable criteria registry into app_config from the bundled file. Idempotent:
+    by default leaves an existing (possibly admin-edited) registry untouched; `overwrite=True`
+    (via `reseed --criteria`) force-rolls the bundled registry, replacing admin UI edits."""
     from app.models.app_config import AppConfig
     from app.services import criteria
 
-    if db.get(AppConfig, "criteria") is not None:
+    row = db.get(AppConfig, "criteria")
+    if row is not None and not overwrite:
         return False
-    db.add(AppConfig(key="criteria", value=criteria.file_registry()))
+    registry = criteria.file_registry()
+    if row is None:
+        db.add(AppConfig(key="criteria", value=registry))
+    else:
+        row.value = registry
     db.commit()
     criteria.invalidate()
     return True
