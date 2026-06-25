@@ -12,6 +12,8 @@ class ProfileUpdate(BaseModel):
     persona: str | None = None
     priorities_text: str | None = None
     budget_monthly: int | None = None
+    annual_income: int | None = None       # in the profile currency; activates residency_income
+    investable_amount: int | None = None   # in the profile currency; activates residency_investment
     currency: str | None = None  # ISO-4217 budgeting currency; null ⇒ derived from residence
     tenure: str | None = None
     climate_pref: str | None = None

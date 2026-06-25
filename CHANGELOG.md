@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### 2026-06-25 — Visa finder integrated into the country search (as scored criteria)
+
+The golden-visa finder is now optionally part of the ranking, not just a standalone page.
+
+- **Two new optional profile fields** — `annual_income` and `investable_amount` (migration `0026`),
+  captured in onboarding (budget step) and the profile, in the user's currency.
+- **Two new computed criteria** — *"Residency on your income"* and *"Residency by investment"* —
+  scored deterministically (no AI) per country from the user's figures vs the cached visa
+  thresholds: clears the easiest qualifying route → good, a route exists but is out of reach → ok,
+  no monetary route → weak. Compared in canonical **EUR** (currency-neutral) via the same finder
+  data, threaded through the scoring pipeline as augmented `evals`.
+- **Kept separate, by design** — investment vs income are different answers depending on financial
+  status, so they're two criteria, not one.
+- **Activate on entry** — providing a figure turns its criterion on at high importance; clearing it
+  makes it dormant (weight 0 → hidden). If neither is given, nothing changes and the standalone
+  Visa finder still works.
+- Rollout note: the new criteria need the registry — run `./xcape.sh reseed <env> --criteria` after deploy.
+
 ### 2026-06-25 — Real-estate ↔ visa tie-in (Phase 3) + multi-currency sweep
 
 - **Real-estate tie-in (golden-visa Phase 3)**: the budget panel now shows, when a country has an

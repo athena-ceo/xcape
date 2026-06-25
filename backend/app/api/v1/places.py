@@ -105,7 +105,9 @@ def generate_detail(
     custom_defs = _custom_defs_for(db, user, search)
 
     defs = criteria.definitions(custom_defs)                 # objective + custom: {label, description}
-    computed_text = set(criteria.computed_keys()) - {"proximity"}
+    # proximity + the residency-by-means criteria have deterministic text (board synthesises it),
+    # so they never need an AI generation pass.
+    computed_text = set(criteria.computed_keys()) - {"proximity", "residency_income", "residency_investment"}
     have_evals = set(criterion_eval.evals_for_place(db, place.id, list(defs.keys())).keys())
     have_detail = set(place_research.detail_map(place).keys())
 

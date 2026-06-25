@@ -37,6 +37,8 @@ interface Form {
   reasons_leaving: string[]
   minority_groups: string[]
   budget_monthly: number | null
+  annual_income: number | null
+  investable_amount: number | null
   currency: string | null
   tenure: 'rent' | 'buy' | null
   climate_pref: string | null
@@ -80,6 +82,8 @@ export function ProfilePage() {
         reasons_leaving: p?.reasons_leaving ?? [],
         minority_groups: p?.minority_groups ?? [],
         budget_monthly: p?.budget_monthly ?? null,
+        annual_income: p?.annual_income ?? null,
+        investable_amount: p?.investable_amount ?? null,
         currency: p?.currency ?? null,
         tenure: p?.tenure ?? null,
         climate_pref: p?.climate_pref ?? null,
@@ -124,6 +128,8 @@ export function ProfilePage() {
         reasons_leaving: f.reasons_leaving,
         minority_groups: f.minority_groups,
         budget_monthly: f.budget_monthly,
+        annual_income: f.annual_income,
+        investable_amount: f.investable_amount,
         currency: f.currency ?? undefined,
         tenure: f.tenure,
         climate_pref: f.climate_pref,
@@ -262,6 +268,23 @@ export function ProfilePage() {
             <span className="text-turquoise-800/70">{t.onboarding.budget.suffix}</span>
           </div>
           <p className="text-xs text-turquoise-800/50 mt-2">{t.onboarding.currency.hint}</p>
+
+          <p className="text-sm font-medium text-turquoise-900 mt-4 mb-1">{t.onboarding.means.q}</p>
+          <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.means.hint}</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label className="text-sm">
+              <span className="block text-xs text-turquoise-800/60 mb-1">{t.onboarding.means.income}</span>
+              <input type="number" min={0} step={1000} value={f.annual_income ?? ''}
+                onChange={(e) => set('annual_income', e.target.value ? Number(e.target.value) : null)}
+                className="w-full border border-turquoise-100 rounded-md px-3 py-2" placeholder="40000" />
+            </label>
+            <label className="text-sm">
+              <span className="block text-xs text-turquoise-800/60 mb-1">{t.onboarding.means.investable}</span>
+              <input type="number" min={0} step={10000} value={f.investable_amount ?? ''}
+                onChange={(e) => set('investable_amount', e.target.value ? Number(e.target.value) : null)}
+                className="w-full border border-turquoise-100 rounded-md px-3 py-2" placeholder="250000" />
+            </label>
+          </div>
         </Section>
 
         <Section title={t.onboarding.tenure.q}>

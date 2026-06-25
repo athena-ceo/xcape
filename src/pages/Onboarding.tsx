@@ -44,6 +44,8 @@ interface Answers {
   reasons_leaving: string[]
   minority_groups: string[]
   budget_monthly: number | null
+  annual_income: number | null
+  investable_amount: number | null
   tenure: 'rent' | 'buy' | null
   climate_pref: string | null
   known_languages: string[]
@@ -62,6 +64,8 @@ const EMPTY: Answers = {
   reasons_leaving: [],
   minority_groups: [],
   budget_monthly: null,
+  annual_income: null,
+  investable_amount: null,
   tenure: null,
   climate_pref: null,
   known_languages: [],
@@ -116,6 +120,8 @@ export function Onboarding() {
           reasons_leaving: p?.reasons_leaving ?? cur.reasons_leaving,
           minority_groups: p?.minority_groups ?? cur.minority_groups,
           budget_monthly: p?.budget_monthly ?? cur.budget_monthly,
+        annual_income: p?.annual_income ?? cur.annual_income,
+        investable_amount: p?.investable_amount ?? cur.investable_amount,
           tenure: p?.tenure ?? cur.tenure,
           climate_pref: p?.climate_pref ?? cur.climate_pref,
           priorities: Object.keys(p?.criteria_weights ?? {}),
@@ -185,6 +191,8 @@ export function Onboarding() {
         intends_children: a.intends_children,
         reasons_leaving: a.reasons_leaving,
         budget_monthly: a.budget_monthly,
+        annual_income: a.annual_income,
+        investable_amount: a.investable_amount,
         tenure: a.tenure,
         climate_pref: a.climate_pref,
         language_skills: { known: a.known_languages, willing_to_learn: !!a.willing_to_learn },
@@ -342,6 +350,23 @@ export function Onboarding() {
                   placeholder="2000"
                 />
                 <span className="text-turquoise-800/70">{t.onboarding.budget.suffix}</span>
+              </div>
+
+              <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.means.q}</p>
+              <p className="text-sm text-turquoise-800/60 mb-3">{t.onboarding.means.hint}</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <label className="text-sm">
+                  <span className="block text-xs text-turquoise-800/60 mb-1">{t.onboarding.means.income}</span>
+                  <input type="number" min={0} step={1000} value={a.annual_income ?? ''}
+                    onChange={(e) => setA({ ...a, annual_income: e.target.value ? Number(e.target.value) : null })}
+                    className="w-full border border-turquoise-100 rounded-md px-3 py-2" placeholder="40000" />
+                </label>
+                <label className="text-sm">
+                  <span className="block text-xs text-turquoise-800/60 mb-1">{t.onboarding.means.investable}</span>
+                  <input type="number" min={0} step={10000} value={a.investable_amount ?? ''}
+                    onChange={(e) => setA({ ...a, investable_amount: e.target.value ? Number(e.target.value) : null })}
+                    className="w-full border border-turquoise-100 rounded-md px-3 py-2" placeholder="250000" />
+                </label>
               </div>
             </>
           )}

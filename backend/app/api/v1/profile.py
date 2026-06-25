@@ -48,6 +48,20 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
     return profile
 
 
+def _activate_means_criteria(profile) -> None:
+    """Entering an income / investable amount turns its "residency you can afford" criterion on at
+    high importance; clearing the figure makes the criterion dormant (weight 0 → hidden, no effect).
+    A fresh dict is assigned so SQLAlchemy persists the JSON change."""
+    weights = dict(profile.criteria_weights or {})
+    for amount, key in ((profile.annual_income, "residency_income"),
+                        (profile.investable_amount, "residency_investment")):
+        if amount and amount > 0:
+            weights[key] = max(float(weights.get(key, 0)), 3.0)
+        else:
+            weights.pop(key, None)
+    profile.criteria_weights = weights
+
+
 @router.put("", response_model=ProfileOut)
 def update_profile(
     body: ProfileUpdate,
@@ -58,6 +72,7 @@ def update_profile(
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
     _ensure_currency(db, user, profile)  # populate before re-ranking (scoring reads profile.currency)
+    _activate_means_criteria(profile)  # entering income/investment turns its criterion on (high weight)
     db.commit()
     db.refresh(profile)
     # Profile drives scoring — re-rank every existing search to reflect the change,

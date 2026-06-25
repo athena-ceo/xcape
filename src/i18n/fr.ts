@@ -138,6 +138,12 @@ export const fr = {
       hint: 'Logement et vie courante, par mois.',
       suffix: '/mois',
     },
+    means: {
+      q: 'Revenus ou capital pour la résidence ? (facultatif)',
+      hint: 'Si vous les indiquez, nous classons les pays selon que vos moyens ouvrent une vraie voie de résidence — par les revenus (retraite / nomade numérique) ou par investissement (visa doré). Laissez vide pour ignorer ; le Trouver un visa reste disponible.',
+      income: 'Revenu annuel',
+      investable: 'Montant investissable',
+    },
     currency: {
       q: 'Devise du budget',
       hint: 'La devise de votre budget. Par défaut celle de votre pays de résidence ; modifiable à tout moment.',

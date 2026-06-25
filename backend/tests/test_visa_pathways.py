@@ -53,6 +53,29 @@ def test_relevant_categories_heritage_right_of_return():
         Profile(user=User(heritages=[])), israel)
 
 
+def test_residency_criteria_score_by_means(db_session):
+    """The finder, as scored criteria: income/investable vs cached visa thresholds, in EUR."""
+    from app.services import shortlist
+    place = Place(kind="country", name="Investland", iso_code="IV", active=True, attributes={})
+    db_session.add(place)
+    db_session.commit()
+    db_session.add_all([
+        PlaceCustomEval(place_id=place.id, key="visa_retirement", label="r", score=70, level="good",
+                        summary_fr="", summary_en="", sources=[],
+                        meta={"category": "retirement", "exists": True, "income_eur": 24000}),
+        PlaceCustomEval(place_id=place.id, key="visa_investment", label="i", score=60, level="ok",
+                        summary_fr="", summary_en="", sources=[],
+                        meta={"category": "investment", "exists": True, "investment_eur": 250000}),
+    ])
+    db_session.commit()
+    prof = Profile(annual_income=30000, investable_amount=100000, currency="EUR")
+    vals = shortlist.residency_values(db_session, [place.id], prof)[place.id]
+    assert vals["residency_income"] == 1.0      # 30k ≥ 24k threshold → you clear it
+    assert vals["residency_investment"] == 0.5  # 100k < 250k → a route exists but out of reach
+    # Neither figure set → criteria stay dormant (no entry at all).
+    assert shortlist.residency_values(db_session, [place.id], Profile(currency="EUR")) == {}
+
+
 def test_heritage_country_maps():
     assert visa_pathways.heritage_countries(["jewish"]) == {"IL", "DE", "ES", "PT"}
     assert visa_pathways.heritage_countries([]) == set()

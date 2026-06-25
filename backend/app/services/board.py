@@ -24,6 +24,7 @@ def criteria_view(
     attrs = place.attributes or {}
     rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
     evals = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
+    evals.update(sl.residency_values(db, [place.id], profile).get(place.id, {}))  # finder-as-criteria
 
     # "Worth evaluating" = the user actually weights it. We only spend AI on (and mark pending)
     # criteria with weight > 0, so an unimportant criterion never triggers a slow web-search
@@ -74,6 +75,7 @@ def criterion_details(
     eval_objective_keys = set(criteria.objective_keys()) | set(custom_keys)
     rows = criterion_eval.evals_for_place(db, place.id, list(eval_objective_keys))
     eval_values = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
+    eval_values.update(sl.residency_values(db, [place.id], profile).get(place.id, {}))  # finder-as-criteria
     detail = place_research.detail_map(place)
     attrs = place.attributes or {}
 
@@ -92,6 +94,9 @@ def criterion_details(
                 pending = True  # no AI eval yet → generate on demand
         elif key == "proximity":
             summary = _proximity_summary(profile, place, lang)
+            score = round(value * 100)
+        elif key in ("residency_income", "residency_investment"):
+            summary = _residency_summary(key, value, lang)  # deterministic, no AI, no amounts
             score = round(value * 100)
         else:  # computed criterion: deterministic score now, AI text lazily
             score = round(value * 100)
@@ -130,6 +135,24 @@ def _localize_meta(meta: dict | None, lang: str) -> dict | None:
     if metric:
         out["metric"] = metric
     return out
+
+
+def _residency_summary(key: str, value: float, lang: str) -> str:
+    """Deterministic, currency-neutral one-liner for the residency-by-means criteria (no AI, no
+    amounts — the budget panel shows the converted threshold)."""
+    kind_fr = "vos revenus" if key == "residency_income" else "votre capital investissable"
+    kind_en = "your income" if key == "residency_income" else "your investable capital"
+    if value >= 0.9:
+        return (f"Avec {kind_fr}, vous remplissez le seuil d'au moins une voie de résidence ici."
+                if lang == "fr" else
+                f"With {kind_en}, you clear the threshold for at least one residency route here.")
+    if value >= 0.45:
+        return ("Une voie de résidence existe ici, mais elle demande davantage que ce que vous avez indiqué."
+                if lang == "fr" else
+                "A residency route exists here, but it requires more than you indicated.")
+    return ("Aucune voie de résidence basée sur ce critère ici."
+            if lang == "fr" else
+            "No residency route based on this here.")
 
 
 def _proximity_summary(profile: Profile | None, place: Place, lang: str) -> str:

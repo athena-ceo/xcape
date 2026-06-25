@@ -218,6 +218,8 @@
      "scale": {"french": 1.0, "english": 0.9, "easy": 0.75, "medium": 0.55, "hard": 0.3}},
     {"key": "visa", "parent": "practical", "kind": "computed", "tags": ["mobility"], "label_fr": "Facilité d'installation (visa)", "label_en": "Ease of settling (visa)", "default_weight": 0.7,
      "scale": {"easy": 1.0, "medium": 0.6, "hard": 0.25}},
+    {"key": "residency_income", "parent": "practical", "kind": "computed", "tags": ["mobility", "financial"], "label_fr": "Résidence selon vos revenus", "label_en": "Residency on your income", "default_weight": 0.0},
+    {"key": "residency_investment", "parent": "practical", "kind": "computed", "tags": ["mobility", "financial"], "label_fr": "Résidence par investissement", "label_en": "Residency by investment", "default_weight": 0.0},
     {"key": "expat_community", "parent": "practical", "kind": "objective", "tags": ["community"], "label_fr": "Communauté d'expatriés", "label_en": "Expat community", "default_weight": 0.0,
      "scale": {"large": 1.0, "medium": 0.6, "small": 0.3},
      "ai_description": "Size and supportiveness of the international / expat community."},

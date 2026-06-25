@@ -22,6 +22,7 @@ import random
 from sqlalchemy.orm import Session
 
 from app.models.candidate import Candidate
+from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
 from app.models.profile import Profile
 from app.models.search import Search
@@ -214,6 +215,73 @@ def _proximity_value(profile: Profile | None, place: Place | None) -> float:
         return 0.2
     span = _PROXIMITY_FAR_KM - _PROXIMITY_NEAR_KM
     return round(1.0 - 0.8 * (d - _PROXIMITY_NEAR_KM) / span, 3)
+
+
+# --- "Residency you can afford" (visa finder, as scored criteria) ---------------------
+# Two computed criteria scored from the user's annual income / investable amount vs the cached
+# visa pathway thresholds (currency-neutral — compared in canonical EUR). They stay dormant
+# (absent → weight 0) until the user provides the figure; activated by the profile update.
+_INCOME_CATS = {"retirement", "digital_nomad"}
+
+
+def _means_score(user_eur: float, thresholds_eur: list) -> float:
+    """1.0 if the user's means clears the EASIEST qualifying route, 0.5 if such a route exists but
+    is out of reach, 0.25 if the country offers no monetary route of this kind."""
+    ts = [t for t in thresholds_eur if t is not None]
+    if not ts:
+        return 0.25
+    return 1.0 if user_eur >= min(ts) else 0.5
+
+
+def residency_values(db: Session, place_ids: list[int], profile: Profile | None) -> dict[int, dict]:
+    """{place_id: {'residency_income'?: v, 'residency_investment'?: v}} for the pool, from the
+    user's income / investable amount vs cached visa thresholds. Empty when neither figure is set
+    (criteria dormant). One batch query; no AI."""
+    income = getattr(profile, "annual_income", None) if profile else None
+    invest = getattr(profile, "investable_amount", None) if profile else None
+    if (not income and not invest) or not place_ids:
+        return {}
+    cur = getattr(profile, "currency", None)
+    income_eur = fx.to_eur(income, cur) if income else None
+    invest_eur = fx.to_eur(invest, cur) if invest else None
+    rows = (
+        db.query(PlaceCustomEval)
+        .filter(PlaceCustomEval.place_id.in_(place_ids),
+                PlaceCustomEval.key.in_(["visa_retirement", "visa_digital_nomad", "visa_investment"]))
+        .all()
+    )
+    by_place: dict[int, list] = {}
+    for r in rows:
+        by_place.setdefault(r.place_id, []).append(r.meta or {})
+    out: dict[int, dict] = {}
+    for pid in place_ids:
+        metas = [m for m in by_place.get(pid, []) if m.get("exists", True)]
+        vals: dict[str, float] = {}
+        if income_eur is not None:
+            vals["residency_income"] = _means_score(
+                income_eur, [m.get("income_eur") for m in metas if m.get("category") in _INCOME_CATS])
+        if invest_eur is not None:
+            vals["residency_investment"] = _means_score(
+                invest_eur, [m.get("investment_eur") for m in metas if m.get("category") == "investment"])
+        if vals:
+            out[pid] = vals
+    return out
+
+
+def _pool_evals(db: Session, place_ids: list[int], profile: Profile | None, keys: list[str]) -> dict[int, dict]:
+    """Cached AI eval values for the pool, augmented with the per-user residency criteria."""
+    from app.services import criterion_eval
+    out = criterion_eval.values_for_places(db, place_ids, keys)
+    for pid, vals in residency_values(db, place_ids, profile).items():
+        out.setdefault(pid, {}).update(vals)
+    return out
+
+
+def _place_evals(db: Session, place_id: int, profile: Profile | None, keys: list[str]) -> dict:
+    from app.services import criterion_eval
+    out = criterion_eval.values_for_place(db, place_id, keys)
+    out.update(residency_values(db, [place_id], profile).get(place_id, {}))
+    return out
 
 
 def _criterion_value(
@@ -421,7 +489,7 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     )
     scorable = [c for c in candidates if c.place]
     for cand in scorable:
-        evals = criterion_eval.values_for_place(db, cand.place_id, eval_keys)
+        evals = _place_evals(db, cand.place_id, profile, eval_keys)
         score, reasons = _score_place(cand.place, weights, profile, evals)
         cand.match_score = score
         cand.match_reasons = reasons
@@ -452,7 +520,7 @@ def explain_place(db: Session, user: User, place: Place | None, search: Search |
         if c.get("key"):
             weights[c["key"]] = float(c.get("weight", 1.0))
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
-    evals = criterion_eval.values_for_place(db, place.id, eval_keys) if place else {}
+    evals = _place_evals(db, place.id, profile, eval_keys) if place else {}
 
     active = {k: w for k, w in weights.items() if w > 0}
     wsum = sum(active.values())
@@ -487,9 +555,7 @@ def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Can
     custom_defs = list(search.custom_criteria or [])
     # Batch-load the cached AI evals for the whole pool so the seed-sparse countries score
     # on real values (one query, not one per country).
-    evals_by_place = criterion_eval.values_for_places(
-        db, [p.id for p in countries], criteria.objective_keys()
-    )
+    evals_by_place = _pool_evals(db, [p.id for p in countries], profile, criteria.objective_keys())
     # Hard filters are exclusionary: only non-violating countries are eligible (pending evals
     # are kept — not yet judged). If nothing qualifies, the board is empty and the UI prompts
     # the user to relax constraints (filter_advice). Filter editing later goes via repopulate.
@@ -551,7 +617,7 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
     countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
-    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+    evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
 
     # Score + filter-classify every country; rank qualified → pending → violating, by score.
     scored = []  # (place, score, reasons, tier)
@@ -638,7 +704,7 @@ def rank_all(db: Session, user: User, search: Search) -> list[dict]:
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
     countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
-    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+    evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
     on_board = {
         c.place_id
         for c in db.query(Candidate).filter(
@@ -678,7 +744,7 @@ def wildcards(db: Session, user: User, search: Search, n: int = 3) -> list[dict]
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
     countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
-    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+    evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
     # Skip what the user already sees or rejected: board picks + explicitly excluded.
     skip = {
         c.place_id
@@ -731,7 +797,7 @@ def filter_advice(db: Session, user: User, search: Search) -> dict:
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
     countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
-    evals_by_place = criterion_eval.values_for_places(db, [p.id for p in countries], eval_keys)
+    evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
 
     qualified = 0
     blockers: dict[str, dict] = {}

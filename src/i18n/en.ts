@@ -140,6 +140,12 @@ export const en: Dict = {
       hint: 'Housing and everyday living, per month.',
       suffix: '/month',
     },
+    means: {
+      q: 'Income or capital for residency? (optional)',
+      hint: 'If you share these, we’ll rank countries by whether your means clear a real residency route — by income (retirement / digital‑nomad) or by investment (golden visa). Leave blank to skip; the standalone Visa finder still works.',
+      income: 'Annual income',
+      investable: 'Investable amount',
+    },
     currency: {
       q: 'Budgeting currency',
       hint: 'The currency your budget is in. Defaults to your country of residence; change it anytime.',
