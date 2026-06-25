@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { useT, type Language } from '../i18n'
 import { api } from '../services/api'
+import { clearDraft } from '../services/onboardingDraft'
 import { useAuth } from '../store/auth'
 import { HelpDialog } from './HelpDialog'
 
@@ -40,6 +41,7 @@ export function Header() {
       if (savePdf && resetSid != null) await api.downloadReport(resetSid, lang)
       await api.resetAccount()
     } catch { /* proceed to onboarding regardless */ } finally {
+      clearDraft()  // start over → discard any resume draft
       setWorking(false)
       setResetOpen(false)
       navigate('/onboarding')
@@ -77,6 +79,7 @@ export function Header() {
               </span>
             )}
             <Link to="/search" className="text-turquoise-600">{t.nav.search}</Link>
+            <Link to="/visa-finder" className="text-turquoise-600">{t.nav.visaFinder}</Link>
             <button onClick={openReset} className="text-turquoise-600">{t.nav.newRequest}</button>
             <Link to="/profile" className="text-turquoise-600">{t.nav.profile}</Link>
             {isAdmin && <Link to="/admin" className="text-turquoise-600">{t.nav.admin}</Link>}

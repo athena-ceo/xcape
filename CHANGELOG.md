@@ -5,6 +5,78 @@
 
 ## [Unreleased]
 
+### 2026-06-25 — Ancestry & heritage right-of-return pathways
+
+Heritage-based immigration was under-covered: the ancestry route only surfaced when the
+destination's ISO was in the user's declared ancestry countries — fine for Ireland/Italy by
+descent, but it missed ethno-religious **right-of-return** laws (Israel's Law of Return is based
+on Jewish heritage, not Israeli ancestry).
+
+- **New "heritage" question** (onboarding + profile): declare a heritage that may grant a right of
+  return independent of a country of ancestry (Jewish to start; `users.heritages`, migration `0025`).
+- **Surfaces the routes**: a Jewish-heritage user now sees the ancestry/heritage pathway for Israel,
+  Germany (Art. 116) and Spain/Portugal (Sephardic). The AI eval describes the *actual* conditions,
+  including where a route is restricted or closed — it's a surfacing hint; eligibility is the user's
+  to confirm. The category is relabelled "Ancestry / heritage".
+- **Richer eval**: the ancestry/heritage prompt now covers descent (jus sanguinis, eligible
+  generation, foreign-births registration, documentation) AND right-of-return laws. Invalidated
+  surgically per-category (only ancestry rows regenerate — the investment/retirement/nomad finder
+  cache is untouched).
+- **Ranking**: a strong, open heritage route (Jewish → Israel's Law of Return) boosts the
+  "ease of settling (visa)" score like a declared ancestry tie; restricted routes don't.
+
+### 2026-06-24 — Smarter post-login routing + resumable onboarding
+
+- **Login lands where it should**: a returning user who already has a completed search goes
+  straight to their **comparison board** (`/compare/{latest}`) instead of back through onboarding;
+  a user with no search goes to onboarding.
+- **Onboarding resumes where you left off**: the wizard now saves an in-progress **draft** (current
+  step + all answers + chosen persona) to the browser as you go, and restores it on return — no
+  re-entering everything. The draft is cleared when onboarding finishes, on "New request" (start
+  over), and on logout (so it never leaks to the next user on a shared browser). Pressing Enter on
+  the login password also submits now (separate fix).
+
+### 2026-06-24 — Comparison board: roomier table, wrapping criterion column, neutral pending
+
+- **Wider board on desktop** (`max-w-4xl` → `max-w-7xl`) so country columns use the available width
+  instead of crowding into a narrow strip.
+- **Criterion column no longer hogs space**: it was `truncate` + `max-w-none`, so on desktop the
+  column stretched to fit the longest criterion name on a single line. It's now a fixed, narrow
+  width (`w-32` mobile / `w-64` desktop) with long names **wrapping to multiple lines** — works on
+  both phone and desktop.
+- **Category roll-up values are now underlined** (dotted) like criterion values, so it's clear they
+  open the country drill-down.
+- **Just-added custom criteria read neutral, not "Weak"**: a not-yet-evaluated leaf is excluded
+  from its category roll-up until its evaluation lands, so "Your criteria" shows "—" (neutral)
+  instead of an unearned "Weak" while the AI is still working.
+
+### 2026-06-24 — Admin: regenerate a country's data from the Places list
+
+- **Per-country "↻ Regenerate" action** in the admin Places list (one per country) — for when a
+  country is reported outdated or incorrect. It opens that country's drill-down and auto-runs the
+  existing full force-regenerate (every criterion's score + text, all visa pathways, the budget
+  breakdown), so the admin watches it refill live and can verify the corrected data and sources.
+  Reuses the drill-down's incremental regenerate (`?regen=1` deep-link); the force endpoints stay
+  admin-gated server-side.
+
+### 2026-06-24 — Golden-visa finder (Phase 2): "I have €X — where can I go?"
+
+A standalone **Visa finder** page (top-nav link) that inverts the per-country drill-down:
+enter an amount and a goal, get the countries it opens a residency route to, ranked.
+
+- **Two goals**: *a lump-sum investment* (ranked on each country's investment / golden-visa
+  threshold) or *passive / pension income* (ranked on the retirement & digital-nomad annual
+  income thresholds) — covering both the NYT golden-visa and *International Living* audiences.
+- **Ranking**: easiest-first (accessibility), then least time committed on the ground (minimum
+  stay, then years to citizenship). Each result shows the program name, threshold, stay and
+  PR/citizenship timeline, and deep-links into the country drill-down.
+- **Amount is in the user's budgeting currency**, converted to the canonical EUR thresholds
+  server-side; results come back converted for display.
+- **Backend**: `GET /visa/finder?amount=&goal=&lang=` over the shared pathway cache (no AI on
+  the request path). New `./xcape.sh evaluate-visas` pre-computes the investment / retirement /
+  digital-nomad pathways for every country so the finder can rank across all of them
+  (cache-first/resumable).
+
 ### 2026-06-24 — Admin: full user management + richer AI log
 
 - **User management.** The admin Users tab can now **add** an account (inline form), **change

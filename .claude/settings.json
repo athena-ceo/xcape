@@ -36,7 +36,10 @@
       "Bash(./xcape.sh purge-test-users *)",
       "Bash(python -m pytest -q)",
       "Bash(python3 -m pytest -q)",
-      "Bash(./xcvenv/bin/python -m pytest -q)"
+      "Bash(./xcvenv/bin/python -m pytest -q)",
+      "Bash(docker compose -f docker-compose.dev.yml exec -T db psql:*)",
+      "Bash(docker compose -f docker-compose.dev.yml exec -T backend python:*)",
+      "Bash(tail:*)"
     ]
   }
 }

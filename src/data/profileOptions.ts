@@ -20,6 +20,9 @@ export const PRIORITY_KEYS = [
 export const MINORITY_GROUPS = [
   'lgbtq', 'jewish', 'muslim', 'ethnic_minorities', 'other_religious_minority',
 ] as const
+// Ethno-religious heritage that may grant a right-of-return independent of a country of ancestry
+// (must match backend visa_pathways.HERITAGE_COUNTRIES keys). Extensible; Jewish is the clearest.
+export const HERITAGE_KEYS = ['jewish'] as const
 // Canonical (English) language names — must match the country `languages` data.
 export const LANG_OPTIONS = [
   'French', 'English', 'Spanish', 'German', 'Italian', 'Portuguese', 'Dutch', 'Arabic',

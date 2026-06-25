@@ -1,7 +1,7 @@
 // Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Chip } from '../components/Chip'
@@ -11,11 +11,12 @@ import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { Spinner } from '../components/Spinner'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE,
+  CLIMATE_KEYS, HERITAGE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
 import { api } from '../services/api'
 import { labelOf, useCriteria, type Persona } from '../services/criteria'
+import { clearDraft, loadDraft, saveDraft } from '../services/onboardingDraft'
 import { useAuth } from '../store/auth'
 
 type StepId =
@@ -37,6 +38,7 @@ interface Answers {
   current_country: string
   citizenships: string[]
   ancestry_countries: string[]
+  heritages: string[]
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
@@ -54,6 +56,7 @@ const EMPTY: Answers = {
   current_country: '',
   citizenships: [],
   ancestry_countries: [],
+  heritages: [],
   household_type: null,
   intends_children: null,
   reasons_leaving: [],
@@ -77,39 +80,58 @@ export function Onboarding() {
   const [busy, setBusy] = useState(false)
   const [persona, setPersona] = useState<Persona | null>(null)
   const [savedPersonaKey, setSavedPersonaKey] = useState<string | null>(null)
+  // Gate draft-saving until hydration (draft restore OR server pre-fill) has settled, so the
+  // initial empty state never clobbers a saved draft.
+  const hydratedRef = useRef(false)
 
-  // Pre-fill from the server ONCE on mount — never re-run, so an async locale change can't
-  // overwrite answers the user is in the middle of selecting (e.g. multiple communities).
+  // On mount: resume an in-progress draft if one exists; otherwise pre-fill from the saved
+  // profile (so "New request" lets a returning user tweak and re-run rather than re-enter
+  // everything). Runs ONCE — an async locale change can't overwrite answers mid-selection.
   useEffect(() => {
-    api.me().then((me) => {
-      setA((cur) => ({
-        ...cur,
-        current_country: me.current_country ?? cur.current_country,
-        citizenships: me.citizenships ?? cur.citizenships,
-        ancestry_countries: me.ancestry_countries ?? cur.ancestry_countries,
-      }))
-    })
-    api.getProfile().then((p: any) => {
-      const known: string[] | undefined = p?.language_skills?.known
-      setSavedPersonaKey(p?.persona ?? null)  // pre-select the returning user's previous profile
-      // Pre-fill every answer from the saved profile so "New request" lets the user tweak
-      // and re-run rather than re-entering everything from scratch.
-      setA((cur) => ({
-        ...cur,
-        household_type: p?.household_type ?? cur.household_type,
-        intends_children: p?.intends_children ?? cur.intends_children,
-        reasons_leaving: p?.reasons_leaving ?? cur.reasons_leaving,
-        minority_groups: p?.minority_groups ?? cur.minority_groups,
-        budget_monthly: p?.budget_monthly ?? cur.budget_monthly,
-        tenure: p?.tenure ?? cur.tenure,
-        climate_pref: p?.climate_pref ?? cur.climate_pref,
-        priorities: Object.keys(p?.criteria_weights ?? {}),
-        priorities_text: p?.priorities_text ?? cur.priorities_text,
-        known_languages: known?.length ? known : [LOCALE_LANGUAGE[lang] ?? 'English'],
-        willing_to_learn: p?.language_skills?.willing_to_learn ?? cur.willing_to_learn,
-      }))
-    }).catch(() => {})
+    const draft = loadDraft()
+    if (draft) {
+      if (draft.a) setA({ ...EMPTY, ...(draft.a as Partial<Answers>) })  // tolerate older draft shapes
+      if (typeof draft.index === 'number') setIndex(Math.max(0, draft.index))
+      if (draft.persona) setSavedPersonaKey(draft.persona)
+      hydratedRef.current = true
+      return
+    }
+    Promise.all([
+      api.me().then((me) => {
+        setA((cur) => ({
+          ...cur,
+          current_country: me.current_country ?? cur.current_country,
+          citizenships: me.citizenships ?? cur.citizenships,
+          ancestry_countries: me.ancestry_countries ?? cur.ancestry_countries,
+          heritages: me.heritages ?? cur.heritages,
+        }))
+      }).catch(() => {}),
+      api.getProfile().then((p: any) => {
+        const known: string[] | undefined = p?.language_skills?.known
+        setSavedPersonaKey(p?.persona ?? null)  // pre-select the returning user's previous profile
+        setA((cur) => ({
+          ...cur,
+          household_type: p?.household_type ?? cur.household_type,
+          intends_children: p?.intends_children ?? cur.intends_children,
+          reasons_leaving: p?.reasons_leaving ?? cur.reasons_leaving,
+          minority_groups: p?.minority_groups ?? cur.minority_groups,
+          budget_monthly: p?.budget_monthly ?? cur.budget_monthly,
+          tenure: p?.tenure ?? cur.tenure,
+          climate_pref: p?.climate_pref ?? cur.climate_pref,
+          priorities: Object.keys(p?.criteria_weights ?? {}),
+          priorities_text: p?.priorities_text ?? cur.priorities_text,
+          known_languages: known?.length ? known : [LOCALE_LANGUAGE[lang] ?? 'English'],
+          willing_to_learn: p?.language_skills?.willing_to_learn ?? cur.willing_to_learn,
+        }))
+      }).catch(() => {}),
+    ]).finally(() => { hydratedRef.current = true })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist the in-progress draft (step + answers + persona) on every change, once hydrated.
+  useEffect(() => {
+    if (!hydratedRef.current) return
+    saveDraft({ index, a, persona: persona?.key ?? null })
+  }, [index, a, persona])
 
   // Steps are dynamic: until a persona is chosen the wizard ends at the picker; once chosen,
   // the persona's `ask` gates which optional follow-ups appear (then language, last).
@@ -118,8 +140,11 @@ export function Onboarding() {
     const ask = persona.ask ?? GATED_STEPS
     return [...BASE_STEPS, ...GATED_STEPS.filter((g) => ask.includes(g)), 'language']
   }, [persona])
-  const step = STEPS[index]
-  const isLast = index === STEPS.length - 1
+  // While a resumed persona is still loading, the step list is shorter than the saved index, so
+  // clamp the VIEW (never the stored index) — once the persona resolves, stepIdx === index again.
+  const stepIdx = Math.min(index, Math.max(0, STEPS.length - 1))
+  const step = STEPS[stepIdx]
+  const isLast = stepIdx === STEPS.length - 1
 
   // Once the registry has loaded, pre-select the returning user's saved persona in the picker.
   useEffect(() => {
@@ -152,7 +177,7 @@ export function Onboarding() {
   async function finish() {
     setBusy(true)
     try {
-      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships, ancestry_countries: a.ancestry_countries })
+      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships, ancestry_countries: a.ancestry_countries, heritages: a.heritages })
       // Re-read identity from the server so the cached store reflects the new truth.
       await refreshAuth()
       await api.updateProfile({
@@ -178,6 +203,9 @@ export function Onboarding() {
       if (a.priorities_text.trim()) {
         await api.suggestCriteria(search.id, [], a.priorities_text.trim()).catch(() => {})
       }
+      // Onboarding is done — drop the resume draft so a future visit starts clean.
+      hydratedRef.current = false
+      clearDraft()
       // Straight to the comparison table (pre-filled with the top matches) — the old
       // checklist step added friction without value.
       navigate(`/compare/${search.id}`)
@@ -201,7 +229,7 @@ export function Onboarding() {
 
   function onNext() {
     if (isLast) finish()
-    else setIndex((i) => i + 1)
+    else setIndex(stepIdx + 1)
   }
 
   return (
@@ -209,12 +237,12 @@ export function Onboarding() {
       <p className="text-center text-turquoise-800/70 mb-6">{t.onboarding.intro}</p>
       <div className="bg-turquoise-50 rounded-xl p-5">
         <p className="text-sm text-turquoise-600 mb-1">
-          {t.onboarding.stepLabel} {index + 1} {t.onboarding.of} {STEPS.length}
+          {t.onboarding.stepLabel} {stepIdx + 1} {t.onboarding.of} {STEPS.length}
         </p>
         <div className="h-1.5 bg-turquoise-100 rounded-full mb-6">
           <div
             className="h-full bg-turquoise-400 rounded-full transition-all"
-            style={{ width: `${((index + 1) / STEPS.length) * 100}%` }}
+            style={{ width: `${((stepIdx + 1) / STEPS.length) * 100}%` }}
           />
         </div>
 
@@ -247,6 +275,16 @@ export function Onboarding() {
                 onChange={(v) => setA({ ...a, ancestry_countries: v })}
                 addLabel={t.onboarding.ancestry.add}
               />
+              <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.heritage.q}</p>
+              <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.heritage.hint}</p>
+              <div className="flex flex-wrap gap-2">
+                {HERITAGE_KEYS.map((h) => (
+                  <Chip key={h} active={a.heritages.includes(h)}
+                    onClick={() => setA({ ...a, heritages: toggle(a.heritages, h) })}>
+                    {(t.onboarding.heritage.options as Record<string, string>)[h]}
+                  </Chip>
+                ))}
+              </div>
             </>
           )}
 
@@ -398,8 +436,8 @@ export function Onboarding() {
           )}
 
           <div className="mt-6 flex items-center gap-3">
-            {index > 0 && (
-              <button onClick={() => setIndex((i) => i - 1)}
+            {stepIdx > 0 && (
+              <button onClick={() => setIndex(stepIdx - 1)}
                 className="border border-turquoise-100 rounded-md px-4 py-2.5 text-sm">
                 {t.onboarding.back}
               </button>

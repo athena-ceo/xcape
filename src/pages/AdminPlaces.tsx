@@ -2,6 +2,7 @@
 // Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { useT } from '../i18n'
 import { api } from '../services/api'
@@ -12,6 +13,7 @@ import { api } from '../services/api'
 // country / region / city.
 export function AdminPlaces() {
   const { t } = useT()
+  const navigate = useNavigate()
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -35,6 +37,13 @@ export function AdminPlaces() {
     setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, ...patchBody } : r)))
     try { await api.updatePlace(p.id, patchBody); setMsg(t.adminPlaces.saved) }
     catch (e: any) { setMsg(e?.message || 'Error'); load() }
+  }
+
+  // Regenerate a country's AI data when it's reported outdated/incorrect: open its drill-down
+  // and auto-run the full force-regenerate there (live progress + sources to verify the fix).
+  function regenerate(p: any) {
+    if (!confirm(t.adminPlaces.regenConfirm.replace('{name}', p.name))) return
+    navigate(`/drilldown/${p.id}?regen=1`)
   }
 
   async function add() {
@@ -105,6 +114,7 @@ export function AdminPlaces() {
                 <th className="p-3 font-medium">ISO</th>
                 <th className="p-3 font-medium">{t.admin.colSource}</th>
                 <th className="p-3 font-medium text-right">{t.adminPlaces.active}</th>
+                <th className="p-3 font-medium text-right">{t.adminPlaces.regen}</th>
               </tr>
             </thead>
             <tbody>
@@ -128,6 +138,14 @@ export function AdminPlaces() {
                         onChange={(e) => patch(p, { active: e.target.checked })} />
                       {t.adminPlaces.active}
                     </label>
+                  </td>
+                  <td className="p-3 text-right">
+                    {p.kind === 'country' && (
+                      <button onClick={() => regenerate(p)} title={t.adminPlaces.regenHint}
+                        className="text-xs text-turquoise-600 hover:underline whitespace-nowrap">
+                        ↻ {t.adminPlaces.regen}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

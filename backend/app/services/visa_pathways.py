@@ -34,6 +34,11 @@ from app.services.criterion_eval import _fresh, level_from_score
 # pathway rows (independent of the criterion-eval version).
 VISA_PROMPT_VERSION = "3"  # v3: + program_name and min_stay_days (physical-presence requirement)
 
+# Per-category version — bump ONE category to invalidate only its cached rows (instead of churning
+# every visa pathway via VISA_PROMPT_VERSION). Appended to the fingerprint only when set, so other
+# categories keep a byte-identical fingerprint. ancestry v2: prompt now covers descent + return laws.
+CATEGORY_VERSION: dict[str, str] = {"ancestry": "2"}
+
 # Catalog categories — destination PROGRAMS (free movement is citizenship-based, handled by the
 # overlay in shortlist, so it is NOT part of the on-demand catalog). Order = display order.
 CATEGORY_LABELS: dict[str, dict[str, str]] = {
@@ -43,11 +48,40 @@ CATEGORY_LABELS: dict[str, dict[str, str]] = {
                    "fr": "Investissement (golden / immobilier / entreprise)"},
     "entrepreneur": {"en": "Entrepreneur / startup", "fr": "Entrepreneur / startup"},
     "digital_nomad": {"en": "Digital nomad / remote work", "fr": "Nomade numérique / télétravail"},
-    "ancestry": {"en": "Ancestry / descent", "fr": "Ascendance / filiation"},
+    "ancestry": {"en": "Ancestry / heritage", "fr": "Ascendance / patrimoine"},
     "family": {"en": "Family / spouse reunification", "fr": "Famille / regroupement familial"},
     "student": {"en": "Student", "fr": "Étudiant"},
 }
 CATALOG_CATEGORIES = list(CATEGORY_LABELS.keys())
+
+# Ethno-religious heritage → countries whose RIGHT-OF-RETURN law may apply, independent of a
+# country of ancestry. Drives surfacing of the ancestry/heritage pathway for those countries
+# (the AI eval describes the actual, possibly restricted, conditions — some Sephardic routes
+# have closed/tightened). Keys match User.heritages.
+HERITAGE_COUNTRIES: dict[str, list[str]] = {
+    "jewish": ["IL", "DE", "ES", "PT"],  # Israel Law of Return; Germany Art.116; Sephardic (ES/PT)
+}
+# The subset strong/open enough to also boost the visa ease SCORE (not just surface the panel) —
+# kept conservative so restricted routes don't inflate the ranking.
+HERITAGE_VISA_BOOST: dict[str, list[str]] = {
+    "jewish": ["IL"],  # Israel's Law of Return is a fast, near-automatic citizenship route
+}
+
+
+def heritage_countries(heritages: list | None) -> set[str]:
+    """ISO codes whose heritage right-of-return pathway is worth surfacing for these heritages."""
+    out: set[str] = set()
+    for h in heritages or []:
+        out |= {c.upper() for c in HERITAGE_COUNTRIES.get(str(h), [])}
+    return out
+
+
+def heritage_visa_boost_countries(heritages: list | None) -> set[str]:
+    """ISO codes where a heritage tie is strong enough to max out the visa-ease score."""
+    out: set[str] = set()
+    for h in heritages or []:
+        out |= {c.upper() for c in HERITAGE_VISA_BOOST.get(str(h), [])}
+    return out
 
 # Which categories are worth surfacing for a given persona (in addition to the universal ones
 # and any user-declared ancestry). Personas not listed get only the universal set.
@@ -80,6 +114,9 @@ def _label(category: str) -> str:
 def _fp(category: str) -> str:
     """Fingerprint for a pathway cell — the invariant part of the prompt (place excluded)."""
     raw = f"{VISA_PROMPT_VERSION}\x1fvisa\x1f{category}"
+    cv = CATEGORY_VERSION.get(category)
+    if cv:  # append only when set, so other categories' fingerprints are unchanged
+        raw += f"\x1f{cv}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
@@ -91,9 +128,14 @@ def relevant_categories(profile: Profile | None, place: Place | None) -> list[st
     cats += PERSONA_CATEGORIES.get(persona or "", [])
     iso = (place.iso_code or "").upper() if place else ""
     anc = set()
-    if profile and profile.user and getattr(profile.user, "ancestry_countries", None):
-        anc = {str(c).upper() for c in profile.user.ancestry_countries}
-    if iso and iso in anc:
+    her: set[str] = set()
+    if profile and profile.user:
+        if getattr(profile.user, "ancestry_countries", None):
+            anc = {str(c).upper() for c in profile.user.ancestry_countries}
+        her = heritage_countries(getattr(profile.user, "heritages", None))
+    # Surface the ancestry/heritage route for a declared country of ancestry OR an ethno-religious
+    # heritage with a right-of-return law to THIS place (e.g. Jewish heritage → Israel).
+    if iso and (iso in anc or iso in her):
         cats.append("ancestry")
     cats += UNIVERSAL_CATEGORIES
     seen: set[str] = set()
@@ -180,6 +222,19 @@ def evaluate_pathway(
         f"\"we\", \"my\", \"our\"). Name the actual program if it has one, and do NOT restate the "
         f"difficulty number. Put sources ONLY in the sources array as bare https URLs. Use web "
         f"search and favour the most recent data (2025–2026)."
+        + (
+            f" For this ANCESTRY / HERITAGE route, cover BOTH forms where they exist: (a) "
+            f"citizenship/residence by DESCENT or lineage (e.g. jus sanguinis, a qualifying "
+            f"parent/grandparent/great-grandparent, foreign-births registration) — state the "
+            f"furthest eligible generation and the documentation/proof of lineage needed; and "
+            f"(b) any ethno-religious or historic RIGHT OF RETURN (e.g. Israel's Law of Return "
+            f"for people of Jewish heritage, Germany's Art.116(2) restoration for descendants of "
+            f"those persecuted 1933–1945, Sephardic-origin routes) — say clearly WHO qualifies and "
+            f"whether the route is currently OPEN, restricted, or CLOSED, and as of when. If no "
+            f"descent or return route exists, set exists=false. Put the key eligibility conditions "
+            f"in the requirements bullets."
+            if category == "ancestry" else ""
+        )
     )
     try:
         data = ai_client.respond_json(
@@ -280,3 +335,68 @@ def pathway_payload(
         "summary_en": ev.summary_en or "",
         "sources": ev.sources or [],
     }
+
+
+# --- Golden-visa finder ---------------------------------------------------------------
+# The finder ranks DESTINATIONS by an amount the user has, over the pre-computed pathway
+# cache (populated by `evaluate-visas`). Two goals: a lump sum (investment / golden-visa
+# routes, judged on investment_eur) or passive income (retirement & digital-nomad routes,
+# judged on the annual income_eur threshold).
+FINDER_GOALS: dict[str, dict] = {
+    "invest": {"categories": ["investment"], "field": "investment_eur"},
+    "income": {"categories": ["retirement", "digital_nomad"], "field": "income_eur"},
+}
+# Categories the finder relies on — what `evaluate-visas` pre-computes for every country.
+FINDER_CATEGORIES = ["investment", "retirement", "digital_nomad"]
+
+
+def finder(
+    db: Session, amount_eur: float, goal: str, *,
+    currency: str = "EUR", rate: float = 1.0, lang: str = "en", limit: int = 60,
+) -> list[dict]:
+    """Rank countries whose `goal` pathway this `amount_eur` clears, best-first. Reads ONLY the
+    cached pathway rows (no AI) — so coverage depends on `evaluate-visas` having run. Ranking:
+    easiest first (difficulty desc), then least time committed there (min-stay asc, then years
+    to citizenship asc)."""
+    spec = FINDER_GOALS.get(goal) or FINDER_GOALS["invest"]
+    field = spec["field"]
+    keys = [_key(c) for c in spec["categories"]]
+    rows = db.query(PlaceCustomEval).filter(PlaceCustomEval.key.in_(keys)).all()
+    if not rows:
+        return []
+    place_ids = {r.place_id for r in rows}
+    places = {
+        p.id: p for p in db.query(Place)
+        .filter(Place.id.in_(place_ids), Place.active.is_(True), Place.kind == "country")
+        .all()
+    }
+    out: list[dict] = []
+    for r in rows:
+        place = places.get(r.place_id)
+        if place is None:
+            continue
+        m = r.meta or {}
+        if not m.get("exists"):
+            continue
+        threshold = m.get(field)
+        if threshold is None or threshold > amount_eur:  # no monetary route, or out of reach
+            continue
+        payload = pathway_payload(r, lang, rate=rate, currency=currency)
+        out.append({
+            "place_id": place.id,
+            "name": place.name,
+            "iso_code": place.iso_code,
+            "threshold_eur": threshold,
+            **payload,
+        })
+
+    def _rank(x: dict) -> tuple:
+        big = 10**9
+        return (
+            -(x.get("difficulty") or 0),
+            x["min_stay_days"] if x.get("min_stay_days") is not None else big,
+            x["citizenship_years"] if x.get("citizenship_years") is not None else big,
+        )
+
+    out.sort(key=_rank)
+    return out[:limit]

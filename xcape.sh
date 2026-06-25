@@ -76,6 +76,10 @@ case "$CMD" in
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_living ;;
   evaluate-all)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_all "$@" ;;
+  evaluate-visas)
+    # Pre-compute the golden-visa finder's pathways (investment / retirement / digital-nomad)
+    # for every country, so the finder can rank across all of them. Cache-first/resumable.
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_visas "$@" ;;
   regen-text)
     # Regenerate cached drill-down text whose language/shape changed (trend-lens evidence and
     # visa requirement bullets are now bilingual) and backfill localized custom-criterion
@@ -173,6 +177,9 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
                           (bilingual trend evidence + visa bullets) and backfill localized
                           custom-criterion labels. Cache-first/resumable; --force regenerates
                           even current rows.
+  evaluate-visas [--force] [--limit N]
+                          pre-compute the golden-visa finder pathways (investment / retirement /
+                          digital-nomad) for every country. Cache-first/resumable.
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
   purge-test-users <env>    delete @example.com / @xcape.test test users (confirm; prod-safe)

@@ -1,6 +1,7 @@
 # Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
+from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
 from app.models.profile import Profile
 from app.models.user import User
@@ -35,6 +36,28 @@ def test_relevant_categories_persona_ancestry_universal():
     # Ancestry elsewhere doesn't add the ancestry route for THIS place.
     assert "ancestry" not in visa_pathways.relevant_categories(
         Profile(user=User(ancestry_countries=["IT"])), place)
+
+
+def test_relevant_categories_heritage_right_of_return():
+    israel = Place(kind="country", name="Israel", iso_code="IL")
+    france = Place(kind="country", name="France", iso_code="FR")
+    prof = Profile(user=User(heritages=["jewish"]))
+    # Jewish heritage surfaces the ancestry/heritage route for Israel (Law of Return)…
+    assert "ancestry" in visa_pathways.relevant_categories(prof, israel)
+    # …and for the other broad Jewish-heritage countries (Germany / Spain / Portugal)…
+    assert "ancestry" in visa_pathways.relevant_categories(
+        prof, Place(kind="country", name="Germany", iso_code="DE"))
+    # …but not for an unrelated country, nor when no heritage is declared.
+    assert "ancestry" not in visa_pathways.relevant_categories(prof, france)
+    assert "ancestry" not in visa_pathways.relevant_categories(
+        Profile(user=User(heritages=[])), israel)
+
+
+def test_heritage_country_maps():
+    assert visa_pathways.heritage_countries(["jewish"]) == {"IL", "DE", "ES", "PT"}
+    assert visa_pathways.heritage_countries([]) == set()
+    # Only the strong/open route boosts the visa-ease score.
+    assert visa_pathways.heritage_visa_boost_countries(["jewish"]) == {"IL"}
 
 
 def test_evaluate_pathway_caches_meta(db_session, monkeypatch):
@@ -93,6 +116,44 @@ def test_visa_panel_pending_then_filled(auth_client, db_session, monkeypatch):
     assert r2["best"] is None
     filled = next(c for c in r2["categories"] if c["category"] == "work")
     assert filled["difficulty"] == 60 and filled["label"]
+
+
+def _invest_row(db_session, name, iso, *, threshold, difficulty, exists=True) -> Place:
+    p = Place(kind="country", name=name, iso_code=iso, active=True, attributes={})
+    db_session.add(p)
+    db_session.commit()
+    db_session.add(PlaceCustomEval(
+        place_id=p.id, key="visa_investment", label="Investment", score=difficulty,
+        level="good", summary_fr="fr", summary_en="en", sources=[],
+        meta={"category": "investment", "exists": exists, "difficulty": difficulty,
+              "investment_eur": threshold, "min_stay_days": 0, "program_name": "Golden Visa"},
+    ))
+    db_session.commit()
+    return p
+
+
+def test_finder_filters_by_amount_and_ranks(db_session):
+    cheap = _invest_row(db_session, "Cheapland", "CH", threshold=250000, difficulty=60)
+    _invest_row(db_session, "Pricyland", "PR", threshold=600000, difficulty=80)
+    _invest_row(db_session, "Noland", "NO", threshold=100000, difficulty=50, exists=False)
+
+    # €300k clears only the €250k program (and the non-existent route is excluded).
+    out = visa_pathways.finder(db_session, 300000, "invest", currency="EUR", rate=1.0)
+    assert [r["place_id"] for r in out] == [cheap.id]
+    assert out[0]["investment"] == 250000 and out[0]["program_name"] == "Golden Visa"
+
+    # €700k clears both — ranked easiest-first (difficulty desc): Pricyland (80) before Cheapland (60).
+    out2 = visa_pathways.finder(db_session, 700000, "invest", currency="EUR", rate=1.0)
+    assert [r["name"] for r in out2] == ["Pricyland", "Cheapland"]
+
+
+def test_finder_endpoint_converts_currency(auth_client, db_session):
+    _invest_row(db_session, "Cheapland", "CH", threshold=250000, difficulty=60)
+    # 1 EUR = 2 USD would make the €250k threshold $500k; at $300k nothing qualifies, at $600k it does.
+    # Default test user currency is EUR (rate 1.0) → €300k qualifies.
+    r = auth_client.get("/api/v1/visa/finder?amount=300000&goal=invest&lang=en").json()
+    assert r["goal"] == "invest" and len(r["results"]) == 1
+    assert r["results"][0]["name"] == "Cheapland"
 
 
 def test_visa_force_is_admin_only(auth_client, db_session, monkeypatch):

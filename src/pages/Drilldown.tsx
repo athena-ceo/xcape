@@ -161,9 +161,9 @@ export function Drilldown() {
   // Admin-only: force-regenerate EVERYTHING for this country (e.g. after a prompt change) — every
   // criterion's detail text, the visa pathways, and the budget cost breakdown — in chunks, forcing
   // regeneration regardless of the cache.
-  async function regenerateAll() {
+  async function regenerateAll(skipConfirm = false) {
     if (drainingRef.current || regenerating) return
-    if (!confirm(t.drilldown.regenConfirm)) return
+    if (!skipConfirm && !confirm(t.drilldown.regenConfirm)) return
     setRegenerating(true)
     drainingRef.current = true
     try {
@@ -203,6 +203,21 @@ export function Drilldown() {
       setRegenerating(false)
     }
   }
+
+  // Admin deep-link from the Places list: /drilldown/:id?regen=1 lands here and auto-runs the
+  // full regenerate (no extra confirm — the admin already confirmed in the list). Runs once,
+  // after the criteria have loaded, then strips the param so a refresh doesn't re-trigger it.
+  const autoRegenRef = useRef(false)
+  useEffect(() => {
+    if (autoRegenRef.current || !isAdmin) return
+    if (new URLSearchParams(search).get('regen') !== '1') return
+    if (!detail || detail.length === 0) return
+    autoRegenRef.current = true
+    const params = new URLSearchParams(search)
+    params.delete('regen')
+    navigate({ pathname: `/drilldown/${id}`, search: params.toString() }, { replace: true })
+    void regenerateAll(true)
+  }, [detail, isAdmin, search, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setLoadingDetail(true)
@@ -839,7 +854,7 @@ export function Drilldown() {
         {facts?.flag && <img src={facts.flag} alt="" className="w-10 h-auto rounded border border-turquoise-100" />}
         <h1 className="text-2xl font-medium text-turquoise-900">{placeName(place, lang)}</h1>
         {isAdmin && (
-          <button onClick={regenerateAll} disabled={regenerating || loadingDetail}
+          <button onClick={() => regenerateAll()} disabled={regenerating || loadingDetail}
             title={t.drilldown.regenHint}
             className="ml-auto shrink-0 text-xs border border-turquoise-200 text-turquoise-700 rounded-md px-2.5 py-1 hover:bg-turquoise-50 disabled:opacity-50 flex items-center gap-1.5">
             {regenerating ? <><Spinner /> {t.drilldown.regenerating}</> : `↻ ${t.drilldown.regenerate}`}

@@ -42,11 +42,11 @@ export const api = {
     request<{
       id: number; email: string; is_admin: boolean; locale: string
       first_name?: string; last_name?: string; current_country?: string
-      citizenships?: string[]; ancestry_countries?: string[]
+      citizenships?: string[]; ancestry_countries?: string[]; heritages?: string[]
     }>('/auth/me'),
   updateMe: (body: {
     first_name?: string; last_name?: string; current_country?: string
-    citizenships?: string[]; ancestry_countries?: string[]; locale?: string
+    citizenships?: string[]; ancestry_countries?: string[]; heritages?: string[]; locale?: string
   }) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
 
   getCriteria: () => request<any>('/criteria'),
@@ -167,6 +167,11 @@ export const api = {
     request<{ criteria: any[] }>(
       `/places/${id}/detail/generate?lang=${lang}${search != null ? `&search=${search}` : ''}`,
       { method: 'POST', body: JSON.stringify(body) },
+    ),
+  // Golden-visa finder: rank countries whose `goal` pathway the `amount` clears.
+  visaFinder: (amount: number, goal: string, lang: string) =>
+    request<{ currency: string; goal: string; amount: number; results: any[] }>(
+      `/visa/finder?amount=${amount}&goal=${goal}&lang=${lang}`,
     ),
   // Visa pathways panel (drill-down): relevant categories with their terms, or pending.
   getVisaPathways: (id: number, lang: string, search?: number) =>

@@ -12,6 +12,7 @@
 import { create } from 'zustand'
 
 import { api } from '../services/api'
+import { clearDraft } from '../services/onboardingDraft'
 
 interface AuthState {
   token: string | null
@@ -62,6 +63,7 @@ export const useAuth = create<AuthState>((set) => ({
 
   logout: () => {
     localStorage.removeItem('xcape_token')
+    clearDraft()  // don't leak an in-progress onboarding draft to the next user on this browser
     set({ token: null, email: null, firstName: null, lastName: null, isAdmin: false })
   },
 

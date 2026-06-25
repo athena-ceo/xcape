@@ -137,11 +137,15 @@ def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> fl
     )
     base = criteria.scales().get("visa", {}).get(str(attrs.get("visa", "")).lower(), 0.5)
     dest = (place.iso_code or "").upper() if place else ""
-    # A declared ancestry/descent tie to the destination is a strong, accessible pathway
-    # (citizenship or residence by descent) — it overrides the generic accessibility.
+    # A declared ancestry/descent tie — or an ethno-religious heritage with a strong, open
+    # right-of-return (e.g. Jewish heritage → Israel's Law of Return) — is a near-automatic
+    # pathway, so it overrides the generic accessibility.
     ancestry: set[str] = set()
-    if profile and profile.user and getattr(profile.user, "ancestry_countries", None):
-        ancestry = {str(c).upper() for c in profile.user.ancestry_countries}
+    if profile and profile.user:
+        from app.services import visa_pathways  # local import avoids a module-load cycle
+        if getattr(profile.user, "ancestry_countries", None):
+            ancestry = {str(c).upper() for c in profile.user.ancestry_countries}
+        ancestry |= visa_pathways.heritage_visa_boost_countries(getattr(profile.user, "heritages", None))
     if dest and dest in ancestry:
         return 1.0
     if not citz:

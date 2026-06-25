@@ -15,6 +15,7 @@ import { Onboarding } from './pages/Onboarding'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SearchRedirect } from './pages/SearchRedirect'
+import { VisaFinder } from './pages/VisaFinder'
 import { useAuth } from './store/auth'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/shortlist/:searchId" element={<RequireAuth><ShortlistRedirect /></RequireAuth>} />
         <Route path="/compare/:searchId" element={<RequireAuth><ComparisonPlayground /></RequireAuth>} />
         <Route path="/explore/:searchId" element={<RequireAuth><ExplorePage /></RequireAuth>} />
+        <Route path="/visa-finder" element={<RequireAuth><VisaFinder /></RequireAuth>} />
         <Route path="/drilldown/:placeId" element={<RequireAuth><Drilldown /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />

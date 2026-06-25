@@ -469,6 +469,9 @@ export function ComparisonPlayground() {
     for (const k of leaves) {
       const w = weightOf(k)
       if (w <= 0) continue
+      // A not-yet-evaluated leaf (e.g. a just-added custom criterion) has no real value yet, so
+      // it must NOT drag the roll-up down — exclude it until its evaluation lands (then it counts).
+      if ((cand.pending || []).includes(k)) continue
       const tier = cand.quality?.[k]
       if (!tier) continue
       num += TIER_VALUE[tier] * w; den += w
@@ -596,9 +599,9 @@ export function ComparisonPlayground() {
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
-        <td className="p-2 sm:p-3 pl-4 sm:pl-8 text-turquoise-800/70 sticky left-0 z-10 bg-white max-w-[34vw] sm:max-w-none">
+        <td className="p-2 sm:p-3 pl-3 sm:pl-5 text-turquoise-800/70 sticky left-0 z-10 bg-white w-32 sm:w-64">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="truncate">{critLabel(key)}</span>
+            <span className="flex-1 min-w-0 break-words leading-snug">{critLabel(key)}</span>
             {controlChip(key)}
           </div>
         </td>
@@ -635,7 +638,7 @@ export function ComparisonPlayground() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-5 py-8">
+    <main className="max-w-7xl mx-auto px-5 py-8">
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <h1 className="text-xl font-medium text-turquoise-900">{t.comparison.title}</h1>
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
@@ -721,7 +724,7 @@ export function ComparisonPlayground() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-turquoise-50 text-left">
-              <th className="p-2 sm:p-3 font-medium sticky left-0 z-20 bg-turquoise-50 max-w-[34vw] sm:max-w-none">
+              <th className="p-2 sm:p-3 font-medium sticky left-0 z-20 bg-turquoise-50 w-32 sm:w-64">
                 <span className="inline-flex items-center gap-2">
                   {t.comparison.criterion}
                   {/* Small affordance to add a country without leaving for the full list. */}
@@ -778,12 +781,12 @@ export function ComparisonPlayground() {
                 <Fragment key={g.key}>
                   <tr className="border-t border-turquoise-200 bg-turquoise-50/70 cursor-pointer select-none hover:bg-turquoise-100/70"
                     onClick={() => toggleCat(g.key, open)}>
-                    <td className="p-2 sm:p-2.5 font-medium text-turquoise-900 sticky left-0 z-10 bg-turquoise-50 max-w-[34vw] sm:max-w-none">
+                    <td className="p-2 sm:p-2.5 font-medium text-turquoise-900 sticky left-0 z-10 bg-turquoise-50 w-32 sm:w-64">
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="inline-grid place-items-center w-5 h-5 shrink-0 rounded border border-turquoise-300 text-turquoise-600 text-xs">
                           {open ? '▾' : '▸'}
                         </span>
-                        <span className="truncate">{g.label}</span>
+                        <span className="min-w-0 break-words leading-snug">{g.label}</span>
                         {!open && (
                           <span className="text-xs font-normal text-turquoise-600/70 whitespace-nowrap shrink-0">
                             {vis.length} · {t.comparison.expandHint}
@@ -794,7 +797,7 @@ export function ComparisonPlayground() {
                     {baseline && (
                       <td className={`p-0 text-center text-sm ${qualityClass(rollupTier(baseline, g.leaves)) || 'bg-turquoise-50'}`}>
                         <Link to={`/drilldown/${baseline.id}?search=${sid}`} onClick={(e) => e.stopPropagation()}
-                          className="block p-2.5 hover:underline">
+                          className="block p-2.5 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                           {tierWord(rollupTier(baseline, g.leaves))}
                         </Link>
                       </td>
@@ -805,7 +808,7 @@ export function ComparisonPlayground() {
                         <td key={c.id} className={`p-0 text-center text-sm ${viol.length ? 'bg-amber-100 text-amber-900' : qualityClass(rollupTier(c, g.leaves))}`}
                           title={viol.length ? `${t.comparison.flagTitle}: ${viol.map(critLabel).join(', ')}` : undefined}>
                           <Link to={`/drilldown/${c.place_id}?search=${sid}`} onClick={(e) => e.stopPropagation()}
-                            className="block p-2.5 hover:underline">
+                            className="block p-2.5 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                             {viol.length ? `⚠ ${tierWord(rollupTier(c, g.leaves))}` : tierWord(rollupTier(c, g.leaves))}
                           </Link>
                         </td>

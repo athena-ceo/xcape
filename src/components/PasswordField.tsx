@@ -12,10 +12,11 @@ interface Props {
   required?: boolean
   minLength?: number
   autoComplete?: string
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>
 }
 
 // Password input with a standard show/hide (eye) toggle.
-export function PasswordField({ value, onChange, placeholder, required, minLength, autoComplete }: Props) {
+export function PasswordField({ value, onChange, placeholder, required, minLength, autoComplete, onKeyDown }: Props) {
   const { t } = useT()
   const [show, setShow] = useState(false)
 
@@ -29,6 +30,7 @@ export function PasswordField({ value, onChange, placeholder, required, minLengt
         autoComplete={autoComplete}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
         className="w-full border border-turquoise-100 rounded-md pl-3 pr-10 py-2"
       />
       <button

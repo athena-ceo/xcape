@@ -28,6 +28,10 @@ class User(Base):
     # ISO alpha-2 codes where the household may claim residence/citizenship by ANCESTRY or
     # descent (user-declared — can't be inferred). A strong, easy visa pathway to those places.
     ancestry_countries: Mapped[list | None] = mapped_column(JSON, default=list)
+    # Ethno-religious heritage that may grant a right-of-return INDEPENDENT of a country of
+    # ancestry (e.g. "jewish" → Israel's Law of Return, Germany Art.116, Sephardic routes).
+    # Keys from visa_pathways.HERITAGE_COUNTRIES; surfaces those countries' heritage pathways.
+    heritages: Mapped[list | None] = mapped_column(JSON, default=list)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Soft-disable: a deactivated account is blocked from logging in but keeps all its data and

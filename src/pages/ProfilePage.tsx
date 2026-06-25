@@ -10,7 +10,7 @@ import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { VoiceField } from '../components/VoiceField'
 import {
-  CLIMATE_KEYS, HOUSEHOLDS,
+  CLIMATE_KEYS, HERITAGE_KEYS, HOUSEHOLDS,
   PRIORITY_KEYS, PRIORITY_WEIGHT, REASON_KEYS, toggle,
 } from '../data/profileOptions'
 import { useT } from '../i18n'
@@ -31,6 +31,7 @@ interface Form {
   current_country: string
   citizenships: string[]
   ancestry_countries: string[]
+  heritages: string[]
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
@@ -73,6 +74,7 @@ export function ProfilePage() {
         current_country: me.current_country ?? '',
         citizenships: me.citizenships ?? [],
         ancestry_countries: me.ancestry_countries ?? [],
+        heritages: me.heritages ?? [],
         household_type: p?.household_type ?? null,
         intends_children: p?.intends_children ?? null,
         reasons_leaving: p?.reasons_leaving ?? [],
@@ -114,6 +116,7 @@ export function ProfilePage() {
         current_country: f.current_country.trim() || undefined,
         citizenships: f.citizenships,
         ancestry_countries: f.ancestry_countries,
+        heritages: f.heritages,
       })
       await api.updateProfile({
         household_type: f.household_type,
@@ -174,6 +177,16 @@ export function ProfilePage() {
             onChange={(v) => set('ancestry_countries', v)}
             addLabel={t.onboarding.ancestry.add}
           />
+          <p className="text-sm font-medium text-turquoise-900 mt-4 mb-1">{t.onboarding.heritage.q}</p>
+          <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.heritage.hint}</p>
+          <div className="flex flex-wrap gap-2">
+            {HERITAGE_KEYS.map((h) => (
+              <Chip key={h} active={f.heritages.includes(h)}
+                onClick={() => set('heritages', toggle(f.heritages, h))}>
+                {(t.onboarding.heritage.options as Record<string, string>)[h]}
+              </Chip>
+            ))}
+          </div>
         </Section>
 
         <Section title={t.onboarding.household.q}>
