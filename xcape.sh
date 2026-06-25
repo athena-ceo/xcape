@@ -70,8 +70,17 @@ case "$CMD" in
     $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.reseed_criteria ;;
   backfill-social)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_social ;;
+  backfill-living)
+    # AI-fill the english (English usability) + tax_basis (territorial/worldwide/hybrid)
+    # attributes on seeded countries. Resumable; skips countries already filled.
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.backfill_living ;;
   evaluate-all)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.evaluate_all "$@" ;;
+  regen-text)
+    # Regenerate cached drill-down text whose language/shape changed (trend-lens evidence and
+    # visa requirement bullets are now bilingual) and backfill localized custom-criterion
+    # labels. Cache-first/resumable: a plain run only regenerates version-stale rows.
+    $COMPOSE exec "$BACKEND_SVC" python -m app.db.regen_text "$@" ;;
   export-evals)
     $COMPOSE exec "$BACKEND_SVC" python -m app.db.export_evals ;;
   make-admin)
@@ -154,10 +163,16 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   reseed-criteria <env>   overwrite the criteria registry (tree, personas, communities) from
                           criteria.json — rolls out registry changes; replaces admin UI edits
   backfill-social         AI-fill social criteria (tolerance, gender, culture, food) on seeded countries
+  backfill-living         AI-fill english usability + tax basis (territorial/worldwide) on seeded countries
   evaluate-all [--force] [--stale-days N] [--limit N] [--skip-buckets]
                           AI-evaluate every objective criterion for every country (cross-user
                           cache). Covers bucket-only cells by default; --skip-buckets for the
                           cheaper gap-fill-only mode.
+  regen-text [--force] [--no-text] [--no-labels]
+                          regenerate cached drill-down text whose language/shape changed
+                          (bilingual trend evidence + visa bullets) and backfill localized
+                          custom-criterion labels. Cache-first/resumable; --force regenerates
+                          even current rows.
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email> <pw>  set a user's password
   purge-test-users <env>    delete @example.com / @xcape.test test users (confirm; prod-safe)

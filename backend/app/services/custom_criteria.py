@@ -22,6 +22,42 @@ from app.models.user import User
 # criteria". Newer ones carry category="protection"; older stored defs may not.
 _COMMUNITY_PREFIX = "custom_safety_for_my_community"
 
+_LABEL_SCHEMA = {
+    "type": "object",
+    "properties": {"label_fr": {"type": "string"}, "label_en": {"type": "string"}},
+    "required": ["label_fr", "label_en"],
+    "additionalProperties": False,
+}
+
+
+def localize_label(db: Session, label: str, description: str | None = None,
+                   *, user_id: int | None = None) -> dict:
+    """Translate a user's custom-criterion label into both UI languages, returning
+    {"label_fr", "label_en"} — so the comparison table / drill-down show it localized rather
+    than the raw text the user typed (which may be in either language). A short, cheap call
+    (no web search). On any failure, falls back to the original label in both slots."""
+    from app.core.config import settings
+    from app.services import ai_client
+
+    text = (label or "").strip()
+    if not text:
+        return {"label_fr": label, "label_en": label}
+    ctx = f" (context: {description})" if description else ""
+    try:
+        data = ai_client.respond_json(
+            f"Translate this short relocation-criterion label into French and English, as a "
+            f"concise noun phrase suitable as a UI column header — no quotes, no trailing "
+            f"punctuation, keep it short. Label: \"{text}\"{ctx}.",
+            _LABEL_SCHEMA, schema_name="criterion_label", web_search=False,
+            model=settings.openai_chat_model, kind="custom", db=db, user_id=user_id,
+        )
+    except ai_client.AIUnavailable:
+        return {"label_fr": text, "label_en": text}
+    return {
+        "label_fr": (data.get("label_fr") or text).strip(),
+        "label_en": (data.get("label_en") or text).strip(),
+    }
+
 
 def _persona_categories() -> dict[str, str]:
     """{criterion key: category} for every persona custom criterion that declares a category,
@@ -90,7 +126,7 @@ def persist_to_profile(db: Session, user: User, defs: list[dict]) -> None:
         k = d.get("key")
         if not k or k in have or d.get("source") == "persona":
             continue
-        existing.append({key: d.get(key) for key in ("key", "label", "description", "weight", "min", "category") if d.get(key) is not None})
+        existing.append({key: d.get(key) for key in ("key", "label", "label_fr", "label_en", "description", "weight", "min", "category") if d.get(key) is not None})
         have.add(k)
         changed = True
     if changed:

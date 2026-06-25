@@ -8,7 +8,7 @@ from app.services import ai_client, visa_pathways
 
 _PATHWAY = {
     "exists": True, "difficulty": 70, "income_eur": 24000, "investment_eur": None,
-    "pr_years": 5, "citizenship_years": 10,
+    "pr_years": 5, "citizenship_years": 10, "min_stay_days": 183, "program_name": "Pensionado",
     "requirements_fr": ["casier vierge", "assurance santé"],
     "requirements_en": ["clean record", "health insurance"],
     "summary_fr": "fr", "summary_en": "en", "sources": ["https://x.test"],
@@ -51,12 +51,18 @@ def test_evaluate_pathway_caches_meta(db_session, monkeypatch):
     assert ev.key == "visa_retirement" and ev.score == 70
     assert ev.meta["category"] == "retirement" and ev.meta["income_eur"] == 24000
     assert ev.meta["pr_years"] == 5
-    # Requirement bullets are cached per-language so the card never mixes FR/EN.
+    # Bilingual requirement bullets are stored; the payload carries both arrays AND a single
+    # `requirements` resolved to the requested language (so either frontend contract works).
     assert ev.meta["requirements_fr"] == ["casier vierge", "assurance santé"]
     assert ev.meta["requirements_en"] == ["clean record", "health insurance"]
-    payload = visa_pathways.pathway_payload(ev)
-    assert payload["requirements_fr"][0] == "casier vierge"
-    assert payload["requirements_en"][0] == "clean record"
+    assert visa_pathways.pathway_payload(ev)["requirements_fr"][0] == "casier vierge"
+    assert visa_pathways.pathway_payload(ev)["requirements_en"][0] == "clean record"
+    assert visa_pathways.pathway_payload(ev, "fr")["requirements"] == ["casier vierge", "assurance santé"]
+    assert visa_pathways.pathway_payload(ev, "en")["requirements"] == ["clean record", "health insurance"]
+    # Minimum-stay and program name are carried through to the payload.
+    assert ev.meta["min_stay_days"] == 183 and ev.meta["program_name"] == "Pensionado"
+    payload = visa_pathways.pathway_payload(ev, "en")
+    assert payload["min_stay_days"] == 183 and payload["program_name"] == "Pensionado"
     # Cache-first: a second call returns the same row without another AI call.
     ev2 = visa_pathways.evaluate_pathway(db_session, place, "retirement")
     assert calls["n"] == 1 and ev2.id == ev.id

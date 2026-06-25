@@ -384,6 +384,9 @@ export const fr = {
       pr: 'Résidence permanente',
       citizenship: 'Nationalité',
       years: 'ans',
+      stay: 'Présence min.',
+      stayDays: '{n} j/an',
+      stayNone: 'aucun minimum',
     },
     afford: {
       title: 'Budget & accessibilité',
@@ -421,6 +424,13 @@ export const fr = {
       threshold: 'Revenu min.',
       qualifies: 'Revenu éligible',
       belowThreshold: 'Sous le seuil',
+      taxBasisLabel: 'Base d’imposition',
+      taxBasis: {
+        territorial: 'territoriale — seuls les revenus de source locale sont imposés',
+        worldwide: 'mondiale — les résidents sont imposés sur leurs revenus mondiaux',
+        hybrid: 'hybride — imposition mixte ou régime spécial',
+      },
+      usPersonNote: 'En tant que citoyen américain, vous restez imposé sur vos revenus mondiaux où que vous viviez (l’exclusion des revenus gagnés à l’étranger et le crédit d’impôt étranger peuvent réduire la note, et FATCA peut compliquer l’accès bancaire local). À titre informatif uniquement — ce n’est pas un conseil fiscal.',
     },
     source: 'Source',
     sources: 'Sources',
@@ -452,6 +462,8 @@ export const fr = {
     quality: 'Qualité', access: 'Accès',
     high: 'élevé', moderate: 'modéré', low: 'faible',
     improving: 'en amélioration', stable: 'stable', worsening: 'en dégradation',
+    english: 'Anglais',
+    englishWidely: 'largement parlé', englishModerate: 'moyennement parlé', englishLimited: 'limité',
   },
   reasons: {
     details: 'Voir le détail',

@@ -387,6 +387,9 @@ export const en: Dict = {
       pr: 'Permanent residence',
       citizenship: 'Citizenship',
       years: 'yrs',
+      stay: 'Min. stay',
+      stayDays: '{n} days/yr',
+      stayNone: 'no minimum',
     },
     afford: {
       title: 'Budget & affordability',
@@ -424,6 +427,13 @@ export const en: Dict = {
       threshold: 'Min income',
       qualifies: 'Income qualifies',
       belowThreshold: 'Below threshold',
+      taxBasisLabel: 'Income tax basis',
+      taxBasis: {
+        territorial: 'territorial — only locally-sourced income is taxed',
+        worldwide: 'worldwide — residents are taxed on global income',
+        hybrid: 'hybrid — mixed or special-regime taxation',
+      },
+      usPersonNote: 'As a US citizen you remain taxed on your worldwide income wherever you live (the foreign-earned-income exclusion and foreign tax credit may reduce it, and FATCA can complicate local banking). Informational only — not tax advice.',
     },
     source: 'Source',
     sources: 'Sources',
@@ -455,6 +465,8 @@ export const en: Dict = {
     quality: 'Quality', access: 'Access',
     high: 'high', moderate: 'moderate', low: 'low',
     improving: 'improving', stable: 'stable', worsening: 'worsening',
+    english: 'English',
+    englishWidely: 'widely spoken', englishModerate: 'moderately spoken', englishLimited: 'limited',
   },
   reasons: {
     details: 'See details',

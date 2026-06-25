@@ -412,14 +412,19 @@ def add_custom_criterion(
     search = _owned(db, user, search_id)
     key = criterion_eval.slugify(body.label)
     defs = list(search.custom_criteria or [])
-    new_def = {"key": key, "label": body.label, "description": body.description, "weight": body.weight}
-    if not any(c.get("key") == key for c in defs):
+    if any(c.get("key") == key for c in defs):
+        new_def = None  # already present → no new column, skip the translation call
+    else:
+        new_def = {"key": key, "label": body.label, "description": body.description,
+                   "weight": body.weight,
+                   **custom_criteria.localize_label(db, body.label, body.description, user_id=user.id)}
         defs.append(new_def)
         search.custom_criteria = defs
     if key not in (search.criteria_set or []):
         search.criteria_set = [*(search.criteria_set or []), key]
     db.commit()
-    custom_criteria.persist_to_profile(db, user, [new_def])  # follow the user across searches
+    if new_def:
+        custom_criteria.persist_to_profile(db, user, [new_def])  # follow the user across searches
     return list_candidates(search_id, user=user, db=db)
 
 
@@ -492,7 +497,10 @@ def apply_persona(
     user_comms = (prof.minority_groups or []) if prof else []
     added: list[str] = []
 
-    def _add(label: str, description: str, weight: float, category: str | None, mn: float | None):
+    def _add(label: str, description: str, weight: float, category: str | None, mn: float | None,
+             label_fr: str | None = None, label_en: str | None = None):
+        # `label` (user-locale) drives the stable key; label_fr/label_en are the localized
+        # display names so the column header follows the UI language, not the creator's locale.
         key = criterion_eval.slugify(label)
         if not key:
             return
@@ -503,6 +511,8 @@ def apply_persona(
                 if d.get("key") == key and d.get("source") == "persona":
                     d["weight"] = weight
                     d["description"] = description  # pick up improved wording → re-evaluates
+                    d["label_fr"] = label_fr or label
+                    d["label_en"] = label_en or label
                     if category:
                         d["category"] = category
                     if mn is not None:
@@ -510,7 +520,8 @@ def apply_persona(
                     if key not in added:
                         added.append(key)
             return
-        d = {"key": key, "label": label, "description": description, "weight": weight,
+        d = {"key": key, "label": label, "label_fr": label_fr or label, "label_en": label_en or label,
+             "description": description, "weight": weight,
              "source": "persona"}  # per-search (regenerated); not persisted to the profile
         if category:
             d["category"] = category  # file it under a built-in category, not "Your criteria"
@@ -522,6 +533,8 @@ def apply_persona(
 
     for cc in persona.get("custom_criteria", []):
         base = cc.get(f"label_{locale}") or cc.get("label_en") or cc.get("label") or "criterion"
+        base_fr = cc.get("label_fr") or cc.get("label_en") or cc.get("label") or base
+        base_en = cc.get("label_en") or cc.get("label_fr") or cc.get("label") or base
         desc = cc.get("description", "")
         category = cc.get("category")
         mn = cc.get("min")
@@ -530,10 +543,14 @@ def apply_persona(
             for ck in user_comms:
                 c = comms.get(ck)
                 clabel = (c.get(f"label_{locale}") or c.get("label_en") or ck) if c else ck
+                clabel_fr = (c.get("label_fr") or c.get("label_en") or ck) if c else ck
+                clabel_en = (c.get("label_en") or c.get("label_fr") or ck) if c else ck
                 _add(f"{base} — {clabel}", desc.replace("{community}", clabel),
-                     float(weight) if weight is not None else 2.0, category, mn)
+                     float(weight) if weight is not None else 2.0, category, mn,
+                     label_fr=f"{base_fr} — {clabel_fr}", label_en=f"{base_en} — {clabel_en}")
         else:
-            _add(base, desc, float(weight) if weight is not None else 1.5, category, mn)
+            _add(base, desc, float(weight) if weight is not None else 1.5, category, mn,
+                 label_fr=base_fr, label_en=base_en)
 
     if added:
         search.custom_criteria = defs
@@ -571,7 +588,8 @@ def suggest_criteria(
         key = criterion_eval.slugify(c["label"])
         if key in keys:
             continue
-        d = {"key": key, "label": c["label"], "description": c.get("description"), "weight": 1.0}
+        d = {"key": key, "label": c["label"], "description": c.get("description"), "weight": 1.0,
+             **custom_criteria.localize_label(db, c["label"], c.get("description"), user_id=user.id)}
         defs.append(d)
         added.append(d)
         keys.add(key)

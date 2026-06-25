@@ -102,12 +102,16 @@ export function humanizeKey(key: string): string {
 }
 
 // The single entry point for every user-facing criterion label across the app: registry label in
-// the active language → an explicitly-supplied custom label → a humanized key. Always pass any
-// known custom label via `custom` so it wins over the humanized fallback.
-export function labelOf(reg: Registry | null, key: string, lang: string, custom?: { key: string; label: string }[]): string {
+// the active language → an explicitly-supplied custom label (localized when the def carries
+// label_fr/label_en, else the raw label) → a humanized key. Always pass any known custom label
+// via `custom` so it wins over the humanized fallback.
+export type CustomCritLabel = { key: string; label?: string; label_fr?: string; label_en?: string }
+export function labelOf(reg: Registry | null, key: string, lang: string, custom?: CustomCritLabel[]): string {
   const n = nodeOf(reg, key)
   if (n) return (lang === 'fr' ? n.label_fr : n.label_en) || n.label_en || humanizeKey(key)
-  return custom?.find((c) => c.key === key)?.label ?? humanizeKey(key)
+  const c = custom?.find((c) => c.key === key)
+  if (c) return (lang === 'fr' ? c.label_fr : c.label_en) || c.label_en || c.label_fr || c.label || humanizeKey(key)
+  return humanizeKey(key)
 }
 
 export function leafKeys(reg: Registry | null): string[] {

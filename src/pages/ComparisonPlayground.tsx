@@ -35,7 +35,7 @@ export function ComparisonPlayground() {
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
   const [addOpen, setAddOpen] = useState(false)  // the "+ add a country" modal
-  const [customCrit, setCustomCrit] = useState<{ key: string; label: string; weight?: number; min?: number; category?: string }[]>([])
+  const [customCrit, setCustomCrit] = useState<{ key: string; label: string; label_fr?: string; label_en?: string; weight?: number; min?: number; category?: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
@@ -122,7 +122,7 @@ export function ComparisonPlayground() {
     setPlaces(Object.fromEntries(pls.map((p) => [p.id, p])))
     setWeights(profile?.criteria_weights ?? {})
     setFilters(profile?.filters ?? {})
-    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label, weight: c.weight, min: c.min, category: c.category })))
+    setCustomCrit(custom.map((c: any) => ({ key: c.key, label: c.label, label_fr: c.label_fr, label_en: c.label_en, weight: c.weight, min: c.min, category: c.category })))
     await reloadCandidates()
   }
 

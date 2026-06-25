@@ -32,7 +32,7 @@ export function ExplorePage() {
   const [sparks, setSparks] = useState<Spark[] | null>(null)
   // The search's custom criteria — needed to localize custom keys (e.g. community safety) in
   // violation reasons; labelOf falls back to the raw key without them.
-  const [customs, setCustoms] = useState<{ key: string; label: string }[]>([])
+  const [customs, setCustoms] = useState<{ key: string; label: string; label_fr?: string; label_en?: string }[]>([])
 
   useEffect(() => { api.explore(sid).then(setRows).catch(() => setRows([])) }, [sid])
   useEffect(() => { api.listCustomCriteria(sid).then(setCustoms).catch(() => {}) }, [sid])

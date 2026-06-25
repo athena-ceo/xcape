@@ -455,6 +455,18 @@ export function Drilldown() {
     )
   }
 
+  // English-prevalence chip on the Language criterion — a structured fact a monolingual newcomer
+  // cares about (how far English alone gets you day-to-day).
+  function englishLine(level: string) {
+    const tt = t.trend as Record<string, string>
+    const word = tt[`english${level.charAt(0).toUpperCase()}${level.slice(1)}`] ?? level
+    return (
+      <div className="mt-2 text-xs text-turquoise-800/70">
+        {tt.english}: <span className="font-medium text-turquoise-900">{word}</span>
+      </div>
+    )
+  }
+
   // Format a money amount in the given currency (locale-aware symbol); null passes through so
   // callers can hide an absent figure. Backend money is already converted to the user's currency.
   function fmtMoney(x: any, currency?: string): string | null {
@@ -476,6 +488,9 @@ export function Drilldown() {
       || c.requirements_en || c.requirements_fr || c.requirements || []
     const money = (x: any) => fmtMoney(x, c.currency)
     const years = (x: any) => (x == null ? null : `${x} ${v.years}`)
+    // Minimum physical-presence per year — the "do I actually have to live there" figure.
+    const stay = c.min_stay_days == null ? null
+      : c.min_stay_days <= 0 ? v.stayNone : v.stayDays.replace('{n}', String(c.min_stay_days))
     const tier = (d: number) => (d >= 70 ? 'text-emerald-700' : d >= 45 ? 'text-turquoise-700' : 'text-amber-700')
     const term = (label: string, val: string | null) =>
       val && <span>{label}: <b className="text-turquoise-900">{val}</b></span>
@@ -483,6 +498,9 @@ export function Drilldown() {
       <div key={c.category} className="bg-white border border-turquoise-100 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-sm font-medium text-turquoise-900">{c.label}</p>
+          {!c.pending && c.exists && c.program_name && (
+            <span className="text-xs text-turquoise-800/50">· {c.program_name}</span>
+          )}
           {!c.pending && c.exists && (
             <span className={`ml-auto text-sm font-medium ${tier(c.difficulty ?? 0)}`}>{c.difficulty}/100</span>
           )}
@@ -499,6 +517,7 @@ export function Drilldown() {
               {term(v.investment, money(c.investment))}
               {term(v.pr, years(c.pr_years))}
               {term(v.citizenship, years(c.citizenship_years))}
+              {term(v.stay, stay)}
             </div>
             {requirements.length > 0 && (
               <ul className="mt-2 list-disc list-inside text-xs text-turquoise-800/70 space-y-0.5">
@@ -679,6 +698,23 @@ export function Drilldown() {
               </div>
             </div>
           )}
+
+          {/* Tax basis + US-person reminder (informational, not advice) */}
+          {(a.tax_basis || a.us_person) && (
+            <div className="mt-4 border-t border-turquoise-50 pt-3">
+              {a.tax_basis && (
+                <p className="text-sm text-turquoise-800/70">
+                  {af.taxBasisLabel}: <span className="font-medium text-turquoise-900">
+                    {(af.taxBasis as Record<string, string>)[a.tax_basis] ?? a.tax_basis}</span>
+                </p>
+              )}
+              {a.us_person && (
+                <p className="text-xs text-turquoise-800/60 mt-2 rounded-md bg-turquoise-50/60 px-3 py-2">
+                  {af.usPersonNote}
+                </p>
+              )}
+            </div>
+          )}
         </div>
     )
   }
@@ -776,6 +812,7 @@ export function Drilldown() {
         )}
         {d.meta && (d.meta.trend ? trendLine(d.meta)
           : (d.meta.quality != null || d.meta.access != null) ? serviceLine(d.meta) : null)}
+        {d.meta?.english && englishLine(d.meta.english)}
         {Array.isArray(d.sources) && d.sources.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             <span className="text-xs text-turquoise-800/50">{t.drilldown.sources}:</span>

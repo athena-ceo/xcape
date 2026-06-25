@@ -84,6 +84,43 @@
   matches the active language (falling back to the other if one is empty). `VISA_PROMPT_VERSION`
   bumped to `2` so cached cards re-evaluate bilingually the next time a place is opened.
 
+### 2026-06-24 — Golden-visa / retiree features (Phase 1): residency at a glance
+
+Aimed at the audiences in the NYT golden-visa coverage and *International Living* — affluent
+"Plan B" buyers and retirees. Adds the structured facts those readers actually compare on:
+
+- **Minimum stay per year**: each visa pathway now carries `min_stay_days` — the "do I actually
+  have to live there" figure (e.g. Greece none, Costa Rica ~1 day, Portugal ~7 days) — shown on
+  the pathway card.
+- **Named programs**: pathways carry the official program name (D7, Pensionado, Golden Visa…)
+  shown beside the category.
+- **English at a glance**: a new `english` country attribute (widely / moderate / limited) shown
+  on the Language criterion — what a monolingual newcomer most wants to know.
+- **Tax basis + US-person note**: a new `tax_basis` attribute (territorial / worldwide / hybrid)
+  in the budget panel, plus an origin-aware reminder that US citizens are taxed on worldwide
+  income wherever they live (framed clearly as informational, not tax advice).
+- **Ops**: `./xcape.sh backfill-living` AI-fills `english` + `tax_basis` on seeded countries;
+  the visa prompt version bump means `./xcape.sh regen-text` refreshes pathways with the new
+  fields.
+
+### 2026-06-24 — Consistent localization: bilingual drill-down text + localized custom labels
+
+- **Drill-down language consistency**: two cached AI fields were generated in a single language
+  (usually English) while the surrounding text was French — the **visa requirement bullets** and the
+  trend-lens **"evidence" line** (under Sécurité, Stabilité politique, per-community safety…). Both
+  are now generated bilingually (`requirements_fr/_en`, `metric_fr/_en`); the API resolves each to
+  the UI language so the page reads them unchanged.
+- **Surgical cache invalidation**: a new per-lens `LENS_VERSION` lets us invalidate only the trend
+  rows (not all ~190× evals); the visa prompt version was bumped. Legacy single-language rows still
+  display (fallback) until regenerated.
+- **Custom-criterion labels are localized**: user-added criteria stored only the raw text the user
+  typed, so the comparison table / drill-down showed it untranslated in the other language. New
+  criteria now get `label_fr`/`label_en` (a short AI translation at creation); persona criteria use
+  their registry labels. `labelOf` picks the active-language label everywhere.
+- **`./xcape.sh regen-text`**: regenerates the version-stale drill-down text (trend evidence + visa
+  bullets) and backfills `label_fr`/`label_en` onto existing custom criteria. Cache-first and
+  resumable (`--force`, `--no-text`, `--no-labels`).
+
 ### 2026-06-22 — Comparison table polish + chat: home country isn't a candidate
 
 - **Sticky first column**: the criterion-name column now stays pinned while you scroll the country

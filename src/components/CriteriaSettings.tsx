@@ -14,7 +14,7 @@ const SERVICE_COMPONENTS = ['quality', 'access'] as const
 const PRESETS: { key: string; w: number }[] = [
   { key: 'impIgnore', w: 0 }, { key: 'impLow', w: 0.5 }, { key: 'impNormal', w: 1 }, { key: 'impHigh', w: 2.5 },
 ]
-export interface CustomCrit { key: string; label: string; weight?: number; min?: number; category?: string }
+export interface CustomCrit { key: string; label: string; label_fr?: string; label_en?: string; weight?: number; min?: number; category?: string }
 export interface SettingsPayload {
   weights: Record<string, number>
   filters: Record<string, any>
@@ -245,7 +245,7 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
               </tr>
               {cc.map((c) => (
                 <tr key={c.key} className="border-t border-turquoise-50">
-                  <td className="py-1.5 pr-2 pl-3">{c.label}</td>
+                  <td className="py-1.5 pr-2 pl-3">{labelOf(reg, c.key, lang, [c])}</td>
                   <td className="py-1.5 pr-2">
                     {weightInput(c.weight ?? 1, (v) => setCustom(c.key, { weight: Math.max(0, Math.min(8, v)) }))}
                   </td>

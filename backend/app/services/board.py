@@ -87,7 +87,7 @@ def criterion_details(
                 summary = (ev.summary_fr if lang == "fr" else ev.summary_en) or ev.summary_en or ev.summary_fr or ""
                 sources = ev.sources or []
                 score = round(value * 100)
-                meta = ev.meta  # structured trend fields (level/trend/window/metric), if any
+                meta = _localize_meta(ev.meta, lang)  # resolve bilingual trend `metric` to `lang`
             else:
                 pending = True  # no AI eval yet → generate on demand
         elif key == "proximity":
@@ -102,11 +102,33 @@ def criterion_details(
                 sources = d.get("sources", [])
             if not summary:
                 pending = True
+        # Surface English-prevalence alongside the Language criterion (a structured fact a
+        # monolingual newcomer cares about), when the country has it.
+        if key == "language_ease" and attrs.get("english"):
+            meta = {**(meta or {}), "english": attrs.get("english")}
+        cdef = custom_lookup.get(key, {})
         out.append({
-            "key": key, "label": custom_lookup.get(key, {}).get("label"),
+            "key": key,
+            "label": cdef.get(f"label_{lang}") or cdef.get("label"),
             "score": score, "summary": summary, "sources": sources, "pending": pending,
             "meta": meta,
         })
+    return out
+
+
+def _localize_meta(meta: dict | None, lang: str) -> dict | None:
+    """Resolve the trend lens's bilingual `metric_fr`/`metric_en` down to a single `metric` in
+    `lang` (legacy rows already carry a single `metric`), so the frontend reads `meta.metric`
+    unchanged. Returns a shallow copy; never mutates the cached ORM JSON."""
+    if not isinstance(meta, dict):
+        return meta
+    if not any(k in meta for k in ("metric_fr", "metric_en", "metric")):
+        return meta
+    out = {k: v for k, v in meta.items() if k not in ("metric_fr", "metric_en")}
+    metric = (meta.get(f"metric_{lang}") or meta.get("metric_en")
+              or meta.get("metric_fr") or meta.get("metric"))
+    if metric:
+        out["metric"] = metric
     return out
 
 

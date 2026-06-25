@@ -71,7 +71,8 @@ def build_report(db: Session, user: User, search: Search, lang: str | None = Non
     cands = [c for c in cands if c.place]
 
     custom_defs = search.custom_criteria or []
-    custom_labels = {c["key"]: c.get("label", c["key"]) for c in custom_defs if c.get("key")}
+    custom_labels = {c["key"]: (c.get(f"label_{lang}") or c.get("label") or c["key"])
+                     for c in custom_defs if c.get("key")}
     eval_keys = criteria.objective_keys() + list(custom_labels.keys())
     row_keys = list(criteria.criteria_keys()) + list(custom_labels.keys())
 

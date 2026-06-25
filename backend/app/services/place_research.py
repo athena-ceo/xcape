@@ -45,6 +45,11 @@ _ENUMS: dict[str, list[str]] = {
     "openness": ["high", "medium", "low"],
     "gender_equality": ["high", "medium", "low"],
     "tax": ["low", "medium", "high"],
+    # How widely a newcomer can get by in English day-to-day (services, work, daily life).
+    "english": ["widely", "moderate", "limited"],
+    # How the country taxes a tax-resident's income: only locally-sourced (territorial), all
+    # worldwide income (worldwide), or a mix / special-regime (hybrid).
+    "tax_basis": ["territorial", "worldwide", "hybrid"],
     "visa": ["easy", "medium", "hard"],
     "expat_community": ["large", "medium", "small"],
     "culture": ["high", "medium", "low"],
@@ -66,7 +71,12 @@ _SYSTEM = (
     "for LGBTQ+ rights, antisemitism / Islamophobia monitoring reports, discrimination "
     "and integration indices) rather than impressions. For gender_equality use signals "
     "like the Global Gender Gap Index (legal rights, equal pay, safety). openness is the "
-    "society's general tolerance toward minorities overall."
+    "society's general tolerance toward minorities overall. For english, judge how far a "
+    "newcomer who speaks only English can manage daily life (widely = English is broadly "
+    "usable in services and work; limited = little English outside tourism). For tax_basis, "
+    "classify how the country taxes a tax-RESIDENT's income: territorial = only locally-sourced "
+    "income is taxed, worldwide = worldwide income is taxed, hybrid = a mix or a special "
+    "non-dom / remittance regime."
 )
 
 # Bump when the per-criterion DETAIL prompt below changes in a way that should invalidate the

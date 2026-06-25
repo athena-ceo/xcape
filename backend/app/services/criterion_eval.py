@@ -36,6 +36,12 @@ STALE_DAYS = 30  # evals older than this are refreshed by populate(stale_days=..
 # regenerates it.
 EVAL_PROMPT_VERSION = "7"  # v7: service lens (quality + access sub-scores) for healthcare/education
 
+# Per-lens schema version — bump ONE lens to invalidate only that lens's cached rows, instead
+# of churning every eval via EVAL_PROMPT_VERSION. Appended to the fingerprint only when set, so
+# lenses absent here keep a byte-identical fingerprint (no needless regeneration).
+# trend v2: `metric` split into bilingual `metric_fr` / `metric_en`.
+LENS_VERSION = {"trend": "2"}
+
 # Criteria judged through the ACCESS lens — for these, what matters is whether a FOREIGN
 # RESIDENT can actually qualify for / reach / afford the thing (eligibility, waiting periods,
 # cost to non-citizens, legal hurdles). Everything else uses the EXPERIENCE lens (quality of
@@ -82,6 +88,9 @@ def prompt_fingerprint(label: str, description: str | None, lens: str = "experie
     """Short stable hash of (template version, lens, label, description) — the invariant part of
     the prompt (place name excluded). Changes whenever the prompt, lens or wording does."""
     raw = f"{EVAL_PROMPT_VERSION}\x1f{lens}\x1f{label}\x1f{description or ''}"
+    lv = LENS_VERSION.get(lens)
+    if lv:  # append only when set, so other lenses' fingerprints are unchanged
+        raw += f"\x1f{lv}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
@@ -164,12 +173,13 @@ def _trend_schema() -> dict:
             "level": {"type": "string", "enum": ["high", "moderate", "low"]},
             "trend": {"type": "string", "enum": ["improving", "stable", "worsening"]},
             "window": {"type": "string"},   # period assessed, e.g. "2023–2025"
-            "metric": {"type": "string"},   # one-line factual basis (cite a recognised monitor)
+            "metric_fr": {"type": "string"},  # one-line factual basis, French (cite a monitor)
+            "metric_en": {"type": "string"},  # one-line factual basis, English (cite a monitor)
             "summary_fr": {"type": "string"},
             "summary_en": {"type": "string"},
             "sources": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["score", "level", "trend", "window", "metric",
+        "required": ["score", "level", "trend", "window", "metric_fr", "metric_en",
                      "summary_fr", "summary_en", "sources"],
         "additionalProperties": False,
     }
@@ -218,8 +228,9 @@ def evaluate(
         focus = (
             "Both the current LEVEL and the recent TRAJECTORY matter. Report: level (high / "
             "moderate / low, where high = best for a resident); trend (improving / stable / "
-            "worsening); window (the period assessed, e.g. \"2023–2025\"); metric (a one-line "
-            "factual basis, citing a recognised monitor where one exists — e.g. ADL or CST for "
+            "worsening); window (the period assessed, e.g. \"2023–2025\"); metric_fr and "
+            "metric_en (the SAME one-line factual basis, written in French and in English "
+            "respectively, citing a recognised monitor where one exists — e.g. ADL or CST for "
             "Jewish communities, ILGA for LGBTQ+, OSCE-ODIHR / EU-FRA hate-crime data, or "
             "national statistics — with figures or direction if available). The score (0-100) "
             "must reflect BOTH: a high but worsening situation scores below a stable high one, "
@@ -264,7 +275,8 @@ def evaluate(
     # Structured extras → stored in meta for first-class display + component filtering.
     meta = None
     if lens == "trend":
-        meta = {k: data.get(k) for k in ("level", "trend", "window", "metric") if data.get(k)}
+        meta = {k: data.get(k) for k in ("level", "trend", "window", "metric_fr", "metric_en")
+                if data.get(k)}
     elif lens == "service":
         meta = {k: data.get(k) for k in SERVICE_COMPONENTS if data.get(k) is not None}
     if existing:  # refresh in place

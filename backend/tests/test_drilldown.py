@@ -40,7 +40,8 @@ def test_generate_fills_in_order_routes_and_caches(auth_client, db_session, monk
         if schema_name in ("criterion_eval", "criterion_eval_trend"):
             out = {"score": 80, "summary_fr": "ok fr", "summary_en": "ok en", "sources": []}
             if schema_name == "criterion_eval_trend":  # safety uses the trend lens now
-                out.update(level="moderate", trend="stable", window="2023–2025", metric="basis")
+                out.update(level="moderate", trend="stable", window="2023–2025",
+                           metric_fr="base fr", metric_en="basis en")
             return out
         return {"summary_fr": "détail fr", "summary_en": "detail en", "sources": ["https://x.test"]}
 
@@ -60,6 +61,9 @@ def test_generate_fills_in_order_routes_and_caches(auth_client, db_session, monk
                           json={"keys": ["cost_of_living", "safety"], "limit": 2}).json()
     rows = {r["key"]: r for r in r2["criteria"]}
     assert rows["safety"]["pending"] is False and rows["safety"]["score"] == 80
+    # Trend `metric` is resolved to the requested language (stored bilingual in meta).
+    assert rows["safety"]["meta"]["metric"] == "basis en"
+    assert "metric_fr" not in rows["safety"]["meta"]
     # Only safety was generated (cost_of_living already cached) → one more AI call total.
     assert calls["n"] == 2
 

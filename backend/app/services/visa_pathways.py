@@ -32,7 +32,7 @@ from app.services.criterion_eval import _fresh, level_from_score
 
 # Bump when the pathway prompt/schema below changes in a way that should invalidate cached
 # pathway rows (independent of the criterion-eval version).
-VISA_PROMPT_VERSION = "2"
+VISA_PROMPT_VERSION = "3"  # v3: + program_name and min_stay_days (physical-presence requirement)
 
 # Catalog categories — destination PROGRAMS (free movement is citizenship-based, handled by the
 # overlay in shortlist, so it is NOT part of the on-demand catalog). Order = display order.
@@ -117,14 +117,17 @@ def _schema() -> dict:
             "investment_eur": nullable_int,   # min qualifying investment / capital, €
             "pr_years": nullable_num,         # years of residence → permanent residence
             "citizenship_years": nullable_num,  # years of residence → naturalisation
-            "requirements_fr": {"type": "array", "items": {"type": "string"}},
-            "requirements_en": {"type": "array", "items": {"type": "string"}},
+            "min_stay_days": nullable_int,    # min days/yr of physical presence to KEEP the permit
+            "program_name": {"type": ["string", "null"]},  # official program/visa name, if any
+            "requirements_fr": {"type": "array", "items": {"type": "string"}},  # bullets, FR
+            "requirements_en": {"type": "array", "items": {"type": "string"}},  # bullets, EN
             "summary_fr": {"type": "string"},
             "summary_en": {"type": "string"},
             "sources": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["exists", "difficulty", "income_eur", "investment_eur", "pr_years",
-                     "citizenship_years", "requirements_fr", "requirements_en",
+                     "citizenship_years", "min_stay_days", "program_name",
+                     "requirements_fr", "requirements_en",
                      "summary_fr", "summary_en", "sources"],
         "additionalProperties": False,
     }
@@ -163,10 +166,15 @@ def evaluate_pathway(
         f"- pr_years: typical years of continuous residence to reach permanent residence, else "
         f"null. citizenship_years: typical years of residence to be eligible for naturalisation, "
         f"else null.\n"
-        f"- requirements_fr and requirements_en: 3-6 short bullet strings of the key conditions "
-        f"(e.g. job offer, language level, clean criminal record, private health insurance, "
-        f"minimum stay). Provide the SAME bullets in both French (requirements_fr) and English "
-        f"(requirements_en); the two arrays must correspond one-to-one.\n"
+        f"- min_stay_days: the minimum days of PHYSICAL PRESENCE per year required to KEEP this "
+        f"residence permit valid (0 if there is effectively no minimum-stay requirement; null "
+        f"only if genuinely unknown). This is the 'do I actually have to live there' figure.\n"
+        f"- program_name: the official name of the specific program / visa if it has a recognised "
+        f"one (e.g. \"D7\", \"Pensionado\", \"Golden Visa\"), else null. Do not invent a name.\n"
+        f"- requirements_fr and requirements_en: the SAME 3-6 short bullet strings of the key "
+        f"conditions (e.g. job offer, language level, clean criminal record, private health "
+        f"insurance, minimum stay), written in French (requirements_fr) and English "
+        f"(requirements_en) respectively — same bullets, same order, just translated.\n"
         f"Add a concrete 1-2 sentence summary in French (summary_fr) and English (summary_en), "
         f"written as a neutral, friendly advisor — do NOT write in the first person (no \"I\", "
         f"\"we\", \"my\", \"our\"). Name the actual program if it has one, and do NOT restate the "
@@ -193,6 +201,8 @@ def evaluate_pathway(
         "investment_eur": data.get("investment_eur"),
         "pr_years": data.get("pr_years"),
         "citizenship_years": data.get("citizenship_years"),
+        "min_stay_days": data.get("min_stay_days"),
+        "program_name": (data.get("program_name") or None),
         "requirements_fr": data.get("requirements_fr") or [],
         "requirements_en": data.get("requirements_en") or [],
     }
@@ -249,6 +259,9 @@ def pathway_payload(
     m = ev.meta or {}
     income_eur = m.get("income_eur")
     investment_eur = m.get("investment_eur")
+    # Bilingual bullets (legacy rows carried a single `requirements` list — fall back to it).
+    requirements = (m.get(f"requirements_{lang}") or m.get("requirements_en")
+                    or m.get("requirements_fr") or m.get("requirements") or [])
     return {
         "category": m.get("category"),
         "exists": m.get("exists", True),
@@ -258,6 +271,9 @@ def pathway_payload(
         "investment": round(investment_eur * rate) if investment_eur is not None else None,
         "pr_years": m.get("pr_years"),
         "citizenship_years": m.get("citizenship_years"),
+        "min_stay_days": m.get("min_stay_days"),
+        "program_name": m.get("program_name"),
+        "requirements": requirements,
         "requirements_fr": m.get("requirements_fr") or m.get("requirements") or [],
         "requirements_en": m.get("requirements_en") or m.get("requirements") or [],
         "summary_fr": ev.summary_fr or "",

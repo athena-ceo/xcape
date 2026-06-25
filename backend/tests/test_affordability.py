@@ -113,6 +113,25 @@ def test_compute_surplus_and_verdict(db_session, monkeypatch):
     assert poor["surplus"] == -600 and poor["verdict"] == "insufficient"
 
 
+def test_compute_surfaces_tax_basis_and_us_person(db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _BREAKDOWN)
+    place = _country(db_session)
+    place.attributes = {"tax_basis": "territorial"}
+    db_session.commit()
+
+    # No profile → tax basis still surfaces from the place; us_person is False.
+    out = affordability.compute(db_session, place, None, budget_monthly=3000, household_size=1)
+    assert out["tax_basis"] == "territorial" and out["us_person"] is False
+
+    # A US-citizen profile flips us_person on (the worldwide-income reminder shows).
+    us = Profile(user=User(citizenships=["US"]))
+    non_us = Profile(user=User(citizenships=["FR"]))
+    assert affordability.compute(db_session, place, us,
+                                 budget_monthly=None, household_size=1)["us_person"] is True
+    assert affordability.compute(db_session, place, non_us,
+                                 budget_monthly=None, household_size=1)["us_person"] is False
+
+
 def test_compute_converts_to_user_currency(db_session, monkeypatch):
     monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _BREAKDOWN)
     place = _country(db_session)

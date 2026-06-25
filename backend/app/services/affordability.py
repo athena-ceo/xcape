@@ -276,12 +276,18 @@ def compute(
     # pending so the page regenerates it on demand, rather than computing from stale fields.
     fresh = ev is not None and _fresh(ev, _fp(), 0)
     annual = budget * 12 if budget else None
+    # US citizens are taxed on their worldwide income wherever they live — a "good to know" the
+    # page shows when relevant (informational, not tax advice). Origin-aware via citizenship.
+    cits = (getattr(profile.user, "citizenships", None) or []) if (profile and profile.user) else []
+    us_person = any(str(c).upper() in ("US", "USA") for c in cits)
     base: dict = {
         "pending": not fresh,
         "currency": currency,
         "budget_monthly": budget,
         "household_size": size,
         "annual_income": annual,
+        "tax_basis": (place.attributes or {}).get("tax_basis"),  # territorial / worldwide / hybrid
+        "us_person": us_person,
         "income_pathways": income_pathways(db, place.id, annual, lang, rate=rate),
     }
     if not fresh:
