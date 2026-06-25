@@ -886,6 +886,9 @@ export function Drilldown() {
         </div>
       )}
 
+      {/* Currency converter — only when the country's currency differs from the user's. */}
+      {facts?.fx && <CurrencyConverter key={facts.fx.local} fx={facts.fx} />}
+
       {/* Inline map + lead photo */}
       <div className="grid sm:grid-cols-2 gap-3 mb-6">
         {facts?.osm_bbox && (
@@ -1003,5 +1006,40 @@ export function Drilldown() {
         ))}
       </ul>
     </main>
+  )
+}
+
+// Two-way currency converter shown in the drill-down when the country's currency differs from the
+// user's. `fx.rate` = local-currency units per 1 user-currency unit (computed server-side via EUR).
+function CurrencyConverter({ fx }: { fx: { local: string; user: string; rate: number } }) {
+  const { t } = useT()
+  // Plain numeric strings (no thousands separators) so the values stay valid in number inputs.
+  const num = (n: number) => (Number.isFinite(n) ? String(Math.round(n * 100) / 100) : '')
+  const [userAmt, setUserAmt] = useState('100')
+  const [localAmt, setLocalAmt] = useState(() => num(100 * fx.rate))
+  const onUser = (v: string) => {
+    setUserAmt(v)
+    const n = Number(v)
+    setLocalAmt(v.trim() === '' || Number.isNaN(n) ? '' : num(n * fx.rate))
+  }
+  const onLocal = (v: string) => {
+    setLocalAmt(v)
+    const n = Number(v)
+    setUserAmt(v.trim() === '' || Number.isNaN(n) ? '' : num(n / fx.rate))
+  }
+  const box = (value: string, on: (v: string) => void, code: string, width: string) => (
+    <span className="inline-flex items-center gap-1">
+      <input type="number" min={0} inputMode="decimal" value={value} onChange={(e) => on(e.target.value)}
+        className={`${width} border border-turquoise-100 rounded px-2 py-1`} />
+      <span className="font-medium text-turquoise-900">{code}</span>
+    </span>
+  )
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-5 text-sm bg-turquoise-50/50 border border-turquoise-100 rounded-lg p-3">
+      <span className="text-turquoise-800/60">{t.drilldown.converter}</span>
+      {box(userAmt, onUser, fx.user, 'w-24')}
+      <span className="text-turquoise-600" aria-hidden>⇄</span>
+      {box(localAmt, onLocal, fx.local, 'w-28')}
+    </div>
   )
 }

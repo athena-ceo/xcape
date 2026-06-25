@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 2026-06-25 — Drill-down currency converter
+
+- When a country's currency differs from the user's, the drill-down shows a small **two-way
+  converter** (type in either currency, see the other). The `GET /places/{id}/facts` response
+  carries a per-user `fx` block (local currency, user currency, and the local-per-user rate via
+  the existing EUR-based FX); the converter is hidden when the currencies match.
+
 ### 2026-06-25 — Visa finder integrated into the country search (as scored criteria)
 
 The golden-visa finder is now optionally part of the ranking, not just a standalone page.

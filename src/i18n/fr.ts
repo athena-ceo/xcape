@@ -451,6 +451,7 @@ export const fr = {
     capital: 'Capitale',
     population: 'Population',
     currency: 'Monnaie',
+    converter: 'Convertir :',
     region: 'Région',
     area: 'Superficie',
   },

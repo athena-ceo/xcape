@@ -43,11 +43,23 @@ def get_place(place_id: int, user: User = Depends(get_current_user), db: Session
 
 @router.get("/{place_id}/facts")
 def get_facts(place_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Basic country facts for the drill-down (fast; cached restcountries + Wikipedia)."""
+    """Basic country facts for the drill-down (fast; cached restcountries + Wikipedia). Augmented
+    with a per-user `fx` block (local currency, the user's currency, and the local-per-user rate)
+    when the country's currency differs — drives the drill-down currency converter."""
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
-    return country_facts.get_facts(db, place)
+    facts = dict(country_facts.get_facts(db, place))  # copy — don't cache the per-user fx block
+    local = currencies.default_for_iso(place.iso_code)
+    user_cur = currencies.effective_currency(db, user)
+    if local and user_cur and local != user_cur:
+        user_rate = fx.eur_rate(user_cur)
+        facts["fx"] = {
+            "local": local,
+            "user": user_cur,
+            "rate": (fx.eur_rate(local) / user_rate) if user_rate else 1.0,  # local units per 1 user unit
+        }
+    return facts
 
 
 def _custom_defs_for(db: Session, user: User, search: int | None) -> list:

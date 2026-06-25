@@ -454,6 +454,7 @@ export const en: Dict = {
     capital: 'Capital',
     population: 'Population',
     currency: 'Currency',
+    converter: 'Convert:',
     region: 'Region',
     area: 'Area',
   },
