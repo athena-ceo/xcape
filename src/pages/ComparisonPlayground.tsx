@@ -611,7 +611,7 @@ export function ComparisonPlayground() {
           const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
           return (
             <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
-              <button onClick={() => openWhy(bcol, key)} className="block w-full p-2 sm:p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
+              <button onClick={() => openWhy(bcol, key)} className="block w-full p-2 sm:p-3 cursor-pointer break-words underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                 {bpending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : cellValue(key, baseline.attributes, baseline.quality?.[key])}
@@ -626,7 +626,7 @@ export function ComparisonPlayground() {
             <td key={c.id}
               className={`p-0 text-center ${pending ? '' : (viol ? 'bg-amber-100 text-amber-900' : qualityClass(c.quality?.[key]))}`}
               title={viol ? `${t.comparison.flagTitle}: ${critLabel(key)}` : undefined}>
-              <button onClick={() => openWhy(c, key)} className="block w-full p-2 sm:p-3 cursor-pointer underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
+              <button onClick={() => openWhy(c, key)} className="block w-full p-2 sm:p-3 cursor-pointer break-words underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
                 {pending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : <>{viol && '⚠ '}{cellValue(key, places[c.place_id]?.attributes, c.quality?.[key])}</>}
@@ -722,7 +722,10 @@ export function ComparisonPlayground() {
 
       {/* Comparison table */}
       <div className="overflow-x-auto bg-white border border-turquoise-100 rounded-lg mb-4">
-        <table className="w-full text-sm">
+        {/* table-fixed: the label column keeps its set width and the country columns share the
+            rest equally, so a long value (e.g. a multi-language list) wraps inside its column
+            instead of widening it — keeps the board readable on narrow/mobile viewports. */}
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="bg-turquoise-50 text-left">
               <th className="p-2 sm:p-3 font-medium sticky left-0 z-20 bg-turquoise-50 w-32 sm:w-64">
@@ -735,14 +738,14 @@ export function ComparisonPlayground() {
                 </span>
               </th>
               {baseline && (
-                <th className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-center bg-turquoise-100/60 whitespace-nowrap" title={t.comparison.current}>
+                <th className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-center bg-turquoise-100/60 break-words" title={t.comparison.current}>
                   <Link to={`/drilldown/${baseline.id}?search=${sid}`} className="text-turquoise-700 hover:underline">
                     {placeName(baseline, lang)}
                   </Link>
                 </th>
               )}
               {candidates.map((c) => (
-                <th key={c.id} className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-center whitespace-nowrap">
+                <th key={c.id} className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-center break-words">
                   <Link to={`/drilldown/${c.place_id}?search=${sid}`} className="text-turquoise-600 hover:underline">
                     {placeName(places[c.place_id], lang)}
                   </Link>
