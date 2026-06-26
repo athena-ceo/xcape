@@ -545,13 +545,28 @@ def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:
     return explain_place(db, user, candidate.place, search)
 
 
+def _candidate_countries(db: Session, user: User) -> list[Place]:
+    """Active country Places eligible as destinations.
+
+    Excludes the user's current country — you don't move to where you already live, so the
+    home country is the comparison baseline only, never a candidate. True for any country.
+    """
+    from app.services.comparison import get_current_country_place  # avoid circular import
+
+    q = db.query(Place).filter(Place.kind == "country", Place.active.is_(True))
+    home = get_current_country_place(db, user)
+    if home is not None:
+        q = q.filter(Place.id != home.id)
+    return q.all()
+
+
 def build_instant_shortlist(db: Session, user: User, search: Search) -> list[Candidate]:
     from app.services import criteria, criterion_eval  # avoid circular import at module load
 
     profile = user.profile
     weights = _effective_weights(profile)
 
-    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    countries = _candidate_countries(db, user)
     custom_defs = list(search.custom_criteria or [])
     # Batch-load the cached AI evals for the whole pool so the seed-sparse countries score
     # on real values (one query, not one per country).
@@ -616,7 +631,7 @@ def repopulate_board(db: Session, user: User, search: Search) -> list[Candidate]
             weights[c["key"]] = float(c.get("weight", 1.0))
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
-    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    countries = _candidate_countries(db, user)
     evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
 
     # Score + filter-classify every country; rank qualified → pending → violating, by score.
@@ -703,7 +718,7 @@ def rank_all(db: Session, user: User, search: Search) -> list[dict]:
             weights[c["key"]] = float(c.get("weight", 1.0))
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
-    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    countries = _candidate_countries(db, user)
     evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
     on_board = {
         c.place_id
@@ -743,7 +758,7 @@ def wildcards(db: Session, user: User, search: Search, n: int = 3) -> list[dict]
     weighted = [k for k, w in weights.items() if w > 0]
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
-    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    countries = _candidate_countries(db, user)
     evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
     # Skip what the user already sees or rejected: board picks + explicitly excluded.
     skip = {

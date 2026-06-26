@@ -192,6 +192,13 @@ def add_candidate(
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
 
+    # The home country is the comparison baseline, never a destination — reject adding it.
+    home = comparison.get_current_country_place(db, user, research=False)
+    if home is not None and home.id == place.id:
+        raise HTTPException(
+            status_code=400, detail="Your current country is the baseline, not a candidate"
+        )
+
     # Board full → the client asked to replace a specific weakest member: de-select it to free a
     # slot so the new country can take its place. Clearing the pin lets it be reclaimed normally
     # later. Done before the add below so _selected_count sees the freed slot.

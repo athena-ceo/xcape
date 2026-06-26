@@ -2,6 +2,13 @@
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 from app.db.seed import seed
+from app.models.user import User
+
+
+def _set_current_country(db_session, name: str) -> None:
+    user = db_session.query(User).filter(User.email == "test@example.com").first()
+    user.current_country = name
+    db_session.commit()
 
 
 def test_instant_shortlist_from_seed(auth_client, db_session):
@@ -116,6 +123,29 @@ def test_language_filter_restricts_pool(auth_client, db_session):
     for c in cands:
         langs = [str(x).lower() for x in (places[c["place_id"]]["attributes"].get("languages") or [])]
         assert "arabic" in langs
+
+
+def test_home_country_excluded_from_shortlist(auth_client, db_session):
+    seed(db_session)
+    # You don't move to where you already live: the home country is the baseline, never a
+    # candidate. Holds for any country — assert it for the user's current country (Spain).
+    _set_current_country(db_session, "Spain")
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    cands = auth_client.post(f"/api/v1/searches/{sid}/shortlist").json()
+    places = {p["id"]: p for p in auth_client.get("/api/v1/places?kind=country").json()}
+    assert cands, "expected a non-empty shortlist"
+    assert all(places[c["place_id"]]["name"].lower() != "spain" for c in cands)
+
+
+def test_home_country_cannot_be_added_as_candidate(auth_client, db_session):
+    seed(db_session)
+    _set_current_country(db_session, "Spain")
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/shortlist")
+    resp = auth_client.post(
+        f"/api/v1/searches/{sid}/candidates", json={"place_name": "Spain"}
+    )
+    assert resp.status_code == 400
 
 
 def test_candidates_carry_quality_tiers(auth_client, db_session):

@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-06-26 — Home country excluded from candidates
+
+- The user's current country is the comparison **baseline** only — it never appears as a
+  destination candidate (true for any country, e.g. France for a France-based user). Centralised
+  the candidate-country pool behind `_candidate_countries()` in `shortlist.py`, which all four
+  ranking paths (instant shortlist, repopulate, explore, wildcards) now use, and rejected adding
+  the home country via the API (`POST …/candidates` → 400). The picker also hides the baseline.
+  Existing boards drop a stray home-country row on the next "Refresh list" (repopulate).
+
 ### 2026-06-25 — Drill-down currency converter
 
 - When a country's currency differs from the user's, the drill-down shows a small **two-way

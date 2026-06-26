@@ -487,12 +487,13 @@ export function ComparisonPlayground() {
   }
 
   // Known countries matching the picker text (localized name substring), excluding ones
-  // already on the board. Resolves French names → the canonical place.
+  // already on the board and the home country (it's the baseline, never a candidate).
+  // Resolves French names → the canonical place.
   const onBoard = new Set(candidates.map((c) => c.place_id))
   const q = newCountry.trim().toLowerCase()
   const countryMatches = q
     ? Object.values(places)
-        .filter((p: any) => !onBoard.has(p.id) && placeName(p, lang).toLowerCase().includes(q))
+        .filter((p: any) => !onBoard.has(p.id) && p.id !== baseline?.id && placeName(p, lang).toLowerCase().includes(q))
         .sort((a: any, b: any) => placeName(a, lang).localeCompare(placeName(b, lang), lang))
         .slice(0, 8)
     : []
