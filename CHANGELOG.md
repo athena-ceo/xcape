@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### 2026-06-27 — Prod Postgres data root hardened against silent data loss
+
+- `docker-compose.server.yml` no longer binds Postgres to a **relative** `./data/postgres`
+  (which resolves against the current working dir and, from a stray clone/path, would mount an
+  empty dir and silently re-initialize an EMPTY database). It now binds an **absolute**,
+  env-driven `${XCAPE_DATA_ROOT:?…}/postgres`; the `:?` guard makes `docker compose` **fail
+  loudly** if `XCAPE_DATA_ROOT` is unset instead of falling back to a stray `./data`.
+- `xcape.sh` now sources **`/etc/xcape/environment`** (a system file outside any checkout)
+  before the checkout-local `.env`, so `XCAPE_DATA_ROOT` reaches every compose invocation.
+- `backup-db` and the pre-deploy backup now raise a loud **size-collapse alarm** (non-zero) when
+  a new dump is < ½ the previous one — the signature of an accidental empty-DB dump; the
+  pre-deploy path **aborts the deploy** on a collapse rather than rotating a bad backup.
+- Server migration runbook: [`docs/xcape-prod-data-migration.md`](docs/xcape-prod-data-migration.md).
+  Dev compose is unchanged (it uses a named volume, never had this failure mode). No systemd unit
+  added (started manually; Docker's restart policy reuses the resolved mount across reboots).
+
 ### 2026-06-26 — Home country excluded from candidates
 
 - The user's current country is the comparison **baseline** only — it never appears as a

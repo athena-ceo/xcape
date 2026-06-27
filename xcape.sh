@@ -20,10 +20,42 @@ else
   BACKEND_SVC="backend"
 fi
 
-# Load .env if present so compose variable substitution matches the script's view.
+# Load the system env file FIRST (outside any git checkout), then the checkout-local .env,
+# so compose variable substitution matches the script's view. On the server,
+# /etc/xcape/environment carries XCAPE_DATA_ROOT — the absolute, persistent data root the
+# prod compose binds Postgres into (see docs/xcape-prod-data-migration.md). Keeping it in a
+# system file rather than the checkout-local .env means a stray second clone can't bring the
+# stack up against an empty ./data and silently re-initialize an empty database.
+[[ -f /etc/xcape/environment ]] && set -a && . /etc/xcape/environment && set +a || true
 [[ -f .env ]] && set -a && . ./.env && set +a || true
 
 container() { $COMPOSE ps -q "$1"; }
+
+# Dump a Postgres backup, then raise a loud alarm (and a non-zero status) if the new dump is
+# less than half the size of the previous one — the signature of an accidental empty-DB dump
+# (e.g. compose mounted the wrong/empty data dir). golden-path's prod incident went unnoticed
+# for days precisely because a collapsed dump still passed a naive "not empty" check.
+#   $1 = destination .sql path   (writes to the file, returns non-zero on a size collapse)
+backup_db_to() {
+  local dest="$1" prev new
+  prev="$(ls -1t backups/*.sql 2>/dev/null | grep -v -F "$dest" | head -n1 || true)"
+  $COMPOSE exec -T db pg_dump -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-xcape_dev}" > "$dest"
+  new="$(wc -c < "$dest" | tr -d ' ')"
+  echo "Wrote ${dest} (${new} bytes)"
+  if [[ -n "$prev" && -f "$prev" ]]; then
+    local prevsize; prevsize="$(wc -c < "$prev" | tr -d ' ')"
+    if [[ "$prevsize" -gt 0 && $(( new * 2 )) -lt "$prevsize" ]]; then
+      echo "" >&2
+      echo "!!! BACKUP SIZE-COLLAPSE ALARM !!!" >&2
+      echo "    New dump ${dest} is ${new} bytes — less than HALF of the previous" >&2
+      echo "    dump ${prev} (${prevsize} bytes)." >&2
+      echo "    This is the signature of an empty/wrong database being dumped (e.g. compose" >&2
+      echo "    mounted a stray ./data instead of XCAPE_DATA_ROOT). Do NOT trust this dump." >&2
+      echo "    Investigate before deploying or rotating backups." >&2
+      return 1
+    fi
+  fi
+}
 
 case "$CMD" in
   start)    $COMPOSE up -d "$@" ;;
@@ -90,16 +122,20 @@ case "$CMD" in
   backup-db)
     mkdir -p backups
     TS="backup-$(date +%Y%m%d-%H%M%S).sql"
-    $COMPOSE exec -T db pg_dump -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-xcape_dev}" > "backups/${TS}"
-    echo "Wrote backups/${TS}" ;;
+    backup_db_to "backups/${TS}" ;;
   deploy)
     if [[ "$ENV" != "prod" ]]; then echo "deploy is production-only. Use: ./xcape.sh deploy prod"; exit 1; fi
     echo "==> Deploying xCape to production"
     echo "--> Pre-deploy DB backup"
     mkdir -p backups
-    $COMPOSE exec -T db pg_dump -U "${POSTGRES_USER:-xcape}" "${POSTGRES_DB:-xcape_prod}" \
-      > "backups/predeploy-$(date +%Y%m%d-%H%M%S).sql" 2>/dev/null \
-      || echo "    (no running DB to back up — first deploy?)"
+    if [[ -n "$(container db 2>/dev/null || true)" ]]; then
+      # Real DB running: a size-collapse here means we'd be deploying over a likely-empty or
+      # wrong-mounted database. Abort loudly rather than rotate a bad backup and press on.
+      backup_db_to "backups/predeploy-$(date +%Y%m%d-%H%M%S).sql" \
+        || { echo "ABORTING DEPLOY: pre-deploy backup collapsed — investigate the data mount (XCAPE_DATA_ROOT) before retrying."; exit 1; }
+    else
+      echo "    (no running DB to back up — first deploy?)"
+    fi
     if ! git diff --quiet HEAD 2>/dev/null; then
       echo "--> Stashing local changes"; git stash push -m "auto-stash before deploy $(date +%F-%T)" || true
     fi

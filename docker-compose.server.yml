@@ -14,7 +14,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-xcape}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      # Absolute, env-driven path OUTSIDE any git checkout. The ${VAR:?msg} guard makes
+      # `docker compose` fail loudly if XCAPE_DATA_ROOT is unset, instead of silently
+      # falling back to a relative ./data that resolves against the current working dir —
+      # which would mount an empty dir and re-initialize an EMPTY database (silent data
+      # loss). Set XCAPE_DATA_ROOT in /etc/xcape/environment (see docs/xcape-prod-data-migration.md).
+      - ${XCAPE_DATA_ROOT:?XCAPE_DATA_ROOT must be set in /etc/xcape/environment — refusing to start against a relative ./data path}/postgres:/var/lib/postgresql/data
     networks:
       - xcape-network
     healthcheck:
