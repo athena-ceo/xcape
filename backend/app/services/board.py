@@ -95,6 +95,21 @@ def criterion_details(
         elif key == "proximity":
             summary = _proximity_summary(profile, place, lang)
             score = round(value * 100)
+        elif key == "family_proximity":
+            # Deterministic time/cost estimate shows immediately; when the user has declared a
+            # family location, an anchor-qualified AI travel note (family_proximity:<ISO2>) fills
+            # in on open — pending until then so /detail/generate fetches it once.
+            score = round(value * 100)
+            anchor = place_research.family_anchor_iso(profile, place)
+            ai = detail.get(f"family_proximity:{anchor}") if anchor else None
+            if ai:
+                summary = (ai.get(f"summary_{lang}") or ai.get("summary_en")
+                           or ai.get("summary_fr") or "")
+                sources = ai.get("sources", [])
+            else:
+                summary = _family_proximity_summary(profile, place, lang)
+                if anchor:
+                    pending = True
         elif key in ("residency_income", "residency_investment"):
             summary = _residency_summary(key, value, lang)  # deterministic, no AI, no amounts
             score = round(value * 100)
@@ -171,3 +186,40 @@ def _proximity_summary(profile: Profile | None, place: Place, lang: str) -> str:
                 f"Coût du trajet : non estimé pour l'instant.")
     return (f"≈ {km_r} km from {origin or 'your country'} (~{hours} h by air). "
             f"Travel cost: not yet estimated.")
+
+
+_FAMILY_MODE = {
+    "land": {"fr": "train ou route", "en": "train or road"},
+    "flight": {"fr": "vol direct", "en": "direct flight"},
+    "flight_connection": {"fr": "vol avec correspondance", "en": "connecting flight"},
+}
+_FAMILY_COST = {
+    "low": {"fr": "coût faible", "en": "low cost"},
+    "medium": {"fr": "coût moyen", "en": "moderate cost"},
+    "high": {"fr": "coût élevé", "en": "high cost"},
+}
+
+
+def _family_proximity_summary(profile: Profile | None, place: Place, lang: str) -> str:
+    """Deterministic travel-time/cost line for the NEAREST declared family location (no AI). The
+    on-demand AI note refines it with real schedules and prices."""
+    from app.services import geo
+
+    fams = (getattr(profile.user, "family_countries", None) or []) if (profile and profile.user) else []
+    best = None
+    for c in fams:
+        est = geo.travel_estimate(str(c), (place.iso_code or "") if place else "")
+        if est and (best is None or est["hours"] < best[1]["hours"]):
+            best = (c, est)
+    if best is None:
+        return ""
+    anchor, est = best
+    name = geo.country_name(anchor) or str(anchor)
+    hours, mode, band = est["hours"], est["mode"], est["cost_band"]
+    if lang == "fr":
+        h = f"{hours:g}".replace(".", ",")  # French decimal comma
+        return (f"≈ {h} h de trajet vers vos proches ({name}) — {_FAMILY_MODE[mode]['fr']}, "
+                f"{_FAMILY_COST[band]['fr']}. Estimation ; ouvrez le détail pour des horaires et "
+                f"prix réels.")
+    return (f"≈ {hours:g} h to your family ({name}) — {_FAMILY_MODE[mode]['en']}, "
+            f"{_FAMILY_COST[band]['en']}. Estimate; open the detail for real schedules and prices.")

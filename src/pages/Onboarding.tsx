@@ -39,6 +39,7 @@ interface Answers {
   citizenships: string[]
   ancestry_countries: string[]
   heritages: string[]
+  family_countries: string[]
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
@@ -59,6 +60,7 @@ const EMPTY: Answers = {
   citizenships: [],
   ancestry_countries: [],
   heritages: [],
+  family_countries: [],
   household_type: null,
   intends_children: null,
   reasons_leaving: [],
@@ -108,6 +110,7 @@ export function Onboarding() {
           citizenships: me.citizenships ?? cur.citizenships,
           ancestry_countries: me.ancestry_countries ?? cur.ancestry_countries,
           heritages: me.heritages ?? cur.heritages,
+          family_countries: me.family_countries ?? cur.family_countries,
         }))
       }).catch(() => {}),
       api.getProfile().then((p: any) => {
@@ -183,7 +186,7 @@ export function Onboarding() {
   async function finish() {
     setBusy(true)
     try {
-      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships, ancestry_countries: a.ancestry_countries, heritages: a.heritages })
+      await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships, ancestry_countries: a.ancestry_countries, heritages: a.heritages, family_countries: a.family_countries })
       // Re-read identity from the server so the cached store reflects the new truth.
       await refreshAuth()
       await api.updateProfile({
@@ -293,6 +296,13 @@ export function Onboarding() {
                   </Chip>
                 ))}
               </div>
+              <p className="text-sm font-medium text-turquoise-900 mt-5 mb-1">{t.onboarding.family.q}</p>
+              <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.family.hint}</p>
+              <CountryMultiSelect
+                value={a.family_countries}
+                onChange={(v) => setA({ ...a, family_countries: v })}
+                addLabel={t.onboarding.family.add}
+              />
             </>
           )}
 

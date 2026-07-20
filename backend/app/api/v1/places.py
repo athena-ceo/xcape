@@ -135,7 +135,16 @@ def generate_detail(
                                        user_id=user.id, force=body.force):
                 made += 1
         elif key in computed_text:
-            if key in have_detail and not body.force:
+            # family_proximity's note is cached per family anchor (family_proximity:<ISO2>), not
+            # under the bare key — resolve the effective key so we don't regenerate needlessly, and
+            # skip entirely when the user has declared no family location.
+            have_key = key
+            if key == "family_proximity":
+                anchor = place_research.family_anchor_iso(user.profile, place)
+                if anchor is None:
+                    continue
+                have_key = f"family_proximity:{anchor}"
+            if have_key in have_detail and not body.force:
                 continue
             if place_research.criterion_detail_one(db, place, key, user_id=user.id, force=body.force):
                 made += 1

@@ -99,9 +99,14 @@ export const fr = {
       add: 'Ajouter un pays',
     },
     heritage: {
-      q: 'Un patrimoine ouvrant un droit au retour ? (facultatif)',
-      hint: 'Certains pays accordent la nationalité selon le patrimoine plutôt qu’un pays d’ascendance — p. ex. la Loi du retour israélienne pour les personnes de patrimoine juif. Nous présentons ces voies ; l’éligibilité reste à confirmer.',
-      options: { jewish: 'Patrimoine juif' },
+      q: 'Une origine ouvrant un droit au retour ? (facultatif)',
+      hint: 'Certains pays accordent la nationalité selon l’origine plutôt qu’un pays d’ascendance — p. ex. la Loi du retour israélienne pour les personnes d’origine juive. Nous présentons ces voies ; l’éligibilité reste à confirmer.',
+      options: { jewish: 'Origine juive' },
+    },
+    family: {
+      q: 'Des proches dont vous voulez rester proche ? (facultatif)',
+      hint: 'Indiquez les pays où vivent vos enfants ou d’autres proches. Nous privilégions les destinations faciles d’accès depuis ces lieux — en temps de trajet réel, pas en kilomètres. Ajustez son importance dans la comparaison.',
+      add: 'Ajouter un pays',
     },
     household: {
       q: 'Qui déménage ?',

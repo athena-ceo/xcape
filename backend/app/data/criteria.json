@@ -212,6 +212,8 @@
      "ai_description": "Access to nature, landscapes and the outdoor environment."},
     {"key": "proximity", "parent": "lifestyle", "kind": "computed", "tags": ["proximity", "lifestyle"], "label_fr": "Proximité", "label_en": "Proximity", "default_weight": 0.0,
      "value_labels": {"good": {"fr": "Proche", "en": "Near"}, "ok": {"fr": "Moyenne", "en": "Medium"}, "bad": {"fr": "Éloigné", "en": "Far"}}},
+    {"key": "family_proximity", "parent": "lifestyle", "kind": "computed", "tags": ["proximity", "family"], "label_fr": "Proximité famille", "label_en": "Near family", "default_weight": 0.0,
+     "value_labels": {"good": {"fr": "Facile d’accès", "en": "Easy to reach"}, "ok": {"fr": "Trajet moyen", "en": "Medium trip"}, "bad": {"fr": "Difficile d’accès", "en": "Hard to reach"}}},
 
     {"key": "practical", "parent": null, "label_fr": "Pratique & intégration", "label_en": "Practical & integration"},
     {"key": "language_ease", "parent": "practical", "kind": "computed", "tags": ["language"], "label_fr": "Langue", "label_en": "Language", "default_weight": 0.8,

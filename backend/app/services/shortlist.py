@@ -45,6 +45,10 @@ _OPENNESS_SCALE = {"high": 1.0, "medium": 0.55, "low": 0.15}
 # Proximity bands (great-circle distance from the user's current country, km).
 _PROXIMITY_NEAR_KM = 1500
 _PROXIMITY_FAR_KM = 6000
+# Family-proximity bands (door-to-door TRAVEL TIME to the nearest family location, hours).
+# Time, not km — a 2 h train beats a country that's fewer km away but only a connecting flight.
+_FAMILY_NEAR_H = 3.0
+_FAMILY_FAR_H = 14.0
 
 # Picking a reason/priority that carries a tag up-weights every leaf carrying that tag —
 # so "fear" lifts the whole protection cluster, "financial" the money cluster, etc.
@@ -101,6 +105,11 @@ def _effective_weights(profile: Profile | None) -> dict[str, float]:
     # a strong factor (they care about feeling welcome, not just averages).
     if getattr(profile, "minority_groups", None):
         weights["inclusion"] = weights.get("inclusion", 0) + 1.5
+    # Naming family locations to stay near makes reachability a real factor — give
+    # family_proximity a live default so those countries and their neighbours actually rise.
+    # Still overridable by an explicit slider value below; dormant (0) for everyone else.
+    if getattr(getattr(profile, "user", None), "family_countries", None):
+        weights["family_proximity"] = weights.get("family_proximity", 0) + 1.5
     if profile.criteria_weights:
         for key, value in profile.criteria_weights.items():
             weights[key] = float(value)
@@ -217,6 +226,25 @@ def _proximity_value(profile: Profile | None, place: Place | None) -> float:
     return round(1.0 - 0.8 * (d - _PROXIMITY_NEAR_KM) / span, 3)
 
 
+def _family_proximity_value(profile: Profile | None, place: Place | None) -> float:
+    """How reachable the candidate is from the family location(s) the user wants to stay near —
+    scored on door-to-door TRAVEL TIME to the NEAREST such place, banded near→far. Neighbours of
+    a family country fall in the top band automatically. Neutral 0.5 when the user named none or
+    no centroid resolves."""
+    fams = (getattr(profile.user, "family_countries", None) or []) if (profile and profile.user) else []
+    dest_iso = (place.iso_code or "") if place else ""
+    times = [h for c in fams if (h := geo.travel_time_hours(str(c), dest_iso)) is not None]
+    if not times:
+        return 0.5
+    h = min(times)
+    if h <= _FAMILY_NEAR_H:
+        return 1.0
+    if h >= _FAMILY_FAR_H:
+        return 0.2
+    span = _FAMILY_FAR_H - _FAMILY_NEAR_H
+    return round(1.0 - 0.8 * (h - _FAMILY_NEAR_H) / span, 3)
+
+
 # --- "Residency you can afford" (visa finder, as scored criteria) ---------------------
 # Two computed criteria scored from the user's annual income / investable amount vs the cached
 # visa pathway thresholds (currency-neutral — compared in canonical EUR). They stay dormant
@@ -300,6 +328,8 @@ def _criterion_value(
         return _inclusion_value(attrs, profile)
     if key == "proximity":
         return _proximity_value(profile, place)
+    if key == "family_proximity":
+        return _family_proximity_value(profile, place)
     if key == "climate":
         pref = profile.climate_pref if profile else None
         return 1.0 if (pref and attrs.get("climate") == pref) else 0.5

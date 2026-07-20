@@ -32,6 +32,7 @@ interface Form {
   citizenships: string[]
   ancestry_countries: string[]
   heritages: string[]
+  family_countries: string[]
   household_type: string | null
   intends_children: boolean | null
   reasons_leaving: string[]
@@ -77,6 +78,7 @@ export function ProfilePage() {
         citizenships: me.citizenships ?? [],
         ancestry_countries: me.ancestry_countries ?? [],
         heritages: me.heritages ?? [],
+        family_countries: me.family_countries ?? [],
         household_type: p?.household_type ?? null,
         intends_children: p?.intends_children ?? null,
         reasons_leaving: p?.reasons_leaving ?? [],
@@ -121,6 +123,7 @@ export function ProfilePage() {
         citizenships: f.citizenships,
         ancestry_countries: f.ancestry_countries,
         heritages: f.heritages,
+        family_countries: f.family_countries,
       })
       await api.updateProfile({
         household_type: f.household_type,
@@ -193,6 +196,13 @@ export function ProfilePage() {
               </Chip>
             ))}
           </div>
+          <p className="text-sm font-medium text-turquoise-900 mt-4 mb-1">{t.onboarding.family.q}</p>
+          <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.family.hint}</p>
+          <CountryMultiSelect
+            value={f.family_countries}
+            onChange={(v) => set('family_countries', v)}
+            addLabel={t.onboarding.family.add}
+          />
         </Section>
 
         <Section title={t.onboarding.household.q}>

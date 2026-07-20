@@ -32,6 +32,10 @@ class User(Base):
     # ancestry (e.g. "jewish" → Israel's Law of Return, Germany Art.116, Sephardic routes).
     # Keys from visa_pathways.HERITAGE_COUNTRIES; surfaces those countries' heritage pathways.
     heritages: Mapped[list | None] = mapped_column(JSON, default=list)
+    # ISO alpha-2 codes / country names where the user's close family (e.g. their children) live
+    # and they want to stay within easy reach. Drives the family_proximity criterion, scored on
+    # door-to-door travel time to the NEAREST of these. Empty for most users (a minority case).
+    family_countries: Mapped[list | None] = mapped_column(JSON, default=list)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Soft-disable: a deactivated account is blocked from logging in but keeps all its data and

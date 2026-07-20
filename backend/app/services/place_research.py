@@ -291,6 +291,10 @@ def criterion_detail_one(
     language, visa, inclusion …) and cache it per-key on `place.criteria_detail`. Bilingual +
     sources. Returns the entry, or None if AI is unavailable. Never touches place_custom_evals,
     so it can't disturb the deterministic computed scores. `force` regenerates even if cached."""
+    if key == "family_proximity":
+        # Origin-specific: the note depends on the user's family location, so it's cached under an
+        # anchor-qualified key rather than the shared place-wide one (see _family_travel_note).
+        return _family_travel_note(db, place, user_id=user_id, force=force)
     existing = detail_map(place)
     if key in existing and not force:
         return existing[key]
@@ -336,6 +340,77 @@ def criterion_detail_one(
     # Reassign a new dict so SQLAlchemy detects the JSON change; preserve any existing entries.
     cache = dict(place.criteria_detail or {})
     cache[key] = entry
+    place.criteria_detail = cache
+    db.commit()
+    return entry
+
+
+def family_anchor_iso(profile, place: Place) -> str | None:
+    """ISO2 of the user's NEAREST declared family location to this place (the anchor the travel
+    note is written for), or None when none is set / resolvable."""
+    from app.services import geo
+
+    fams = (getattr(getattr(profile, "user", None), "family_countries", None) or [])
+    dest = (place.iso_code or "") if place else ""
+    best_iso, best_h = None, None
+    for c in fams:
+        h = geo.travel_time_hours(str(c), dest)
+        if h is not None and (best_h is None or h < best_h):
+            best_iso, best_h = geo.iso2_of(str(c)), h
+    return best_iso
+
+
+def _family_travel_note(db: Session, place: Place, *, user_id: int | None = None,
+                        force: bool = False) -> dict | None:
+    """AI note for family proximity: realistic door-to-door time and typical round-trip cost by
+    the most sensible means between the user's NEAREST family location and this place. Cached
+    under an anchor-qualified key (family_proximity:<ISO2>) — shared across users with the same
+    family country, unlike the plain place-wide detail keys. None if no family location or AI is
+    unavailable."""
+    from app.models.user import User
+    from app.services import geo
+
+    user = db.get(User, user_id) if user_id else None
+    fams = (getattr(user, "family_countries", None) or []) if user else []
+    dest = place.iso_code or ""
+    best = None
+    for c in fams:
+        est = geo.travel_estimate(str(c), dest)
+        if est and (best is None or est["hours"] < best[1]["hours"]):
+            best = (c, est)
+    if best is None:
+        return None
+    anchor = best[0]
+    anchor_iso = geo.iso2_of(str(anchor)) or str(anchor).upper()
+    anchor_name = geo.country_name(anchor) or str(anchor)
+    cache_key = f"family_proximity:{anchor_iso}"
+    existing = detail_map(place)
+    if cache_key in existing and not force:
+        return existing[cache_key]
+    try:
+        data = ai_client.respond_json(
+            f"Someone lives in {place.name} and regularly visits close family in {anchor_name}. In "
+            f"1-2 factual sentences, state the most sensible way to travel between them (train, "
+            f"direct flight, connecting flight…), the realistic DOOR-TO-DOOR travel time, and the "
+            f"typical round-trip COST range for one adult booking a few weeks ahead. Provide BOTH a "
+            f"French version (summary_fr) and an English version (summary_en). Use web search and "
+            f"favour recent data (2025–2026). Put sources ONLY in the sources array, each a plain "
+            f"bare URL (https://…, no Markdown, no tracking params). Do NOT put URLs in the summaries.",
+            _one_detail_schema(),
+            schema_name="family_travel_note",
+            web_search=True,
+            model=settings.openai_chat_model,  # lightweight text → faster model
+            system=_SYSTEM,
+            kind="research",
+            db=db,
+            user_id=user_id,
+        )
+    except ai_client.AIUnavailable:
+        return None
+    entry = {"summary_fr": data.get("summary_fr"), "summary_en": data.get("summary_en"),
+             "sources": data.get("sources", []), "v": DETAIL_PROMPT_VERSION}
+    cache = dict(place.criteria_detail or {})
+    cache[cache_key] = entry
     place.criteria_detail = cache
     db.commit()
     return entry

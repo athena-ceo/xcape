@@ -55,6 +55,64 @@ def distance_between(origin: str | None, dest: str | None) -> float | None:
     h = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
     return 2 * 6371.0 * asin(sqrt(h))  # km
 
+
+def iso2_of(value: str | None) -> str | None:
+    """Uppercase ISO2 for an ISO2 code or country name, or None if unresolvable. Used as the
+    stable anchor key for family-proximity travel notes regardless of how the user typed it."""
+    if not value:
+        return None
+    v = str(value).strip()
+    if _centroids().get(v.upper()):
+        return v.upper()
+    return _centroid_by_name().get(v.lower())
+
+
+def country_name(value: str | None) -> str | None:
+    """Display country name for an ISO2 code (echoes back an already-given name)."""
+    iso = iso2_of(value)
+    row = _centroids().get(iso) if iso else None
+    return row[2] if row else (str(value).strip() if value else None)
+
+
+# --- Travel effort between countries (for the proximity criteria) ---------------------
+# Great-circle km is a poor proxy for how reachable a place is; what matters for staying near
+# family is door-to-door TRAVEL TIME by the most sensible means. We model it deterministically
+# from centroid distance and take whichever mode is faster: short hops go overland (rail/road,
+# no airport overhead), longer trips fly (fixed airport/ground overhead + cruise), and very long
+# trips add a connection penalty. Taking the min keeps the estimate monotonic in distance — a
+# closer country never scores worse than a farther one. Cost can't be priced without live data,
+# so we return a coarse band (low/medium/high), never an invented figure.
+_LAND_MAX_KM = 1000.0       # beyond this, overland travel stops being sensible
+_LAND_KMH = 90.0            # effective door-to-door overland speed (incl. stops/transfers)
+_FLIGHT_OVERHEAD_H = 3.0    # airport + ground time either end of a flight
+_CRUISE_KMH = 750.0         # effective air cruise speed
+_CONNECTION_KM = 9000.0     # beyond this a direct flight is unlikely → add a layover
+_CONNECTION_PENALTY_H = 2.5
+
+
+def travel_estimate(origin: str | None, dest: str | None) -> dict | None:
+    """Door-to-door travel time (hours), the sensible mode, and a coarse cost band between two
+    countries, or None if either centroid is unknown."""
+    d = distance_between(origin, dest)
+    if d is None:
+        return None
+    flight = _FLIGHT_OVERHEAD_H + d / _CRUISE_KMH + (_CONNECTION_PENALTY_H if d >= _CONNECTION_KM else 0)
+    land = (d / _LAND_KMH + 1.0) if d <= _LAND_MAX_KM else None  # +1 h access at each end
+    if land is not None and land <= flight:
+        hours, mode = land, "land"
+    elif d >= _CONNECTION_KM:
+        hours, mode = flight, "flight_connection"
+    else:
+        hours, mode = flight, "flight"
+    band = "low" if d <= _LAND_MAX_KM else ("high" if d >= 6000 else "medium")
+    return {"km": round(d), "hours": round(hours, 1), "mode": mode, "cost_band": band}
+
+
+def travel_time_hours(origin: str | None, dest: str | None) -> float | None:
+    """Door-to-door travel time in hours by the most sensible means, or None if unknown."""
+    est = travel_estimate(origin, dest)
+    return est["hours"] if est else None
+
 # Locale (or locale_region) -> country name. Keys are matched lower-cased with
 # both '-' and '_' separators normalised to '_'.
 _LOCALE_COUNTRY: dict[str, str] = {

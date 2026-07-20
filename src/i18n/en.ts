@@ -105,6 +105,11 @@ export const en: Dict = {
       hint: 'Some countries grant citizenship based on heritage rather than a country of ancestry — e.g. Israel’s Law of Return for people of Jewish heritage. We’ll surface those routes; eligibility is yours to confirm.',
       options: { jewish: 'Jewish heritage' },
     },
+    family: {
+      q: 'Family you want to stay close to? (optional)',
+      hint: 'Countries where your children or other close family live. We favour destinations that are easy to reach from there — by real travel time, not distance. Tune how much it matters in the comparison.',
+      add: 'Add a country',
+    },
     household: {
       q: "Who's making the move?",
       single: 'Just me',

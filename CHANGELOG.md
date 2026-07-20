@@ -5,6 +5,27 @@
 
 ## [Unreleased]
 
+### 2026-07-20 — "Near family" proximity criterion (travel-time based)
+
+- New optional profile field **`users.family_countries`** (migration `0027`): the countries where
+  the user's close family (e.g. their children) live and they want to stay within easy reach.
+  Collected via a country picker in both onboarding and the profile page, alongside ancestry.
+- New computed criterion **`family_proximity`** ("Proximité famille" / "Near family"), scored on
+  door-to-door **travel time** to the *nearest* declared family country — not raw distance, so a
+  short-flight/train neighbour beats a country that is fewer km away but only a connecting flight.
+  A neighbour of a family country lands in the top band automatically. Dormant (weight 0, neutral
+  0.5) for the majority who name none; declaring a family location auto-activates a moderate weight
+  (still overridable by the comparison-board slider).
+- Deterministic travel model in `geo.py` (`travel_estimate`/`travel_time_hours`): overland for
+  close hops, flight + airport overhead beyond, layover penalty for long haul, taking whichever
+  mode is faster so the estimate stays monotonic in distance. Cost is a coarse band (low/medium/
+  high), never an invented figure.
+- **Hybrid explanation:** the comparison board shows the deterministic time/cost line immediately;
+  opening a place's detail generates an on-demand AI note with realistic schedules and prices,
+  cached per `(place, family-anchor ISO)` since it is origin-specific.
+- Also corrected the French "heritage" option from **"Patrimoine juif"** (reads as *Jewish assets*)
+  to **"Origine juive"** in `i18n/fr.ts`.
+
 ### 2026-06-27 — Prod Postgres data root hardened against silent data loss
 
 - `docker-compose.server.yml` no longer binds Postgres to a **relative** `./data/postgres`
