@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### 2026-08-10 — The dev backend venv mount no longer leaks a Docker volume per rebuild
+
+- `docker-compose.dev.yml` mounted the venv mask as a bare `- /app/xcvenv`, which is an
+  **anonymous** volume: Docker mints a new unnamed one on every container recreate and
+  `compose down` (without `-v`) orphans it. Nothing reuses it and nothing collects it. It is
+  now the named `backend_dev_xcvenv`, so there is exactly one and it is reused.
+- The mount itself stays — it masks the host's `backend/xcvenv` from the `./backend` bind
+  mount so the container uses its image-installed packages, not the macOS venv.
+- **Found via golden-path**, which has the identical defect and where it had gone much
+  further: 148 orphaned anonymous volumes, ~20 GB, surfacing as a rebuild that died with
+  `E: You don't have enough free space in /var/cache/apt/archives/` — an apt error inside a
+  Dockerfile, about as far from « a compose file mounts a volume wrong » as a symptom gets.
+  That repo now gates the class with `scripts/lint-compose-anon-volumes.py`; xcape has no
+  gate to hang it on, so this one is fixed but not guarded.
+
 ### 2026-07-20 — "Near family" proximity criterion (travel-time based)
 
 - New optional profile field **`users.family_countries`** (migration `0027`): the countries where

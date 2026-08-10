@@ -43,7 +43,13 @@ services:
       - "${BACKEND_PORT:-8030}:8000"
     volumes:
       - ./backend:/app
-      - /app/xcvenv
+      # Masks the host's backend/xcvenv from the ./backend bind mount above.
+      # NAMED deliberately: as a bare ``- /app/xcvenv`` this was an anonymous
+      # volume, so every container recreate minted a new one and ``compose
+      # down`` orphaned it. The same mistake in golden-path left 148 stray
+      # volumes (~20 GB) and failed a rebuild on a full Docker disk
+      # (2026-08-10). One named volume is reused forever.
+      - backend_dev_xcvenv:/app/xcvenv
     depends_on:
       db:
         condition: service_healthy
@@ -73,3 +79,4 @@ services:
 volumes:
   postgres_dev_data: {}
   frontend_dev_node_modules: {}
+  backend_dev_xcvenv: {}
