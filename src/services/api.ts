@@ -256,6 +256,8 @@ export const api = {
   reflectStory: (text: string, lang: string) =>
     request<{ reflection: string; hopes: string[]; worries: string[]; persona: string | null; unavailable?: boolean }>(
       '/profile/story', { method: 'POST', body: JSON.stringify({ text, lang }) }),
+  // Bring every search's "Your hopes & worries" in line with the (re)written story.
+  applyStoryEverywhere: () => request<{ searches_updated: number }>('/profile/story/apply', { method: 'POST' }),
   // Hearted countries with where the numbers put them (rank, vs #5, biggest gaps).
   heartsVsNumbers: (id: number) => request<any[]>(`/searches/${id}/hearts`),
   // Add the story's hopes & worries to a search as scored criteria.

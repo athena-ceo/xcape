@@ -207,3 +207,29 @@ def test_heart_vs_numbers(auth_client, db_session):
     pt = rows["Portugal"]
     assert pt["status"] == "ranked_below" and pt["rank"] and pt["reference"]["name"] == "Spain"
     assert len(pt["gaps"]) <= 2 and "strengths" not in pt
+
+
+def test_rewritten_story_replaces_hopes_and_worries_everywhere(auth_client, db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _STORY)
+    auth_client.post("/api/v1/profile/story", json={"text": "The sea, and friends."})
+    s1 = auth_client.post("/api/v1/searches", json={"title": "A"}).json()["id"]
+    s2 = auth_client.post("/api/v1/searches", json={"title": "B"}).json()["id"]
+    assert auth_client.post("/api/v1/profile/story/apply").json() == {"searches_updated": 2}
+
+    # Rewritten: the sea stays, the loneliness worry is gone, a new hope appears.
+    rewritten = {**_STORY, "criteria": [
+        _STORY["criteria"][0],
+        {"kind": "hope", "label_en": "Good bakeries", "label_fr": "Bonnes boulangeries",
+         "description": "Quality of everyday bakeries."},
+    ]}
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: rewritten)
+    auth_client.post("/api/v1/profile/story", json={"text": "The sea, and bread."})
+    assert auth_client.post("/api/v1/profile/story/apply").json() == {"searches_updated": 2}
+
+    for sid in (s1, s2):
+        story_keys = {c["key"] for c in auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()
+                      if c.get("category") == "story"}
+        assert story_keys == {"custom_walkable_seaside_towns", "custom_good_bakeries"}
+    prof = {c["key"] for c in auth_client.get("/api/v1/profile").json()["custom_criteria"]}
+    assert "custom_easy_to_make_friends" not in prof  # a merge can't resurrect it
+    assert auth_client.post("/api/v1/profile/story/apply").json() == {"searches_updated": 0}

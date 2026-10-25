@@ -9,6 +9,7 @@ import { CommunitySelect } from '../components/CommunitySelect'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
 import { Spinner } from '../components/Spinner'
+import { StoryReflection, type Reflection } from '../components/StoryReflection'
 import { VoiceField } from '../components/VoiceField'
 import {
   CLIMATE_KEYS, HERITAGE_KEYS, HOUSEHOLDS, LOCALE_LANGUAGE, toggle,
@@ -88,7 +89,6 @@ export function Onboarding() {
   const [busy, setBusy] = useState(false)
   const [persona, setPersona] = useState<Persona | null>(null)
   // "Your story" reflected back by the AI (server-side it is also saved on the profile).
-  type Reflection = { reflection: string; hopes: string[]; worries: string[]; persona: string | null; unavailable?: boolean }
   const [reflection, setReflection] = useState<Reflection | null>(null)
   const [reflecting, setReflecting] = useState(false)
 
@@ -298,27 +298,7 @@ export function Onboarding() {
                 rows={5}
               />
               {reflection && !reflection.unavailable && reflection.reflection ? (
-                <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-amber-900/70 mb-1">{t.onboarding.story.heard}</p>
-                  <p className="font-serif text-[17px] leading-relaxed text-turquoise-900">{reflection.reflection}</p>
-                  {(reflection.hopes.length > 0 || reflection.worries.length > 0) && (
-                    <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
-                      {reflection.hopes.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-emerald-800 mb-1">{t.onboarding.story.hopes}</p>
-                          <ul className="space-y-0.5">{reflection.hopes.map((h) => <li key={h}>· {h}</li>)}</ul>
-                        </div>
-                      )}
-                      {reflection.worries.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-amber-900 mb-1">{t.onboarding.story.worries}</p>
-                          <ul className="space-y-0.5">{reflection.worries.map((w) => <li key={w}>· {w}</li>)}</ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <p className="mt-3 text-xs text-turquoise-800/60">{t.onboarding.story.notRight}</p>
-                </div>
+                <StoryReflection reflection={reflection} />
               ) : (
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button type="button" onClick={reflectStory} disabled={!a.priorities_text.trim() || reflecting}

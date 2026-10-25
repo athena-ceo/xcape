@@ -41,6 +41,9 @@ export const en: Dict = {
     ],
   },
   profile: {
+    storyUpdate: 'Update my hopes & worries',
+    storyHint: 'Rewrote your story? Press the button to update your hopes & worries on your comparisons.',
+    storyApplied: 'Done: your comparisons now use these hopes & worries; they’re being scored now.',
     title: 'Your profile',
     intro: 'Edit your criteria any time — your ranking will be recomputed.',
     save: 'Save',
@@ -194,9 +197,6 @@ export const en: Dict = {
     priorities: {
       q: 'What matters most to you?',
       hint: 'Add the things that matter, then drag to rank them — the higher up, the more weight it carries.',
-      moreQ: 'Anything else?',
-      moreHint: 'Describe in your own words any other priorities — we’ll turn them into criteria.',
-      morePlaceholder: 'e.g. a strong startup scene and good international schools',
     },
     persona: {
       q: 'What’s driving your move?',

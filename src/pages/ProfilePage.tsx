@@ -8,6 +8,8 @@ import { Chip } from '../components/Chip'
 import { CommunitySelect } from '../components/CommunitySelect'
 import { CountryMultiSelect } from '../components/CountryMultiSelect'
 import { LanguageMultiSelect } from '../components/LanguageMultiSelect'
+import { Spinner } from '../components/Spinner'
+import { StoryReflection, type Reflection } from '../components/StoryReflection'
 import { VoiceField } from '../components/VoiceField'
 import {
   CLIMATE_KEYS, HERITAGE_KEYS, HOUSEHOLDS,
@@ -66,6 +68,10 @@ export function ProfilePage() {
   const refreshAuth = useAuth((s) => s.refresh)
   const [f, setF] = useState<Form | null>(null)
   const [busy, setBusy] = useState(false)
+  // "Your story": the last reflection (from the server), and the update-in-progress state.
+  const [reflection, setReflection] = useState<Reflection | null>(null)
+  const [storyBusy, setStoryBusy] = useState(false)
+  const [storyApplied, setStoryApplied] = useState(false)
   const [saved, setSaved] = useState(false)
 
   // Load the current truth from the server.
@@ -95,6 +101,7 @@ export function ProfilePage() {
         priorities_text: p?.priorities_text ?? '',
         persona: p?.persona ?? null,
       })
+      if (p?.story?.reflection) setReflection(p.story)
     })
   }, [])
 
@@ -110,6 +117,27 @@ export function ProfilePage() {
     const cw: Record<string, number> = { ...pw }
     for (const k of form.priorities) cw[k] = Math.max(pw[k] ?? 0, PRIORITY_WEIGHT)
     return cw
+  }
+
+  // Reflect the (re)written story, then bring every search's "Your hopes & worries" in line
+  // with it (adds new ones, drops ones the story no longer has). The text is saved either way.
+  async function updateStory() {
+    const text = f?.priorities_text.trim()
+    if (!text || storyBusy) return
+    setStoryBusy(true)
+    setStoryApplied(false)
+    try {
+      const r = await api.reflectStory(text, lang)
+      setReflection(r)
+      if (!r.unavailable) {
+        await api.applyStoryEverywhere()
+        setStoryApplied(true)
+      }
+    } catch {
+      setReflection({ reflection: '', hopes: [], worries: [], persona: null, unavailable: true })
+    } finally {
+      setStoryBusy(false)
+    }
   }
 
   async function save() {
@@ -166,6 +194,27 @@ export function ProfilePage() {
               placeholder={t.auth.lastName}
               className="flex-1 border border-turquoise-100 rounded-md px-3 py-2" />
           </div>
+        </Section>
+
+        <Section title={t.onboarding.story.q}>
+          <p className="text-sm text-turquoise-800/60 mb-3">{t.onboarding.story.hint}</p>
+          <VoiceField
+            value={f.priorities_text}
+            onChange={(v) => { set('priorities_text', v); setStoryApplied(false) }}
+            placeholder={t.onboarding.story.placeholder}
+            rows={5}
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button type="button" onClick={updateStory} disabled={!f.priorities_text.trim() || storyBusy}
+              className="min-h-11 rounded-md border border-turquoise-400 text-turquoise-700 px-4 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+              {storyBusy && <Spinner />}{storyBusy ? t.onboarding.story.reflecting : t.profile.storyUpdate}
+            </button>
+            <span className="text-xs text-turquoise-800/60">
+              {storyApplied ? t.profile.storyApplied
+                : reflection?.unavailable ? t.onboarding.story.unavailable : t.profile.storyHint}
+            </span>
+          </div>
+          {reflection && !reflection.unavailable && reflection.reflection && <StoryReflection reflection={reflection} />}
         </Section>
 
         <Section title={t.onboarding.currentCountry.q}>
@@ -345,14 +394,6 @@ export function ProfilePage() {
               </Chip>
             ))}
           </div>
-          <p className="text-sm font-medium text-turquoise-900 mt-4 mb-1">{t.onboarding.priorities.moreQ}</p>
-          <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.priorities.moreHint}</p>
-          <VoiceField
-            value={f.priorities_text}
-            onChange={(v) => set('priorities_text', v)}
-            placeholder={t.onboarding.priorities.morePlaceholder}
-            rows={4}
-          />
         </Section>
       </div>
 

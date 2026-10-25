@@ -95,3 +95,11 @@ def reflect_story(body: StoryRequest, user: User = Depends(get_current_user), db
     _get_or_create(db, user)
     db.refresh(user)
     return story.reflect(db, user, body.text, body.lang)
+
+
+@router.post("/story/apply")
+def apply_story_everywhere(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Bring every search's "Your hopes & worries" in line with the current story (adds new
+    ones, drops ones the story no longer has) and re-rank — used after rewriting the story on
+    the profile page. No AI call here; the new criteria are scored via /evaluate-pending."""
+    return {"searches_updated": story.apply_everywhere(db, user)}

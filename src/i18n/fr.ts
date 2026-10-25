@@ -39,6 +39,9 @@ export const fr = {
     ],
   },
   profile: {
+    storyUpdate: 'Mettre à jour mes espoirs et inquiétudes',
+    storyHint: 'Vous avez réécrit votre histoire ? Appuyez sur le bouton pour mettre à jour vos espoirs et inquiétudes dans vos comparaisons.',
+    storyApplied: 'C’est fait : vos comparaisons utilisent ces espoirs et inquiétudes ; leur évaluation est en cours.',
     title: 'Votre profil',
     intro: 'Modifiez vos critères à tout moment — votre classement sera recalculé.',
     save: 'Enregistrer',
@@ -192,9 +195,6 @@ export const fr = {
     priorities: {
       q: 'Qu’est-ce qui compte le plus pour vous ?',
       hint: 'Ajoutez ce qui compte, puis glissez pour les classer — plus c’est haut, plus le poids est important.',
-      moreQ: 'Autre chose ?',
-      moreHint: 'Décrivez avec vos mots d’autres priorités — nous en ferons des critères.',
-      morePlaceholder: 'ex. un écosystème start-up dynamique et de bonnes écoles internationales',
     },
     persona: {
       q: 'Qu’est-ce qui motive votre départ ?',

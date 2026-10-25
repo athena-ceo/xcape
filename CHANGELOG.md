@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — "Tell us your story" on the profile page
+
+Users who onboarded before the story existed (all current prod testers) had no way to write
+one.
+
+- **New "Tell us your story" section at the top of the profile page.** The free-text box moves
+  there from the priorities section, as a multi-line field with dictation.
+- **"Update my hopes & worries"** reflects the story, shows "Here's what we heard", then
+  brings **every** search's "Your hopes & worries" in line with it (`POST
+  /profile/story/apply`) and re-ranks.
+- **Replace, not just add:** a rewritten story drops the criteria it no longer has, from each
+  search and from the profile mirror, so a merge can't bring them back. Onboarding uses the
+  same logic.
+- The reflection card is shared with onboarding (`StoryReflection`), and the old "Anything
+  else?" strings are removed.
+
 ### 2026-10-25 — Emotional layer, second slice: hopes & worries scorecard, heart vs numbers, something different
 
 - **Your hopes & worries, scored.**

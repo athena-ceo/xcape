@@ -115,30 +115,66 @@ def reflect(db: Session, user: User, text: str, lang: str) -> dict:
     return result
 
 
-def apply_to_search(db: Session, user: User, search) -> list[str]:
-    """Turn the story's hopes and worries into custom criteria on `search` — the "Your hopes &
-    worries" scorecard. Labelled in the user's terms, scored by the normal custom-criterion
-    pipeline (evaluate-pending), weighted STORY_WEIGHT, and persisted to the profile so every
-    later search carries them too. Returns the keys added (existing keys are left alone)."""
-    from app.services import criterion_eval, custom_criteria  # avoid module-load cycles
+def _story_defs(user: User) -> list[dict]:
+    """The story's hopes & worries as custom-criterion defs (empty when there's no story)."""
+    from app.services import criterion_eval  # avoid a module-load cycle
 
     story = (getattr(user.profile, "story", None) or {}) if user.profile else {}
-    defs = list(search.custom_criteria or [])
-    have = {c.get("key") for c in defs}
-    added: list[dict] = []
+    out, seen = [], set()
     for c in story.get("criteria") or []:
         key = criterion_eval.slugify(c.get("label_en") or "")
-        if not key or key in have:
+        if not key or key in seen:
             continue
-        d = {"key": key, "label": c["label_en"], "label_en": c["label_en"],
-             "label_fr": c.get("label_fr") or c["label_en"], "description": c.get("description"),
-             "weight": STORY_WEIGHT, "category": STORY_CATEGORY, "kind": c.get("kind")}
-        defs.append(d)
-        added.append(d)
-        have.add(key)
+        seen.add(key)
+        out.append({"key": key, "label": c["label_en"], "label_en": c["label_en"],
+                    "label_fr": c.get("label_fr") or c["label_en"], "description": c.get("description"),
+                    "weight": STORY_WEIGHT, "category": STORY_CATEGORY, "kind": c.get("kind")})
+    return out
+
+
+def apply_to_search(db: Session, user: User, search) -> bool:
+    """Make `search`'s "Your hopes & worries" match the current story: add its criteria, and
+    drop story criteria a rewritten story no longer has (anywhere else they'd linger forever).
+    Scored by the normal custom-criterion pipeline (evaluate-pending), weighted STORY_WEIGHT,
+    and mirrored on the profile so new searches start with them. Returns True if it changed."""
+    from app.services import custom_criteria  # avoid a module-load cycle
+
+    wanted = _story_defs(user)
+    wanted_keys = {d["key"] for d in wanted}
+
+    def stale(d: dict) -> bool:
+        return d.get("category") == STORY_CATEGORY and d.get("key") not in wanted_keys
+
+    # The profile mirror first, so a later merge can't bring a dropped one back.
+    prof = user.profile
+    if prof is not None and any(stale(d) for d in (prof.custom_criteria or [])):
+        prof.custom_criteria = [d for d in prof.custom_criteria if not stale(d)]
+
+    old = list(search.custom_criteria or [])
+    kept = [d for d in old if not stale(d)]
+    have = {d.get("key") for d in kept}
+    added = [d for d in wanted if d["key"] not in have]
+    changed = len(kept) != len(old) or bool(added)
+    if changed:
+        dropped = {d.get("key") for d in old} - {d.get("key") for d in kept}
+        search.custom_criteria = kept + added
+        search.criteria_set = list({*(k for k in (search.criteria_set or []) if k not in dropped),
+                                    *(d["key"] for d in added)})
+    db.commit()
     if added:
-        search.custom_criteria = defs
-        search.criteria_set = list({*(search.criteria_set or []), *(d["key"] for d in added)})
-        db.commit()
         custom_criteria.persist_to_profile(db, user, added)
-    return [d["key"] for d in added]
+    return changed
+
+
+def apply_everywhere(db: Session, user: User) -> int:
+    """Apply the (re)written story to every one of the user's searches and re-rank those that
+    changed — the profile page's "update my hopes & worries". Returns how many changed."""
+    from app.models.search import Search
+    from app.services import shortlist  # avoid a module-load cycle
+
+    changed = 0
+    for search in db.query(Search).filter(Search.user_id == user.id).all():
+        if apply_to_search(db, user, search):
+            shortlist.rescore_candidates(db, user, search)
+            changed += 1
+    return changed
