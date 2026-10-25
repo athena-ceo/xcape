@@ -5,6 +5,28 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — Uptime probe: Slack hears when xCape stops answering
+
+The last golden-path ops feature not yet ported.
+
+- **`scripts/uptime-probe.sh`** runs from cron every minute on the server. It checks
+  `http://localhost:8030/health` and `https://apps.athenadecisions.com/xcape/health` separately.
+- It posts to Slack only on **transitions**: one message when xCape goes down, one when it
+  comes back. A failure must repeat 3 times in a row (`FAILURES_BEFORE_DOWN`) before it counts,
+  so deploys and restores page nobody.
+- A check passes only on a 200 **with** `"status": "ok"` in the body. nginx sends unknown
+  `/xcape/` paths to the frontend, which answers every one with a 200, so a 200 alone could
+  hide a dead backend.
+- The webhook is read from `SLACK_WEBHOOK_URL` in `/etc/xcape/environment`, never the repo or
+  the crontab. State lives in `~/.local/state/xcape`, which survives reboots, unlike golden-path's
+  `/tmp`, and stays out of the backup folder that is uploaded offsite. `DRY_RUN=1` prints the
+  Slack messages instead of sending them.
+- **`uptime-cron <env> [--install]`** shows or installs the cron line (tag `# xcape-uptime-<env>`,
+  idempotent). It runs the script from the checkout, so a deploy's `git pull` keeps it up to
+  date. It warns when no webhook is configured.
+- `./xcape.sh help` no longer prints `xcape_*: command not found`: the backticks in the
+  `adopt-dev-volumes` line were being run by the shell.
+
 ### 2026-10-25 — `xcape.sh`: read-only SQL, real backups, tested restores, migrate-before-swap
 
 The rest of the `golden-path.sh` port (the safety half shipped earlier today).

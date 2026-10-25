@@ -35,7 +35,7 @@ esac
 # Commands that change or remove data/services must name the environment, so nobody hits
 # prod by omission on the server.
 case "$CMD" in
-  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|restore-backup|backup-cron|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
+  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|restore-backup|backup-cron|uptime-cron|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
     if [[ "$EXPLICIT_ENV" != true ]]; then
       echo "$CMD needs an explicit environment: ./xcape.sh $CMD <dev|prod> ..." >&2
       echo "(on this machine the default would be '$DEFAULT_ENV')" >&2
@@ -378,6 +378,29 @@ case "$CMD" in
       echo "Not installed. It would add:"; echo "  $LINE"
       echo "Install with: ./xcape.sh backup-cron $ENV --install"
     fi ;;
+  uptime-cron)
+    # Show the every-minute uptime probe crontab line; --install adds it (idempotent). Cron
+    # runs scripts/uptime-probe.sh from this checkout, so deploys keep it current. Slack is
+    # told only on down/up transitions; the webhook comes from /etc/xcape/environment.
+    PROBE="$(pwd)/scripts/uptime-probe.sh"
+    if [[ "$ENV" == "prod" ]]; then
+      LINE="* * * * * $PROBE # xcape-uptime-$ENV"
+    else
+      LINE="* * * * * HEALTH_URLS=http://localhost:${BACKEND_PORT:-8030}/health $PROBE # xcape-uptime-$ENV"
+    fi
+    if crontab -l 2>/dev/null | grep -q "# xcape-uptime-$ENV\$"; then
+      echo "Installed:"; crontab -l | grep "# xcape-uptime-$ENV\$"
+    elif [[ "${1:-}" == "--install" ]]; then
+      [[ -x "$PROBE" ]] || { echo "$PROBE is missing or not executable."; exit 1; }
+      (crontab -l 2>/dev/null || true; echo "$LINE") | crontab -
+      echo "Installed: $LINE"
+    else
+      echo "Not installed. It would add:"; echo "  $LINE"
+      echo "Install with: ./xcape.sh uptime-cron $ENV --install"
+    fi
+    if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
+      echo "Note: no SLACK_WEBHOOK_URL in /etc/xcape/environment — the probe runs but tells nobody."
+    fi ;;
   schema-check)
     # Do the migrations match the ORM models? (Tests use create_all, so they can't tell.)
     $COMPOSE exec -T "$BACKEND_SVC" alembic check ;;
@@ -492,10 +515,11 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
                           rehearse into a throwaway DB, or restore (safety dump first; the
                           previous database is kept under another name)
   backup-cron <env> [--install]  show / install the nightly 02:15 backup
+  uptime-cron <env> [--install]  show / install the every-minute uptime probe (Slack on down/up)
   prune-images            reclaim disk: dangling images + week-old build cache
   deploy prod             backup, pull, build, migrate (before the swap), swap, seed, health, smoke
   reset-db                (dev only) wipe DB volume
-  adopt-dev-volumes dev   (once, dev only) move data from pre-rename `xcape_*` volumes to `xcape-dev`
+  adopt-dev-volumes dev   (once, dev only) move data from pre-rename \`xcape_*\` volumes to \`xcape-dev\`
 
 Dev URLs: frontend http://localhost:${FRONTEND_PORT:-3030}  backend http://localhost:${BACKEND_PORT:-8030}/docs
 EOF
