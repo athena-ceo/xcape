@@ -28,7 +28,7 @@ from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
 from app.models.profile import Profile
 from app.services import ai_client
-from app.services.criterion_eval import _fresh, level_from_score
+from app.services.criterion_eval import _fresh, insert_eval, level_from_score
 
 # Bump when the pathway prompt/schema below changes in a way that should invalidate cached
 # pathway rows (independent of the criterion-eval version).
@@ -275,11 +275,7 @@ def evaluate_pathway(
         db.commit()
         db.refresh(existing)
         return existing
-    ev = PlaceCustomEval(place_id=place.id, key=key, **fields)
-    db.add(ev)
-    db.commit()
-    db.refresh(ev)
-    return ev
+    return insert_eval(db, PlaceCustomEval(place_id=place.id, key=key, **fields))
 
 
 def cached_rows(db: Session, place_id: int) -> dict[str, PlaceCustomEval]:

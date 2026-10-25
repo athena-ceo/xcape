@@ -82,11 +82,11 @@
       "blurb_fr": "Vous préparez votre retraite. On regarde le visa, le coût de la vie, la santé et le climat.",
       "blurb_en": "You're relocating for retirement. We look at visa, cost of living, healthcare and climate.",
       "match": {"reasons": ["retirement"], "tags": ["retirement"]},
-      "weights": {"visa": 5.0, "cost_of_living": 5.0, "healthcare": 6, "climate": 1.5, "safety": 1.5, "tax": 1, "language_ease": 1, "proximity": 1},
+      "weights": {"visa": 2.0, "cost_of_living": 5.0, "healthcare": 6, "climate": 1.5, "safety": 1.5, "tax": 1, "language_ease": 1, "proximity": 1},
       "ask": ["budget", "climate"],
       "filters": ["healthcare", "safety"],
       "custom_criteria": [
-        {"label_en": "Retirement visa", "label_fr": "Visa retraite", "category": "practical", "weight": 6,
+        {"label_en": "Retirement visa", "label_fr": "Visa retraite", "category": "practical", "weight": 6, "mobility": true,
          "description": "Ease for a foreign retiree to obtain legal residence on pension / passive income. COUNT any qualifying pathway as valid — a named retirement/pensioner visa OR a general 'residence for persons of independent means / living on their own resources' permit achieves the same outcome; do NOT mark it weak merely because there is no specifically-named 'retirement visa'. Weigh income/pension thresholds, required documents, and the ease and length of long-term residency. Cite official immigration sources."},
         {"label_en": "Healthcare for retirees", "label_fr": "Santé pour les retraités", "category": "wellbeing", "weight": 6,
          "description": "Access to and cost of healthcare for older residents and retirees, including eligibility for the public system. Cite official / health sources."}

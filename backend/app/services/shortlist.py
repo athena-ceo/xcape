@@ -125,42 +125,87 @@ _EU_FOM = {
 }
 
 
-def _single_citizenship_visa(citizenship: str, dest: str, base: float) -> float:
-    """Ease of settling for ONE citizenship."""
-    if dest and citizenship == dest:
-        return 1.0  # citizen of the destination
-    if dest in _EU_FOM:
-        return 1.0 if citizenship in _EU_FOM else 0.3  # EU free movement, else hard
-    return base
+# Ease credited when the household likely holds an EU state's citizenship BY DESCENT (declared
+# ancestry in an EU country): free movement once the claim is made — paperwork, not certainty.
+_DESCENT_EU_EASE = 0.85
+
+# Which visa-pathway catalog entry measures "ease of settling" for a persona; others use the
+# easiest of the general routes. Values come from the per-country AI pathway research
+# (`visa_<category>` rows, difficulty 0-100 where 100 = very easy), which exists for every
+# country — unlike the coarse seed `visa` bucket, curated for only ~29.
+_PERSONA_ROUTE = {"retiree": "visa_retirement", "professional": "visa_work",
+                  "entrepreneur": "visa_entrepreneur"}
+_GENERAL_ROUTES = ("visa_retirement", "visa_digital_nomad", "visa_work", "visa_entrepreneur")
 
 
-def _visa_value(attrs: dict, profile: Profile | None, place: Place | None) -> float:
-    """Ease of moving the whole household there, given its citizenships (not residence).
+def free_access(profile: Profile | None, place: Place | None) -> dict | None:
+    """How the household can settle in `place` WITHOUT a visa programme, or None.
 
-    Uses the MOST RESTRICTIVE citizenship — everyone must be able to settle, so a French
-    + American household is judged by the American passport, not the French one.
+    Returns {"ease": 0-1, "code": reason code, "via": ISO or None}. Citizenships are the union
+    across the moving household, and the MOST favourable one decides: an EU/EEA/Swiss passport
+    carries the whole household into any free-movement state, because the non-EU spouse and
+    children of an EU citizen get a derived right of residence (Directive 2004/38/EC). (Judging
+    by the most restrictive passport scored Spain "hard" for a Polish + American couple.)
     """
-    citz = (
-        {str(c).upper() for c in (profile.user.citizenships or [])}
-        if (profile and profile.user and profile.user.citizenships)
-        else set()
+    user = getattr(profile, "user", None) if profile else None
+    dest = (getattr(place, "iso_code", None) or "").upper()
+    if user is None or not dest:
+        return None
+    from app.services import visa_pathways  # local import avoids a module-load cycle
+
+    citz = {str(c).upper() for c in (user.citizenships or [])}
+    ancestry = {str(c).upper() for c in (getattr(user, "ancestry_countries", None) or [])}
+    # An ethno-religious heritage with a strong, open right of return (e.g. Jewish heritage →
+    # Israel's Law of Return) is a near-automatic pathway, like a country of ancestry.
+    ancestry |= visa_pathways.heritage_visa_boost_countries(getattr(user, "heritages", None))
+    if dest in citz:
+        return {"ease": 1.0, "code": "visa_citizen", "via": dest}
+    if dest in _EU_FOM and citz & _EU_FOM:
+        return {"ease": 1.0, "code": "visa_free", "via": sorted(citz & _EU_FOM)[0]}
+    if dest in ancestry:
+        return {"ease": 1.0, "code": "visa_ancestry", "via": dest}
+    if dest in _EU_FOM and ancestry & _EU_FOM:
+        return {"ease": _DESCENT_EU_EASE, "code": "visa_descent", "via": sorted(ancestry & _EU_FOM)[0]}
+    return None
+
+
+def _visa_value(attrs: dict, profile: Profile | None, place: Place | None,
+                route_ease: float | None = None) -> float:
+    """Ease of moving the whole household there.
+
+    Free access (citizenship, EU free movement, ancestry) wins. Otherwise it is the country's
+    OWN accessibility for this kind of mover — `route_ease`, from the AI pathway research — not
+    a flat penalty for being an EU state: Portugal's D7 is easy for a US retiree. Without
+    research it falls back to the coarse seed bucket, else neutral.
+    """
+    fa = free_access(profile, place)
+    if fa is not None:
+        return fa["ease"]
+    if route_ease is not None:
+        return route_ease
+    return criteria.scales().get("visa", {}).get(str(attrs.get("visa", "")).lower(), 0.5)
+
+
+def visa_route_ease(db: Session, place_ids: list[int], profile: Profile | None) -> dict[int, float]:
+    """{place_id: 0-1} ease of the most relevant visa programme, from cached pathway research
+    (no AI). The persona's own route when researched, else the easiest general route."""
+    if not place_ids:
+        return {}
+    rows = (
+        db.query(PlaceCustomEval.place_id, PlaceCustomEval.key, PlaceCustomEval.score)
+        .filter(PlaceCustomEval.place_id.in_(place_ids), PlaceCustomEval.key.in_(_GENERAL_ROUTES))
+        .all()
     )
-    base = criteria.scales().get("visa", {}).get(str(attrs.get("visa", "")).lower(), 0.5)
-    dest = (place.iso_code or "").upper() if place else ""
-    # A declared ancestry/descent tie — or an ethno-religious heritage with a strong, open
-    # right-of-return (e.g. Jewish heritage → Israel's Law of Return) — is a near-automatic
-    # pathway, so it overrides the generic accessibility.
-    ancestry: set[str] = set()
-    if profile and profile.user:
-        from app.services import visa_pathways  # local import avoids a module-load cycle
-        if getattr(profile.user, "ancestry_countries", None):
-            ancestry = {str(c).upper() for c in profile.user.ancestry_countries}
-        ancestry |= visa_pathways.heritage_visa_boost_countries(getattr(profile.user, "heritages", None))
-    if dest and dest in ancestry:
-        return 1.0
-    if not citz:
-        return base  # citizenship unknown — fall back to general accessibility
-    return min(_single_citizenship_visa(c, dest, base) for c in citz)
+    by_place: dict[int, dict[str, int]] = {}
+    for pid, key, score in rows:
+        if score is not None:
+            by_place.setdefault(pid, {})[key] = score
+    preferred = _PERSONA_ROUTE.get(getattr(profile, "persona", None) or "")
+    out: dict[int, float] = {}
+    for pid, routes in by_place.items():
+        score = routes.get(preferred) if preferred in routes else max(routes.values())
+        out[pid] = max(0.0, min(1.0, score / 100))
+    return out
 
 
 # Coarse monthly cost of living for one person (EUR), by symbolic level — a proxy used
@@ -296,11 +341,34 @@ def residency_values(db: Session, place_ids: list[int], profile: Profile | None)
     return out
 
 
+def per_user_values(db: Session, place_ids: list[int], profile: Profile | None) -> dict[int, dict]:
+    """The per-USER criterion values layered over the shared AI-eval cache (no AI):
+
+    - `visa`: free access, else the country's researched route ease;
+    - `residency_income` / `residency_investment`: can the user's means clear a route;
+    - when the household can settle freely, every visa-programme criterion (residency_*,
+      the retiree "Retirement visa", …) is NOT NEEDED → 1.0, rather than penalising Spain for
+      lacking a golden visa that an EU citizen will never use.
+    """
+    out = {pid: dict(v) for pid, v in residency_values(db, place_ids, profile).items()}
+    if not place_ids:
+        return out
+    routes = visa_route_ease(db, place_ids, profile)
+    mobility = ("residency_income", "residency_investment", *criteria.mobility_custom_keys())
+    for place in db.query(Place).filter(Place.id.in_(place_ids)).all():
+        vals = out.setdefault(place.id, {})
+        vals["visa"] = _visa_value(place.attributes or {}, profile, place, routes.get(place.id))
+        if free_access(profile, place) is not None:
+            for key in mobility:
+                vals[key] = 1.0
+    return out
+
+
 def _pool_evals(db: Session, place_ids: list[int], profile: Profile | None, keys: list[str]) -> dict[int, dict]:
-    """Cached AI eval values for the pool, augmented with the per-user residency criteria."""
+    """Cached AI eval values for the pool, augmented with the per-user criteria."""
     from app.services import criterion_eval
     out = criterion_eval.values_for_places(db, place_ids, keys)
-    for pid, vals in residency_values(db, place_ids, profile).items():
+    for pid, vals in per_user_values(db, place_ids, profile).items():
         out.setdefault(pid, {}).update(vals)
     return out
 
@@ -308,8 +376,24 @@ def _pool_evals(db: Session, place_ids: list[int], profile: Profile | None, keys
 def _place_evals(db: Session, place_id: int, profile: Profile | None, keys: list[str]) -> dict:
     from app.services import criterion_eval
     out = criterion_eval.values_for_place(db, place_id, keys)
-    out.update(residency_values(db, [place_id], profile).get(place_id, {}))
+    out.update(per_user_values(db, [place_id], profile).get(place_id, {}))
     return out
+
+
+# Climates are ordered, so a near miss is closer than a far one: for someone who wants "warm",
+# mild Portugal is a near match and temperate Netherlands is not. (A flat 0.5 for any mismatch
+# let cool countries tie with nearly-right ones once visas stopped separating them.)
+_CLIMATE_ORDER = ["cold", "temperate", "mild", "warm", "tropical"]
+_CLIMATE_BY_DISTANCE = [1.0, 0.6, 0.3, 0.1, 0.1]
+
+
+def _climate_value(pref: str | None, climate: str | None) -> float:
+    pref, climate = str(pref or "").lower(), str(climate or "").lower()
+    if not pref or not climate:
+        return 0.5  # no preference, or the country's climate is unknown → neutral
+    if pref not in _CLIMATE_ORDER or climate not in _CLIMATE_ORDER:
+        return 1.0 if pref == climate else 0.5
+    return _CLIMATE_BY_DISTANCE[abs(_CLIMATE_ORDER.index(pref) - _CLIMATE_ORDER.index(climate))]
 
 
 def _criterion_value(
@@ -331,8 +415,7 @@ def _criterion_value(
     if key == "family_proximity":
         return _family_proximity_value(profile, place)
     if key == "climate":
-        pref = profile.climate_pref if profile else None
-        return 1.0 if (pref and attrs.get("climate") == pref) else 0.5
+        return _climate_value(profile.climate_pref if profile else None, attrs.get("climate"))
     if key == "language_ease":
         skills = (profile.language_skills or {}) if profile else {}
         known = {str(lang).lower() for lang in (skills.get("known") or [])}

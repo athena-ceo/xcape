@@ -3,8 +3,8 @@
 
 """Wrapper around the OpenAI Responses API (model gpt-5).
 
-Every call is recorded to AIQueryLog (model, kind, token usage, latency) for the admin
-dashboard. The web search tool can be enabled per call so the model pulls up-to-date
+Every call — successful or failed — is recorded to AIQueryLog (model, kind, token usage,
+latency, status/error) for the admin dashboard; failures also land in the admin Errors tab. The web search tool can be enabled per call so the model pulls up-to-date
 information about places. Structured output is requested via a JSON schema so callers
 get validated dicts instead of free text.
 
@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.ai_log import AIQueryLog
+from app.services import errors
 
 
 class AIUnavailable(RuntimeError):
@@ -34,7 +35,11 @@ def _client():
         raise AIUnavailable("OPENAI_API_KEY is not configured")
     from openai import OpenAI
 
-    return OpenAI(api_key=settings.openai_api_key)
+    return OpenAI(
+        api_key=settings.openai_api_key,
+        timeout=settings.openai_timeout_s,
+        max_retries=settings.openai_max_retries,
+    )
 
 
 def _log(
@@ -47,6 +52,7 @@ def _log(
     result: str | None = None,
     usage: Any,
     latency_ms: int,
+    error: str | None = None,
 ) -> None:
     if db is None:
         return
@@ -61,6 +67,8 @@ def _log(
                 tokens_in=getattr(usage, "input_tokens", None),
                 tokens_out=getattr(usage, "output_tokens", None),
                 latency_ms=latency_ms,
+                status="error" if error else "ok",
+                error=(error or None) and error[:2000],
             )
         )
         db.commit()
@@ -68,16 +76,33 @@ def _log(
         db.rollback()
 
 
-def _create(kwargs: dict, *, db, user_id, kind, summary):
+def _record_failure(e: Exception, *, db, user_id, kind, model, summary, t0: float) -> None:
+    """A failed call used to vanish (only successes were logged). Record it in the AI log
+    AND the admin Errors tab; the caller re-raises and decides how to degrade."""
+    latency = int((time.monotonic() - t0) * 1000)
+    _log(db, user_id=user_id, kind=kind, model=model, summary=summary, usage=None,
+         latency_ms=latency, error=f"{type(e).__name__}: {e}")
+    errors.record_exception(e, source="ai", message=f"{kind} · {model} · {latency} ms: {e}",
+                            user_id=user_id)
+
+
+def _create(kwargs: dict, *, db, user_id, kind, summary, timeout: float | None = None):
     client = _client()
+    if timeout:
+        client = client.with_options(timeout=timeout)
+    model = kwargs.get("model", settings.openai_model)
     t0 = time.monotonic()
-    resp = client.responses.create(**kwargs)
+    try:
+        resp = client.responses.create(**kwargs)
+    except Exception as e:
+        _record_failure(e, db=db, user_id=user_id, kind=kind, model=model, summary=summary, t0=t0)
+        raise
     latency = int((time.monotonic() - t0) * 1000)
     _log(
         db,
         user_id=user_id,
         kind=kind,
-        model=kwargs.get("model", settings.openai_model),
+        model=model,
         summary=summary,
         result=getattr(resp, "output_text", None),  # the return value, truncated by _log
         usage=getattr(resp, "usage", None),
@@ -221,10 +246,11 @@ def create_with_tools(
     db: Session | None = None,
     user_id: int | None = None,
     kind: str = "chat",
+    timeout: float | None = None,
 ):
     """One Responses API turn with function tools. Returns the raw response so the caller
-    can inspect function_call items and continue the tool loop. `model` and
-    `reasoning_effort` let latency-sensitive callers (chat) pick a faster configuration."""
+    can inspect function_call items and continue the tool loop. `model`, `reasoning_effort`
+    and `timeout` let latency-sensitive callers (chat) pick a faster configuration."""
     all_tools = list(tools or [])
     if web_search:
         all_tools.append({"type": "web_search"})
@@ -240,7 +266,7 @@ def create_with_tools(
          if isinstance(m, dict) and m.get("role") == "user"),
         "",
     )
-    return _create(kwargs, db=db, user_id=user_id, kind=kind, summary=summary)
+    return _create(kwargs, db=db, user_id=user_id, kind=kind, summary=summary, timeout=timeout)
 
 
 def transcribe_audio(
@@ -255,9 +281,15 @@ def transcribe_audio(
     buf = io.BytesIO(data)
     buf.name = filename
     t0 = time.monotonic()
-    result = client.audio.transcriptions.create(
-        model=settings.openai_transcribe_model, file=buf
-    )
+    try:
+        result = client.audio.transcriptions.create(
+            model=settings.openai_transcribe_model, file=buf
+        )
+    except Exception as e:
+        _record_failure(e, db=db, user_id=user_id, kind="voice",
+                        model=settings.openai_transcribe_model,
+                        summary=f"transcribe {filename}", t0=t0)
+        raise
     latency = int((time.monotonic() - t0) * 1000)
     _log(
         db,

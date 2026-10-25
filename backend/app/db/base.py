@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
 from app.models import (  # noqa: E402,F401
     ai_log,
     app_config,
+    app_error,
     candidate,
     chat,
     custom_eval,

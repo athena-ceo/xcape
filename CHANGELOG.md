@@ -5,6 +5,109 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — Fairer visa scoring: obvious EU destinations no longer lose to retiree-visa programmes
+
+**What users saw:** Mauritius, Uruguay, Panama and Costa Rica sat on most boards. Spain was
+missing for a Polish + American couple who speak Spanish, and Portugal was missing for a US
+citizen with Polish ancestry and family there. On prod, Spain scored **30/100 on visa** for the
+Polish passport holder.
+
+- **The household's most favourable passport decides.** `citizenships` is the union across
+  the moving household, and the old rule judged by the *most restrictive* passport. In the
+  EU, the non-EU spouse and children of an EU citizen get a derived right of residence
+  (Directive 2004/38/EC). The new `shortlist.free_access` covers four cases:
+  - citizen of the destination;
+  - EU free movement;
+  - declared ancestry or open right of return;
+  - **EU citizenship by descent**: an EU ancestry country gives likely free movement
+    elsewhere in the EU, scored 0.85.
+- **No flat "hard" for EU destinations.** A non-EU household is judged by the country's own
+  route, from the AI pathway research (`visa_<category>`, 100 = very easy). That research
+  exists for all 218 countries, whereas the seed `visa` bucket covers only 29: the old rule
+  gave the curated "easy" retiree-visa countries a head start, and the other 190 a neutral
+  0.5. Retirees use the retirement route, professionals the work route, and others the
+  easiest general route.
+- **Visa-programme criteria are "not needed" when the household can settle freely.**
+  Residency by income or investment and the retiree's "Retirement visa" score as fully met,
+  with an explanation, instead of penalising Spain for closing a golden visa an EU citizen
+  will never use. Board cells and drill-down texts explain how the household can settle,
+  naming the passport.
+- **The retiree profile no longer counts visa ease twice:** generic `visa` drops from 5 to
+  2.0, next to its "Retirement visa" (6). Before, about 40% of a retiree's score was
+  immigration ease. Migration `0029` applies this to the stored registry (prod reads a DB
+  copy, not `criteria.json`) and to retiree profiles still on the untouched default. It is
+  idempotent.
+- **Climate fit is graded by distance** (cold → temperate → mild → warm → tropical: 1.0, 0.6,
+  0.3, 0.1). Previously every mismatch scored 0.5, so once visas stopped separating EU
+  countries, the cool Netherlands tied with the mild Portugal for someone wanting warmth.
+- **New `./xcape.sh rescore <env> [--repopulate] [--dry-run]`.** Saved boards keep the scores
+  they were built with. This re-scores them (no AI calls); `--repopulate` also re-picks each
+  top 5 like "Refresh list", keeping pinned countries and never restoring removed ones.
+- **Verified on prod data** (read-only; new code run in memory against the live database).
+  Across the 24 searches, the number of top-5 appearances changes as follows:
+
+  | Country | Before | After |
+  |---|---|---|
+  | Portugal | 14 | 19 |
+  | Spain | 7 | 10 |
+  | Cyprus | 7 | 11 |
+  | France | 4 | 7 |
+  | Mauritius | 10 | 4 |
+  | Uruguay | 10 | 2 |
+  | Panama | 5 | 0 |
+  | Costa Rica | 6 | 2 |
+
+  The Polish + American couple's top 5 becomes Spain 86, Switzerland, Portugal, Italy, Cyprus
+  (was Costa Rica, Mauritius, Uruguay, Panama, UAE).
+
+### 2026-10-25 — The assistant always answers; failures surface in admin; `xcape.sh` can't hit prod by omission
+
+**What users saw:** a question to the assistant "returned silently to the prompt". On prod the
+model had answered (in 4–7 s) and the reply was saved, but the iPhone dropped the request first
+(nginx 499; the phone's IP changed mid-session). The chat panel had no error path, so it just
+stopped spinning and never re-read the saved thread.
+
+- **Chat panel recovers the reply.** On a dropped connection, proxy timeout or 5xx it shows
+  "Connection lost. Fetching the assistant's answer…" and polls the saved thread until the
+  answer appears. It also re-reads the thread whenever the page comes back into view. If no
+  answer ever arrives, it shows the question with an "Ask again" button instead of nothing.
+- **The server always produces a reply.** Any model or tool failure now saves a localized
+  "technical problem, please try again" message (it previously surfaced as a 500). An
+  exhausted tool loop no longer blames a "missing OpenAI key". The OpenAI client gets a timeout
+  and retry limit (`OPENAI_TIMEOUT_S` 150, `OPENAI_MAX_RETRIES` 1, chat turns
+  `OPENAI_CHAT_TIMEOUT_S` 45) so a stuck call fails visibly before nginx's 180 s cut-off.
+- **Admin "Errors" tab** (new table `app_errors`, migration `0028`). It lists unhandled request
+  exceptions (global handler, with user, method and path), failed AI calls, and unanswerable
+  chat turns, each with an expandable traceback. A failure is recorded once, at the most
+  specific layer. The **AI log** now also records failed calls (`status`/`error` columns, shown
+  as a red "failed" badge); before this, only successes were logged.
+- **`evaluate-pending` race fixed.** Two concurrent board requests evaluating the same
+  (country, criterion) collided on `uq_custom_eval_place_key` and 500'd (seen on prod). The
+  insert now keeps the row that won. The same fix applies to visa-pathway and cost-breakdown
+  rows, which shared the pattern.
+- **`xcape.sh` env safety** (ported from golden-path's hard-won rules):
+  - The default environment is prod on `apps.athenadecisions.com` and dev elsewhere.
+  - Commands that change services or data must name the environment.
+  - Unknown environments are rejected, and flags like `--follow` are no longer mistaken for
+    one.
+  - Dev and prod now use distinct compose projects (`xcape-dev` / `xcape`). Before, a dev
+    `stop` on the server removed the prod containers. Dev volumes keep their names, so no data
+    moves.
+  - `psql`/`pg_dump` use the db container's own credentials (the defaults were wrong for
+    prod).
+  - `make-admin` passes the email as a psql variable instead of splicing it into the SQL.
+  - `reset-password` prompts for the password.
+  - `logs` gains `--tail` (default 200) and `--since`.
+  - The deploy health-wait now fails instead of falling through to migrations.
+  - A failed or empty `pg_dump` aborts instead of leaving a 0-byte "backup" that disarms the
+    size-collapse alarm.
+  - The checkout `.env` can no longer override `/etc/xcape/environment`.
+  - `backups/` is git-ignored: the dumps hold emails and password hashes.
+- **One-time step for existing dev checkouts:** move the dev containers to the new project with
+  `docker compose -p xcape -f docker-compose.dev.yml down && ./xcape.sh start dev` (the script
+  prints this hint). **Never run that on the server**, where project `xcape` is prod. Prod needs
+  no move.
+
 ### 2026-08-10 — The dev backend venv mount no longer leaks a Docker volume per rebuild
 
 - `docker-compose.dev.yml` mounted the venv mask as a bare `- /app/xcvenv`, which is an

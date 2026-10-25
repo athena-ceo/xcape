@@ -166,6 +166,22 @@ def persona(key: str | None) -> dict | None:
     return next((p for p in personas() if p.get("key") == key), None)
 
 
+def mobility_custom_keys() -> list[str]:
+    """Keys of persona custom criteria that measure a VISA PROGRAMME (e.g. the retiree's
+    "Retirement visa"): they're moot — scored as fully met — when the household can settle
+    freely. Flagged `"mobility": true` in the registry; a persona criterion whose name says
+    "visa" counts too, so a registry edited before the flag existed still works."""
+    from app.services.criterion_eval import slugify  # local: criterion_eval imports this module
+
+    keys: list[str] = []
+    for p in _registry().get("personas", []):
+        for cc in p.get("custom_criteria", []):
+            names = [cc.get(f) for f in ("label", "label_en", "label_fr") if cc.get(f)]
+            if cc.get("mobility") or any("visa" in n.lower() for n in names):
+                keys += [k for k in (slugify(n) for n in names) if k and k not in keys]
+    return keys
+
+
 def persona_weights(key: str | None) -> dict[str, float]:
     """A persona's criterion weight profile (only its critical criteria; the rest stay 0)."""
     p = persona(key)

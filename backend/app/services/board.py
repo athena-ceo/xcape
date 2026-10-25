@@ -24,7 +24,7 @@ def criteria_view(
     attrs = place.attributes or {}
     rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
     evals = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
-    evals.update(sl.residency_values(db, [place.id], profile).get(place.id, {}))  # finder-as-criteria
+    evals.update(sl.per_user_values(db, [place.id], profile).get(place.id, {}))  # visa, residency…
 
     # "Worth evaluating" = the user actually weights it. We only spend AI on (and mark pending)
     # criteria with weight > 0, so an unimportant criterion never triggers a slow web-search
@@ -44,7 +44,8 @@ def criteria_view(
         k: sl.quality_tier(sl._criterion_value(k, attrs, profile, place, evals))
         for k in all_keys if has_value(k) or weight_of.get(k, 0) > 0
     }
-    reasons = {k: comparison.criterion_reason(place, profile, k) for k in criteria.criteria_keys()}
+    reasons = {k: comparison.criterion_reason(place, profile, k, value=evals.get(k))
+               for k in criteria.criteria_keys()}
     pending: list[str] = []
     for key in eval_keys:
         ev = rows.get(key)
@@ -53,6 +54,14 @@ def criteria_view(
         elif not attrs.get(key) and weight_of.get(key, 0) > 0:  # worth evaluating → in progress
             reasons[key] = {"code": "custom_pending"}
             pending.append(key)
+    # Free to settle → visa-programme criteria are moot: say so instead of describing a
+    # retirement visa the household will never need.
+    if sl.free_access(profile, place) is not None:
+        for key in ("residency_income", "residency_investment", *criteria.mobility_custom_keys()):
+            if key in reasons or key in custom_keys:
+                reasons[key] = {"code": "visa_not_needed"}
+                if key in pending:
+                    pending.remove(key)
     return {"quality": quality, "reasons": reasons, "pending": pending}
 
 
@@ -75,9 +84,13 @@ def criterion_details(
     eval_objective_keys = set(criteria.objective_keys()) | set(custom_keys)
     rows = criterion_eval.evals_for_place(db, place.id, list(eval_objective_keys))
     eval_values = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
-    eval_values.update(sl.residency_values(db, [place.id], profile).get(place.id, {}))  # finder-as-criteria
+    eval_values.update(sl.per_user_values(db, [place.id], profile).get(place.id, {}))  # visa, residency…
     detail = place_research.detail_map(place)
     attrs = place.attributes or {}
+    # Free to settle → the visa criterion and every visa-programme criterion get the same
+    # plain explanation instead of AI text about permits the household will never need.
+    fa = sl.free_access(profile, place)
+    moot = {"visa", "residency_income", "residency_investment", *criteria.mobility_custom_keys()} if fa else set()
 
     out: list[dict] = []
     for key in list(criteria.criteria_keys()) + custom_keys:
@@ -122,6 +135,9 @@ def criterion_details(
                 sources = d.get("sources", [])
             if not summary:
                 pending = True
+        if key in moot:
+            summary = _free_access_summary(db, fa, key, lang)
+            sources, pending, meta, score = [], False, None, round(value * 100)
         # Surface English-prevalence alongside the Language criterion (a structured fact a
         # monolingual newcomer cares about), when the country has it.
         if key == "language_ease" and attrs.get("english"):
@@ -223,3 +239,25 @@ def _family_proximity_summary(profile: Profile | None, place: Place, lang: str) 
                 f"prix réels.")
     return (f"≈ {hours:g} h to your family ({name}) — {_FAMILY_MODE[mode]['en']}, "
             f"{_FAMILY_COST[band]['en']}. Estimate; open the detail for real schedules and prices.")
+
+
+def _free_access_summary(db: Session, fa: dict, key: str, lang: str) -> str:
+    """Plain explanation for a criterion that free access makes moot (see shortlist.free_access)."""
+    via = db.query(Place.name).filter(Place.iso_code == fa.get("via")).scalar() or fa.get("via") or ""
+    how = {
+        "visa_citizen": {"fr": "Vous en avez la citoyenneté : installation sans visa.",
+                         "en": "You hold its citizenship: no visa needed."},
+        "visa_free": {"fr": f"Libre circulation UE grâce à la citoyenneté {via} de votre foyer ; "
+                            "conjoint et enfants en bénéficient aussi (directive 2004/38/CE).",
+                      "en": f"EU free movement through your household's {via} citizenship; a spouse "
+                            "and children share that right (Directive 2004/38/EC)."},
+        "visa_ancestry": {"fr": "Voie quasi automatique par votre ascendance ou héritage.",
+                          "en": "A near-automatic route through your ancestry or heritage."},
+        "visa_descent": {"fr": f"Probable libre circulation UE si vous obtenez la citoyenneté {via} "
+                               "par filiation (à confirmer auprès du consulat).",
+                         "en": f"Likely EU free movement once you claim {via} citizenship by descent "
+                               "(confirm eligibility with the consulate)."},
+    }[fa["code"]]["fr" if lang == "fr" else "en"]
+    if key == "visa":
+        return how
+    return ("Sans objet : aucun visa nécessaire. " if lang == "fr" else "Not needed: no visa required. ") + how

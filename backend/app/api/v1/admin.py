@@ -13,6 +13,7 @@ from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.ai_log import AIQueryLog
 from app.models.app_config import AppConfig
+from app.models.app_error import AppError
 from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
@@ -422,7 +423,37 @@ def ai_log(_: User = Depends(require_admin), db: Session = Depends(get_db)):
             "tokens_out": r.tokens_out,
             "latency_ms": r.latency_ms,
             "cost_estimate": round(pricing.estimate_cost(r.model, r.tokens_in, r.tokens_out), 5),
+            "status": r.status or "ok",
+            "error": r.error,
             "created_at": r.created_at,
         }
         for r, email in rows
+    ]
+
+
+@router.get("/errors")
+def app_errors(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Server-side failures, newest first: unhandled request errors, failed AI calls, and
+    assistant turns that could not be answered."""
+    rows = (
+        db.query(AppError, User.email)
+        .outerjoin(User, AppError.user_id == User.id)
+        .order_by(AppError.created_at.desc(), AppError.id.desc())
+        .limit(300)
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "created_at": e.created_at,
+            "source": e.source,
+            "user_id": e.user_id,
+            "user_email": email,
+            "method": e.method,
+            "path": e.path,
+            "error_type": e.error_type,
+            "message": e.message,
+            "detail": e.detail,
+        }
+        for e, email in rows
     ]

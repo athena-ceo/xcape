@@ -46,7 +46,8 @@ def compute_deltas(cand_attrs: dict | None, base_attrs: dict | None) -> dict[str
     return out
 
 
-def criterion_reason(place: Place, profile: Profile | None, key: str) -> dict:
+def criterion_reason(place: Place, profile: Profile | None, key: str,
+                     value: float | None = None) -> dict:
     """A structured, user-relative justification for a criterion cell. Returns a code +
     tokens; the frontend renders the localized sentence (keeps wording in i18n)."""
     from app.services import shortlist  # avoid circular import at module load
@@ -66,19 +67,17 @@ def criterion_reason(place: Place, profile: Profile | None, key: str) -> dict:
         return {"code": "lang_none", "langs": langs}
 
     if key == "visa":
-        citz = {str(c).upper() for c in (profile.user.citizenships or [])} if (
-            profile and profile.user and profile.user.citizenships) else set()
-        dest = (place.iso_code or "").upper()
-        # The ease word must reflect the COMPUTED value (citizenship/ancestry-aware), not the raw
-        # attribute — many countries have no coarse `visa` bucket, which left the popup blank.
-        ease = shortlist._visa_value(attrs, profile, place)
+        fa = shortlist.free_access(profile, place)
+        if fa is not None:  # citizen / EU free movement / ancestry / EU citizenship by descent
+            return {"code": fa["code"], "via": fa["via"]}
+        # The ease word must reflect the COMPUTED value (`value`, from the pathway research),
+        # not the raw attribute — most countries have no coarse `visa` bucket.
+        ease = value if value is not None else shortlist._visa_value(attrs, profile, place)
         word = "easy" if ease >= 0.7 else "medium" if ease >= 0.45 else "hard"
-        if dest and dest in citz:
-            return {"code": "visa_citizen"}
-        if dest in shortlist._EU_FOM:
-            return {"code": "visa_free"} if all(c in shortlist._EU_FOM for c in citz) \
-                else {"code": "visa_restricted"}
         return {"code": "visa_level", "v": word}
+
+    if key in ("residency_income", "residency_investment") and shortlist.free_access(profile, place):
+        return {"code": "visa_not_needed"}
 
     if key == "cost_of_living":
         budget = getattr(profile, "budget_monthly", None) if profile else None

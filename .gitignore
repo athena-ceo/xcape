@@ -25,6 +25,8 @@ dist-ssr/
 
 # Docker / data
 backend/uploads/
+# DB dumps hold user emails and password hashes — never commit them.
+backups/
 logs/
 *.sqlite
 *.db

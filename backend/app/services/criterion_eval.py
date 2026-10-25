@@ -19,6 +19,7 @@ import hashlib
 import re
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -299,8 +300,27 @@ def evaluate(
         summary_fr=data.get("summary_fr"), summary_en=data.get("summary_en"),
         sources=data.get("sources", []), meta=meta, prompt_fp=fp,
     )
+    return insert_eval(db, ev)
+
+
+def insert_eval(db: Session, ev: PlaceCustomEval) -> PlaceCustomEval:
+    """Insert a freshly generated (place, key) row. The AI call that produced it takes many
+    seconds, so a concurrent request (the board fires several evaluate-pending calls at once;
+    a drill-down can be opened twice) may have saved the same (place, key) meanwhile. Keep
+    the row that won instead of failing the request on the unique constraint."""
     db.add(ev)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        winner = (
+            db.query(PlaceCustomEval)
+            .filter(PlaceCustomEval.place_id == ev.place_id, PlaceCustomEval.key == ev.key)
+            .first()
+        )
+        if winner is None:  # a different integrity problem — don't mask it
+            raise
+        return winner
     db.refresh(ev)
     return ev
 

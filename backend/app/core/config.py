@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # data we already hold, so the smaller model keeps replies snappy.
     openai_chat_model: str = "gpt-5-mini"
     openai_transcribe_model: str = "gpt-4o-mini-transcribe"
+    # Per-call timeout + retries. The SDK default (600s, 2 retries) outlives the nginx
+    # proxy_read_timeout (180s), so a stuck call surfaced as a silent 504 instead of an error.
+    openai_timeout_s: float = 150.0
+    openai_max_retries: int = 1
+    # The chat assistant runs a tool loop inside ONE HTTP request, so each turn gets less.
+    openai_chat_timeout_s: float = 45.0
 
     @property
     def database_url(self) -> str:

@@ -154,6 +154,7 @@ export function ComparisonPlayground() {
       .replace('{langs}', Array.isArray(r.langs) ? r.langs.map(langName).join(', ') : '')
       .replace('{group}', r.group ? groupName(r.group) : '')
       .replace('{label}', critLabel(key))
+      .replace('{via}', r.via ? placeName({ name: r.via, iso_code: r.via }, lang) : '')
   }
 
   function openWhy(c: any, key: string) {

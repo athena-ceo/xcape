@@ -10,10 +10,11 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.services import errors
 
 
 @pytest.fixture()
-def db_session():
+def db_session(monkeypatch):
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -21,6 +22,8 @@ def db_session():
     )
     Base.metadata.create_all(bind=engine)
     TestingSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    # Error rows are written in their own session — point it at this test database.
+    monkeypatch.setattr(errors, "_session_factory", TestingSession)
     session = TestingSession()
     try:
         yield session

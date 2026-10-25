@@ -32,7 +32,7 @@ from app.models.custom_eval import PlaceCustomEval
 from app.models.place import Place
 from app.models.profile import Profile
 from app.services import ai_client, fx, visa_pathways
-from app.services.criterion_eval import _fresh, level_from_score
+from app.services.criterion_eval import _fresh, insert_eval, level_from_score
 
 # Bump when the breakdown prompt/schema below changes in a way that should invalidate cached rows.
 COST_PROMPT_VERSION = "4"  # v4: currency-neutral prose (no amounts in notes/summary — they convert)
@@ -209,11 +209,7 @@ def evaluate_breakdown(
         db.commit()
         db.refresh(existing)
         return existing
-    ev = PlaceCustomEval(place_id=place.id, key=BREAKDOWN_KEY, **fields)
-    db.add(ev)
-    db.commit()
-    db.refresh(ev)
-    return ev
+    return insert_eval(db, PlaceCustomEval(place_id=place.id, key=BREAKDOWN_KEY, **fields))
 
 
 def cached_breakdown(db: Session, place_id: int) -> PlaceCustomEval | None:

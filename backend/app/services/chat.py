@@ -13,6 +13,8 @@ in scope; unrelated requests are politely declined.
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from sqlalchemy.orm import Session
 
@@ -22,7 +24,9 @@ from app.models.chat import ChatMessage
 from app.models.place import Place
 from app.models.search import Search
 from app.models.user import User
-from app.services import ai_client, chat_tools, criteria
+from app.services import ai_client, chat_tools, criteria, errors
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are xCape's relocation assistant. Help the user choose a country/region/city to "
@@ -186,6 +190,9 @@ def _build(db: Session, user: User, search: Search, place_id: int | None = None)
 
 
 _MAX_TOOL_ROUNDS = 6
+# Don't START another model round past this point: the whole loop runs inside one HTTP
+# request, which nginx cuts at 180 s (each round is itself capped by openai_chat_timeout_s).
+_ROUND_BUDGET_S = 100
 
 
 def reply(
@@ -196,21 +203,27 @@ def reply(
     (when chatting from a country's drill-down) adds that country's details to the context.
     Returns (assistant message, changed) where `changed` means the board should be re-read.
     """
+    # The user's turn is committed FIRST, and the reply is persisted before returning: if the
+    # phone drops the connection mid-request (seen on prod: iOS 499s), the client re-reads the
+    # thread and still finds the answer.
     db.add(ChatMessage(search_id=search.id, role="user", content=message))
     db.commit()
-    instructions, messages = _build(db, user, search, place_id)
-    input_items: list = list(messages)
     changed = False
     answer = ""
+    t0 = time.monotonic()
 
     try:
+        instructions, messages = _build(db, user, search, place_id)
+        input_items: list = list(messages)
         for _ in range(_MAX_TOOL_ROUNDS):
+            if time.monotonic() - t0 > _ROUND_BUDGET_S:
+                break
             resp = ai_client.create_with_tools(
                 input_items, system=instructions, tools=chat_tools.TOOLS,
                 # Speed: a faster model, low reasoning, and no live web search — the tools
                 # and the injected briefing already carry the data the assistant needs.
                 web_search=False, model=settings.openai_chat_model, reasoning_effort="low",
-                kind="chat", db=db, user_id=user.id,
+                kind="chat", db=db, user_id=user.id, timeout=settings.openai_chat_timeout_s,
             )
             calls = [o for o in resp.output if getattr(o, "type", None) == "function_call"]
             if not calls:
@@ -231,14 +244,42 @@ def reply(
                      "output": json.dumps(result)})
     except ai_client.AIUnavailable:
         answer = _unavailable(user)
+    except Exception as e:  # model timeout/API error or a tool failure: still answer visibly
+        db.rollback()
+        logger.exception("chat reply failed (search %s)", search.id)
+        errors.record_exception(e, source="chat", user_id=user.id,
+                                method="POST", path=f"/searches/{search.id}/chat")
+        answer = _failed(user)
 
     if not answer:
-        answer = _unavailable(user)
+        # The loop ended without any text (tool rounds or time budget exhausted).
+        errors.record(source="chat", error_type="EmptyReply", user_id=user.id,
+                      method="POST", path=f"/searches/{search.id}/chat",
+                      message=f"no answer text after the tool loop (changed={changed}): {message[:200]}")
+        answer = _done(user) if changed else _failed(user)
     msg = ChatMessage(search_id=search.id, role="assistant", content=answer)
     db.add(msg)
     db.commit()
     db.refresh(msg)
     return msg, changed
+
+
+def _failed(user: User) -> str:
+    return (
+        "Désolé, je n'ai pas pu répondre à cause d'un problème technique. "
+        "Pouvez-vous réessayer dans un instant ?"
+        if user.locale == "fr"
+        else "Sorry, I couldn't answer because of a technical problem. "
+        "Could you try again in a moment?"
+    )
+
+
+def _done(user: User) -> str:
+    return (
+        "C'est fait : j'ai mis à jour votre comparaison."
+        if user.locale == "fr"
+        else "Done: I've updated your comparison."
+    )
 
 
 def _unavailable(user: User) -> str:

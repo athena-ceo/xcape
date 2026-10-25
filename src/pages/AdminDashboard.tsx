@@ -9,7 +9,7 @@ import { AdminCriteria } from './AdminCriteria'
 import { AdminPersonas } from './AdminPersonas'
 import { AdminPlaces } from './AdminPlaces'
 
-type Tab = 'users' | 'searches' | 'places' | 'ailog' | 'criteria' | 'personas'
+type Tab = 'users' | 'searches' | 'places' | 'ailog' | 'errors' | 'criteria' | 'personas'
 
 export function AdminDashboard() {
   const { t, lang } = useT()
@@ -25,12 +25,12 @@ export function AdminDashboard() {
     setLoading(true)
     const fetcher = {
       users: api.getAdminUsers, searches: () => api.getAdminSearches(includeTest),
-      places: api.getAdminPlaces, ailog: api.getAdminAiLog,
+      places: api.getAdminPlaces, ailog: api.getAdminAiLog, errors: api.getAdminErrors,
     }[tab] as () => Promise<any[]>
     fetcher().then(setRows).catch(() => setRows([])).finally(() => setLoading(false))
   }, [tab, includeTest])
 
-  useEffect(() => { setQuery(''); setSort({ key: '', dir: 1 }) }, [tab])
+  useEffect(() => { setQuery(''); setSort({ key: '', dir: 1 }); setExpanded({}) }, [tab])
 
   async function resetPassword(u: any) {
     const pw = window.prompt(`${t.admin.resetPrompt} ${u.email}`)
@@ -125,6 +125,7 @@ export function AdminDashboard() {
       ['latency_ms', t.admin.colLatency, (r: any) => (r.latency_ms ? `${Math.round(r.latency_ms / 1000)}s` : '')],
       ['created_at', t.admin.colWhen, (r: any) => fmt(r.created_at, lang)],
     ],
+    errors: [],
     criteria: [],
     personas: [],
   }[tab] as any), [tab, t, lang])
@@ -148,6 +149,7 @@ export function AdminDashboard() {
     ['users', t.admin.usersTitle], ['searches', t.admin.searchesTitle],
     ['places', t.admin.placesTitle], ['criteria', t.admin.criteriaTitle],
     ['personas', t.admin.personasTitle], ['ailog', t.admin.aiLogTitle],
+    ['errors', t.admin.errorsTitle],
   ]
 
   return (
@@ -233,8 +235,12 @@ export function AdminDashboard() {
                     <span className="font-medium text-turquoise-900">{r.user_email ?? '—'}</span>
                     <span className="px-2 py-0.5 rounded text-xs bg-turquoise-100 text-turquoise-700 font-mono">{r.kind}</span>
                     <span className="text-xs text-turquoise-800/50">{r.model}</span>
-                    <span className="ml-auto text-xs text-turquoise-800/50">{fmt(r.created_at, lang)}</span>
+                    {r.status === 'error' && (
+                      <span className="px-2 py-0.5 rounded text-xs bg-red-50 text-red-700 font-medium">{t.admin.aiFailed}</span>
+                    )}
+                    <span className="ml-auto text-xs text-turquoise-800/50">{fmtTime(r.created_at, lang)}</span>
                   </div>
+                  {r.error && <p className="mt-1 text-red-700 truncate">{r.error}</p>}
                   <p className="mt-1 text-turquoise-800/70 truncate">
                     <span className="text-turquoise-800/40">{t.admin.colRequest}: </span>{r.prompt_summary || '—'}
                   </p>
@@ -258,6 +264,33 @@ export function AdminDashboard() {
                       <p className="whitespace-pre-wrap text-turquoise-800/80">{r.result_summary || '—'}</p>
                     </div>
                   </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : tab === 'errors' ? (
+        <div className="bg-white border border-turquoise-100 rounded-lg divide-y divide-turquoise-50">
+          {view.map((r: any) => {
+            const open = !!expanded[r.id]
+            return (
+              <div key={r.id} className="p-3 text-sm">
+                <button onClick={() => setExpanded((e) => ({ ...e, [r.id]: !open }))}
+                  className="w-full text-left">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-xs bg-red-50 text-red-700 font-mono">{r.source}</span>
+                    <span className="font-medium text-turquoise-900">{r.error_type}</span>
+                    {r.path && <span className="text-xs text-turquoise-800/50 font-mono">{r.method} {r.path}</span>}
+                    <span className="text-xs text-turquoise-800/60">{r.user_email ?? (r.user_id ? `#${r.user_id}` : '—')}</span>
+                    <span className="ml-auto text-xs text-turquoise-800/50">{fmtTime(r.created_at, lang)}</span>
+                  </div>
+                  <p className="mt-1 text-turquoise-800/80 truncate">{r.message}</p>
+                  {r.detail && (
+                    <span className="text-xs text-turquoise-600">{open ? '▾' : '▸'} {t.admin.errorTrace}</span>
+                  )}
+                </button>
+                {open && r.detail && (
+                  <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-xs bg-turquoise-50/50 p-2 rounded text-turquoise-900/80">{r.detail}</pre>
                 )}
               </div>
             )
@@ -314,6 +347,18 @@ export function AdminDashboard() {
 
 function fmtNum(n: number | null | undefined): string {
   return (n ?? 0).toLocaleString()
+}
+
+// Date + time: errors and AI calls need the minute, not just the day.
+function fmtTime(iso: string | null | undefined, lang: string): string {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleString(lang, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return String(iso)
+  }
 }
 
 function fmt(iso: string | null | undefined, lang: string): string {

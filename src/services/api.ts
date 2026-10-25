@@ -7,6 +7,16 @@ function token(): string | null {
   return localStorage.getItem('xcape_token')
 }
 
+// An HTTP error response (the server answered). A dropped connection rejects with a plain
+// TypeError from fetch instead — callers use the difference to decide whether to recover.
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -18,7 +28,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}/api/v1${path}`, { ...options, headers })
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}))
-    throw new Error(detail.detail ?? `Request failed: ${res.status}`)
+    throw new ApiError(detail.detail ?? `Request failed: ${res.status}`, res.status)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
@@ -210,6 +220,7 @@ export const api = {
     request<any[]>(`/admin/searches${includeTest ? '?include_test=true' : ''}`),
   getAdminPlaces: () => request<any[]>('/admin/places'),
   getAdminAiLog: () => request<any[]>('/admin/ai-log'),
+  getAdminErrors: () => request<any[]>('/admin/errors'),
   adminResetPassword: (userId: number, password: string) =>
     request<void>(`/admin/users/${userId}/reset-password`, {
       method: 'POST',

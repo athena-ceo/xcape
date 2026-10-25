@@ -76,7 +76,12 @@ services:
     depends_on:
       - backend
 
+# Explicit names: they predate the `xcape-dev` compose project name (./xcape.sh -p), and
+# keeping them means the dev database survives that rename instead of starting empty.
 volumes:
-  postgres_dev_data: {}
-  frontend_dev_node_modules: {}
-  backend_dev_xcvenv: {}
+  postgres_dev_data:
+    name: xcape_postgres_dev_data
+  frontend_dev_node_modules:
+    name: xcape_frontend_dev_node_modules
+  backend_dev_xcvenv:
+    name: xcape_backend_dev_xcvenv
