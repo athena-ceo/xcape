@@ -95,6 +95,9 @@ def test_retiree_persona_no_longer_double_counts_visa():
     # The bundled registry (migration 0029 applies the same edit to a DB-stored copy).
     retiree = next(p for p in criteria.file_registry()["personas"] if p["key"] == "retiree")
     assert retiree["weights"]["visa"] <= 2.0
+    # Climate matters to retirees (3, was 1.5): with healthcare at 6+6 it barely separated a
+    # warm Spain from a cool Netherlands for someone asking for warmth.
+    assert retiree["weights"]["climate"] == 3.0
     assert any(cc.get("mobility") for cc in retiree["custom_criteria"])
 
 

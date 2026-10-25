@@ -82,7 +82,7 @@
       "blurb_fr": "Vous préparez votre retraite. On regarde le visa, le coût de la vie, la santé et le climat.",
       "blurb_en": "You're relocating for retirement. We look at visa, cost of living, healthcare and climate.",
       "match": {"reasons": ["retirement"], "tags": ["retirement"]},
-      "weights": {"visa": 2.0, "cost_of_living": 5.0, "healthcare": 6, "climate": 1.5, "safety": 1.5, "tax": 1, "language_ease": 1, "proximity": 1},
+      "weights": {"visa": 2.0, "cost_of_living": 5.0, "healthcare": 6, "climate": 3.0, "safety": 1.5, "tax": 1, "language_ease": 1, "proximity": 1},
       "ask": ["budget", "climate"],
       "filters": ["healthcare", "safety"],
       "custom_criteria": [

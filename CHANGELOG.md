@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — Retirees: climate counts more (weight 1.5 → 3)
+
+- With healthcare at 6 + 6, a climate weight of 1.5 barely separated a warm Spain from a cool
+  Netherlands for a retiree asking for warmth. On prod after the visa fixes, the Netherlands
+  and Switzerland sat on a warm-seeker's board, and a "mild" seeker had a five-way tie at 88.
+- The retiree persona's climate weight goes from 1.5 to 3. Migration `0030` applies this to
+  the DB-stored registry and to retiree profiles still on the 1.5 default; it is idempotent.
+- Prod preview (read-only, 11 retiree searches):
+  - the "mild" seeker's tie breaks to France and Portugal first;
+  - the warm-seeking couple gets Spain, Portugal, Cyprus, Italy, then Switzerland;
+  - another warm-seeker gets Cyprus first.
+- After deploying, run `./xcape.sh rescore prod --repopulate` again.
+
 ### 2026-10-25 — A phone layout for the comparison board
 
 **What users saw:** on phones the comparison was "too horizontal and painful". Seven
