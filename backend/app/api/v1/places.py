@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from app.schemas.place import MediaOut, PlaceOut
 from app.services import (
     affordability, ai_client, board, country_facts, criteria, criterion_eval, currencies, fx,
-    place_research, shortlist, visa_pathways,
+    place_research, postcard, shortlist, visa_pathways,
 )
 
 router = APIRouter()
@@ -165,6 +165,45 @@ def generate_detail(
     home = shortlist.is_home(db, user, place)
     return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang, home=home),
             "is_home": home}
+
+
+def _search_for(db: Session, user: User, search: int | None) -> Search | None:
+    s = db.get(Search, search) if search is not None else None
+    return s if (s is not None and s.user_id == user.id) else None
+
+
+@router.get("/{place_id}/postcard")
+def get_postcard(
+    place_id: int,
+    lang: str = "fr",
+    search: int | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """"Postcard from your future" + pre-mortem — INSTANT, from cache: `pending` until written
+    for the current inputs (fill it via POST .../postcard/generate). `home` for the user's own
+    country (there is no move to imagine)."""
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    return postcard.get(db, user, place, _search_for(db, user, search), "fr" if lang == "fr" else "en")
+
+
+@router.post("/{place_id}/postcard/generate")
+def generate_postcard(
+    place_id: int,
+    lang: str = "fr",
+    search: int | None = None,
+    force: bool = False,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Write the postcard + pre-mortem (one AI call, cached per user × country × language).
+    `force` re-writes it (the page's "another day" button)."""
+    place = db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    return postcard.generate(db, user, place, _search_for(db, user, search), lang, force=force)
 
 
 def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:

@@ -13,6 +13,8 @@ interface Props {
   autoComplete?: string
   onEnter?: () => void
   className?: string
+  // Render a textarea with this many rows (free-text answers like "your story").
+  rows?: number
 }
 
 // A text input with an inline microphone. Use this for every free-text field so that
@@ -20,10 +22,29 @@ interface Props {
 // is already typed.
 export function VoiceField({
   value, onChange, placeholder, type = 'text',
-  required, minLength, autoComplete, onEnter, className,
+  required, minLength, autoComplete, onEnter, className, rows,
 }: Props) {
   function appendTranscript(text: string) {
     onChange(value.trim() ? `${value.trim()} ${text}` : text)
+  }
+
+  if (rows) {
+    return (
+      <div className="relative">
+        <textarea
+          rows={rows}
+          value={value}
+          required={required}
+          minLength={minLength}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={className ?? 'w-full border border-turquoise-100 rounded-md pl-3 pr-10 py-2 leading-relaxed'}
+        />
+        <span className="absolute right-2 bottom-2.5">
+          <VoiceButton onTranscript={appendTranscript} />
+        </span>
+      </div>
+    )
   }
 
   return (

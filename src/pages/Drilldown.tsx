@@ -5,6 +5,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { ChatPanel } from '../components/ChatPanel'
+import { HeartButton } from '../components/HeartButton'
+import { PostcardSection } from '../components/PostcardSection'
 import { Spinner } from '../components/Spinner'
 import { useT } from '../i18n'
 import { placeName } from '../i18n/places'
@@ -871,6 +873,7 @@ export function Drilldown() {
       <div className="flex items-center gap-3 mb-2">
         {facts?.flag && <img src={facts.flag} alt="" className="w-10 h-auto rounded border border-turquoise-100" />}
         <h1 className="text-2xl font-medium text-turquoise-900">{placeName(place, lang)}</h1>
+        {place && !isHome && <HeartButton place={place} />}
         {isAdmin && (
           <button onClick={() => regenerateAll()} disabled={regenerating || loadingDetail}
             title={t.drilldown.regenHint}
@@ -880,6 +883,14 @@ export function Drilldown() {
         )}
       </div>
       {summary && <p className="text-turquoise-800/80 mb-5">{summary}</p>}
+
+      {/* The emotional side first: an imagined day there + what could go wrong. Not for the
+          country the user already lives in (no move to imagine). Waits for the detail load,
+          which is what tells us whether this is home. */}
+      {place && !loadingDetail && !isHome && (
+        <PostcardSection placeId={id} searchId={searchId} countryName={placeName(place, lang)}
+          photoUrl={photos[0]?.url ?? facts?.image ?? null} />
+      )}
 
       {/* Basic facts */}
       {facts && (

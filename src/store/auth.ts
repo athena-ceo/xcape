@@ -12,6 +12,7 @@
 import { create } from 'zustand'
 
 import { api } from '../services/api'
+import { resetHearts } from '../services/hearts'
 import { clearDraft } from '../services/onboardingDraft'
 
 interface AuthState {
@@ -50,6 +51,7 @@ export const useAuth = create<AuthState>((set) => ({
   login: async (email, password) => {
     const { access_token } = await api.login(email, password)
     localStorage.setItem('xcape_token', access_token)
+    resetHearts()  // a different account must not see the previous one's hearts
     set({ token: access_token })
     set(setFromMe(await api.me()))
   },
@@ -57,6 +59,7 @@ export const useAuth = create<AuthState>((set) => ({
   register: async (body) => {
     const { access_token } = await api.register(body)
     localStorage.setItem('xcape_token', access_token)
+    resetHearts()  // a different account must not see the previous one's hearts
     set({ token: access_token })
     set(setFromMe(await api.me()))
   },
@@ -64,6 +67,7 @@ export const useAuth = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem('xcape_token')
     clearDraft()  // don't leak an in-progress onboarding draft to the next user on this browser
+    resetHearts()
     set({ token: null, email: null, firstName: null, lastName: null, isAdmin: false })
   },
 

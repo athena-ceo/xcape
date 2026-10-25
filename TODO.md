@@ -8,6 +8,27 @@ affected. Ship items independently.
 
 ## Open
 
+### Ask before deploying while people are using the app (port of golden-path's check)
+
+**Done looks like:** `./xcape.sh deploy|stop|restart|rebuild prod` first lists who used the
+app in the last 10 minutes and asks "Proceed and disconnect them? (y/N)". It is silent when
+nobody is active and on dev. `--disconnect-users` skips the question. With no terminal
+attached it aborts with that hint.
+
+**Why:** the build no longer takes the site down, but the container swap still cuts in-flight
+requests (AI research, an assistant answer — the chat recovers, the rest doesn't).
+
+**Approach:**
+- Add `users.last_seen_at`, touched by `get_current_user` at most once a minute.
+- A small `user_activity` module defines "active" (10-minute window); the script and any
+  admin view read the same rule.
+- Ask at the START of a deploy, before backup, pull, build and migrate, so "no" changes
+  nothing.
+- Like golden-path, tolerate a running image that predates the probe.
+
+Reference: golden-path.sh `_check_active_users_before_shutdown` and
+`backend/app/logic/user_sessions.py`. Deferred by Harley on 2026-10-25.
+
 ### Current plan (October 2026): feedback fixes, then the emotional-appeal roadmap
 
 Steps 1–6 (assistant reliability, visa scoring, home country, "why not X?", mobile layout,

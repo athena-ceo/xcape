@@ -31,3 +31,4 @@ class ProfileOut(ProfileUpdate):
 
     id: int
     user_id: int
+    story: dict | None = None  # the AI reflection of priorities_text (read-only here)

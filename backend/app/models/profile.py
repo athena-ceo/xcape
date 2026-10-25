@@ -24,6 +24,9 @@ class Profile(Base):
     persona: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # Free-text priorities (any number, beyond the preset chips) → AI criterion selection.
     priorities_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "Your story": the AI's reflection of priorities_text — {reflection, hopes, worries,
+    # persona} — shown back to the user and used by the postcard / pre-mortem.
+    story: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     budget_monthly: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Annual income and total investable capital (both in the profile currency, optional). When
     # set, they activate the "residency you can afford" criteria (income vs investment routes) —

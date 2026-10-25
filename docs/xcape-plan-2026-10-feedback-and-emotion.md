@@ -106,6 +106,8 @@ rest, and most items reuse machinery that already exists.
 | 7 | **Photo gut-check** | Red | Swipe 15–20 photos of people in everyday places, each tagged excites / worries / meh. This feeds a modest "gut feeling" criterion, and photo themes (coast, mountains, big city) nudge the nature, climate and culture weights. | needs a licensed photo source (Unsplash or Wikimedia, with credits) |
 | 8 | **Wildcards, visible** | Green | "A country you didn't consider, strong on what matters most to you." | `shortlist.wildcards` (computed, barely shown) |
 
+**First slice shipped (2026-10-25): 1, 2, 3 and 4.** Hearts are a marker and a shelf, not a score input (keeps every number identical across board, explanations and assistant); their emotional weight comes in item 5. Next: 5 (heart vs numbers), 6 (hopes & fears scorecard, from `profiles.story`), 8 (wildcards), then 7 once a photo source is chosen.
+
 **Recommended first slice:** 1 + 2 + 3/4. They need no image licensing, reuse existing
 services, and the postcard fits mobile layout A naturally. Item 7 follows once a photo
 source is chosen; items 5, 6 and 8 build on step 4 and on items 1–2.

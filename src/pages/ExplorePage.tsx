@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { HeartButton } from '../components/HeartButton'
 import { WhyNotSheet } from '../components/WhyNotSheet'
 import { useT } from '../i18n'
 import { placeName } from '../i18n/places'
@@ -134,6 +135,7 @@ export function ExplorePage() {
               return (
                 <li key={r.place_id} className={`flex items-center gap-3 px-3 py-2.5 ${excluded ? 'bg-amber-50/40' : 'bg-white'}`}>
                   <span className={`w-10 text-right font-medium tabular-nums ${scoreTier(r.score)}`}>{r.score}%</span>
+                  <HeartButton size="sm" place={{ id: r.place_id, name: r.name, iso_code: r.iso_code }} />
                   <div className="flex-1 min-w-0">
                     <Link to={`/drilldown/${r.place_id}?search=${sid}`}
                       className="text-turquoise-900 hover:underline">{placeName(r, lang)}</Link>

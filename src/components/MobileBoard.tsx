@@ -5,6 +5,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useT } from '../i18n'
+import { HeartButton } from './HeartButton'
 
 // One comparison column, normalised by the host page (home first, then board countries).
 export interface BoardColumn {
@@ -12,6 +13,7 @@ export interface BoardColumn {
   id: string
   name: string
   placeId: number
+  isoCode: string | null
   score: number | null
   quality: Record<string, string>
   reasons: Record<string, any>
@@ -119,6 +121,7 @@ export function MobileBoard(p: Props) {
                 <div className="flex items-start gap-2">
                   <Link to={`/drilldown/${cur.placeId}?search=${p.searchId}`}
                     className="flex-1 text-2xl font-semibold text-turquoise-900 hover:underline">{cur.name}</Link>
+                  <HeartButton className="-mt-1.5" place={{ id: cur.placeId, name: cur.name, iso_code: cur.isoCode }} />
                   {cur.score != null && (
                     <button onClick={() => p.onExplain(cur)} title={t.comparison.explainTitle}
                       className="text-2xl font-semibold text-turquoise-600 underline decoration-dotted underline-offset-4">

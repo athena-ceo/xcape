@@ -249,6 +249,20 @@ export const api = {
   updatePlace: (id: number, body: any) =>
     request<{ ok: boolean }>(`/admin/places/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
 
+  // Emotional layer: hearted countries, "your story", postcard from your future + pre-mortem.
+  getHearts: () => request<{ place_id: number; name: string; iso_code: string | null }[]>('/hearts'),
+  addHeart: (placeId: number) => request<void>(`/hearts/${placeId}`, { method: 'PUT' }),
+  removeHeart: (placeId: number) => request<void>(`/hearts/${placeId}`, { method: 'DELETE' }),
+  reflectStory: (text: string, lang: string) =>
+    request<{ reflection: string; hopes: string[]; worries: string[]; persona: string | null; unavailable?: boolean }>(
+      '/profile/story', { method: 'POST', body: JSON.stringify({ text, lang }) }),
+  getPostcard: (id: number, lang: string, search?: number) =>
+    request<any>(`/places/${id}/postcard?lang=${lang}${search != null ? `&search=${search}` : ''}`),
+  generatePostcard: (id: number, lang: string, search?: number, force = false) =>
+    request<any>(
+      `/places/${id}/postcard/generate?lang=${lang}${search != null ? `&search=${search}` : ''}${force ? '&force=true' : ''}`,
+      { method: 'POST' }),
+
   getChat: (id: number) => request<any[]>(`/searches/${id}/chat`),
   // Tool-enabled chat: returns the assistant reply and whether it changed the search.
   // `placeId` (optional) adds that country's drill-down details to the assistant's context;

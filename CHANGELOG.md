@@ -5,6 +5,37 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — The emotional layer, first slice: your story, hearts, postcard from your future
+
+A friend's feedback: the app is good at a fact-based comparison but doesn't speak to the heart.
+This is the first slice of the six-hats roadmap
+(`docs/xcape-plan-2026-10-feedback-and-emotion.md`, Part B).
+
+- **"Your story" opens onboarding.** It replaces the free-text box on the persona step.
+  - The user writes or dictates their situation, hopes and worries.
+  - One AI call (`POST /profile/story`) reflects it back ("Here's what we heard…") and pulls
+    out up to 3 hopes, 3 worries and a suggested relocation profile, which is pre-selected.
+  - It is saved on the profile (`profiles.story`), and the text still drives criteria
+    selection when onboarding finishes.
+  - `VoiceField` gains a multi-line mode for it.
+- **Hearts** (`hearts` table, `/hearts` API):
+  - A ♥ on board column headers, phone cards, Explore rows and country pages.
+  - A "Your hearts" shelf on the board, with "Why?" for hearted countries off the board.
+  - Hearts are per user and follow them across searches. They are a marker and a shelf,
+    **not a score input**: the numbers stay identical on the board, in explanations and in
+    the assistant.
+- **Postcard from your future + "Two years in" pre-mortem** on each country page (not the
+  home country):
+  - The postcard imagines an ordinary day there for this household, in a real town that
+    fits them.
+  - The pre-mortem names three candid reasons they might be unhappy two years later.
+  - Both are grounded in the profile, the story and the country's own per-criterion texts,
+    and always labelled "Imagined, not a forecast".
+  - One AI call per user × country × language (`postcards` table), re-written when the
+    inputs change, plus "Imagine another day".
+- Migration `0031` (hearts, postcards, `profiles.story`). The new schema-check caught a
+  nullability drift in it before it shipped.
+
 ### 2026-10-25 — Uptime probe: Slack hears when xCape stops answering
 
 The last golden-path ops feature not yet ported.

@@ -4,7 +4,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    admin, auth, candidates, chat, criteria, persona, places, profile, search, visa, voice,
+    admin, auth, candidates, chat, criteria, hearts, persona, places, profile, search, visa, voice,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -17,5 +17,6 @@ api_router.include_router(places.router, prefix="/places", tags=["places"])
 api_router.include_router(visa.router, prefix="/visa", tags=["visa"])
 api_router.include_router(criteria.router, prefix="/criteria", tags=["criteria"])
 api_router.include_router(persona.router, prefix="/persona", tags=["persona"])
+api_router.include_router(hearts.router, prefix="/hearts", tags=["hearts"])
 api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])

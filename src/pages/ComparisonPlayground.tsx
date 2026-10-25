@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ChatPanel } from '../components/ChatPanel'
+import { HeartButton } from '../components/HeartButton'
 import { MobileBoard, type BoardColumn } from '../components/MobileBoard'
 import { WhyNotSheet } from '../components/WhyNotSheet'
 import { CriteriaSettings } from '../components/CriteriaSettings'
@@ -14,6 +15,7 @@ import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
 import { addCountryToBoard } from '../services/board'
+import { useHearts } from '../services/hearts'
 import { categories, labelOf, nodeOf, useCriteria, valueLabel } from '../services/criteria'
 
 export function ComparisonPlayground() {
@@ -37,7 +39,9 @@ export function ComparisonPlayground() {
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
   const [addOpen, setAddOpen] = useState(false)  // the "+ add a country" modal
-  const [whyOpen, setWhyOpen] = useState(false)  // "Why isn't a country in my top 5?" sheet
+  // "Why isn't X in my top 5?" sheet: { placeId: null } opens on the country picker.
+  const [whyTarget, setWhyTarget] = useState<{ placeId: number | null } | null>(null)
+  const { hearts } = useHearts()
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string; label_fr?: string; label_en?: string; weight?: number; min?: number; category?: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
@@ -626,11 +630,13 @@ export function ComparisonPlayground() {
   const mobileColumns: BoardColumn[] = [
     ...(baseline ? [{
       kind: 'home' as const, id: 'home', name: placeName(baseline, lang), placeId: baseline.id,
+      isoCode: baseline.iso_code ?? null,
       score: baseline.match_score ?? null, quality: baseline.quality ?? {}, reasons: baseline.reasons ?? {},
       violations: [], pinned: false,
     }] : []),
     ...candidates.map((c) => ({
       kind: 'cand' as const, id: String(c.id), name: placeName(places[c.place_id], lang), placeId: c.place_id,
+      isoCode: places[c.place_id]?.iso_code ?? null,
       score: c.match_score ?? null, quality: c.quality ?? {}, reasons: c.reasons ?? {},
       violations: c.filter_violations ?? [], pinned: c.override === 'in',
     })),
@@ -817,6 +823,7 @@ export function ComparisonPlayground() {
                   <Link to={`/drilldown/${c.place_id}?search=${sid}`} className="text-turquoise-600 hover:underline">
                     {placeName(places[c.place_id], lang)}
                   </Link>
+                  {places[c.place_id] && <HeartButton size="sm" className="ml-1 align-middle" place={places[c.place_id]} />}
                   <button onClick={() => removeCountry(c.id)}
                     title={t.comparison.remove}
                     className="ml-2 text-turquoise-800/40 hover:text-red-600">×</button>
@@ -1018,14 +1025,46 @@ export function ComparisonPlayground() {
         <Link to={`/explore/${sid}`} className="text-sm text-turquoise-600 hover:underline">
           {t.explore.exploreAll} →
         </Link>
-        <button onClick={() => setWhyOpen(true)} className="text-sm text-turquoise-600 hover:underline">
+        <button onClick={() => setWhyTarget({ placeId: null })} className="text-sm text-turquoise-600 hover:underline">
           {t.whyNot.entry}
         </button>
       </div>
-      {whyOpen && (
-        <WhyNotSheet searchId={sid} placeId={null} critLabel={critLabel} board={boardMembers()}
+
+      {/* The user's hearts: countries that speak to them, kept across searches. Ones not on the
+          board offer "why not?" — the heart and the numbers, side by side. */}
+      <section aria-label={t.hearts.title} className="mb-5">
+        <h2 className="text-sm font-medium text-turquoise-900 mb-1.5">{t.hearts.title}</h2>
+        {hearts.length === 0 ? (
+          <p className="text-xs text-turquoise-800/60">{t.hearts.empty}</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2">
+            {hearts.map((h) => {
+              const onBoardNow = candidates.some((c) => c.place_id === h.place_id)
+              return (
+                <li key={h.place_id} className="flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50/60 pl-3 pr-1 py-0.5 text-sm">
+                  <Link to={`/drilldown/${h.place_id}?search=${sid}`} className="text-turquoise-900 hover:underline">
+                    {placeName(h, lang)}
+                  </Link>
+                  {onBoardNow ? (
+                    <span className="text-xs text-turquoise-700/70 px-1.5">{t.hearts.onBoard}</span>
+                  ) : (
+                    <button onClick={() => setWhyTarget({ placeId: h.place_id })}
+                      className="text-xs text-turquoise-700 underline decoration-dotted underline-offset-2 px-1.5 py-1">
+                      {t.whyNot.explore}
+                    </button>
+                  )}
+                  <HeartButton size="sm" place={{ id: h.place_id, name: h.name, iso_code: h.iso_code }} />
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      {whyTarget && (
+        <WhyNotSheet searchId={sid} placeId={whyTarget.placeId} critLabel={critLabel} board={boardMembers()}
           countries={Object.values(places).filter((p: any) => p.id !== baseline?.id) as any[]}
-          onClose={() => setWhyOpen(false)} onChanged={reload} />
+          onClose={() => setWhyTarget(null)} onChanged={reload} />
       )}
 
       {/* Chat — shared conversation with the drill-down page (same searchId). */}

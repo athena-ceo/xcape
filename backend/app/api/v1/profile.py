@@ -2,6 +2,7 @@
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -9,7 +10,7 @@ from app.db.session import get_db
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
-from app.services import account, currencies
+from app.services import account, currencies, story
 from app.services import shortlist as shortlist_service
 
 router = APIRouter()
@@ -80,3 +81,17 @@ def update_profile(
     for search in user.searches:
         shortlist_service.rescore_candidates(db, user, search)
     return profile
+
+
+class StoryRequest(BaseModel):
+    text: str
+    lang: str = "fr"
+
+
+@router.post("/story")
+def reflect_story(body: StoryRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """"Your story": save the user's own words and reflect them back (reflection, up to 3 hopes
+    and worries, a suggested relocation profile). One AI call; degrades to an empty reflection."""
+    _get_or_create(db, user)
+    db.refresh(user)
+    return story.reflect(db, user, body.text, body.lang)

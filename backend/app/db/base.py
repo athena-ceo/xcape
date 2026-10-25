@@ -16,6 +16,7 @@ from app.models import (  # noqa: E402,F401
     candidate,
     chat,
     custom_eval,
+    emotion,
     media,
     place,
     profile,

@@ -20,6 +20,7 @@ import { clearDraft, loadDraft, saveDraft } from '../services/onboardingDraft'
 import { useAuth } from '../store/auth'
 
 type StepId =
+  | 'story'
   | 'currentCountry'
   | 'citizenship'
   | 'household'
@@ -31,7 +32,8 @@ type StepId =
 
 // The user picks a persona directly (no guessing); it then gates which optional follow-up
 // steps are shown (persona.ask). 'language' is universal and shown last.
-const BASE_STEPS: StepId[] = ['currentCountry', 'citizenship', 'household', 'persona']
+// 'story' opens: the user's own words come first, reflected back (emotional layer).
+const BASE_STEPS: StepId[] = ['story', 'currentCountry', 'citizenship', 'household', 'persona']
 const GATED_STEPS: StepId[] = ['communities', 'budget', 'climate']
 
 interface Answers {
@@ -85,6 +87,27 @@ export function Onboarding() {
   const [a, setA] = useState<Answers>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [persona, setPersona] = useState<Persona | null>(null)
+  // "Your story" reflected back by the AI (server-side it is also saved on the profile).
+  type Reflection = { reflection: string; hopes: string[]; worries: string[]; persona: string | null; unavailable?: boolean }
+  const [reflection, setReflection] = useState<Reflection | null>(null)
+  const [reflecting, setReflecting] = useState(false)
+
+  async function reflectStory() {
+    const text = a.priorities_text.trim()
+    if (!text || reflecting) return
+    setReflecting(true)
+    try {
+      const r = await api.reflectStory(text, lang)
+      setReflection(r)
+      // Pre-select the profile the story suggests (the user can still pick another).
+      const suggested = r.persona ? (reg?.personas ?? []).find((p) => p.key === r.persona) : undefined
+      if (suggested && !persona) setPersona(suggested)
+    } catch {
+      setReflection({ reflection: '', hopes: [], worries: [], persona: null, unavailable: true })
+    } finally {
+      setReflecting(false)
+    }
+  }
   const [savedPersonaKey, setSavedPersonaKey] = useState<string | null>(null)
   // Gate draft-saving until hydration (draft restore OR server pre-fill) has settled, so the
   // initial empty state never clobbers a saved draft.
@@ -258,6 +281,51 @@ export function Onboarding() {
         </div>
 
         <div className="bg-white rounded-xl p-6 border border-turquoise-100">
+          {step === 'story' && (
+            <>
+              <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.story.q}</h1>
+              <p className="text-sm text-turquoise-800/60 mb-4">{t.onboarding.story.hint}</p>
+              <VoiceField
+                value={a.priorities_text}
+                onChange={(v) => { setA({ ...a, priorities_text: v }); setReflection(null) }}
+                placeholder={t.onboarding.story.placeholder}
+                rows={5}
+              />
+              {reflection && !reflection.unavailable && reflection.reflection ? (
+                <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-amber-900/70 mb-1">{t.onboarding.story.heard}</p>
+                  <p className="font-serif text-[17px] leading-relaxed text-turquoise-900">{reflection.reflection}</p>
+                  {(reflection.hopes.length > 0 || reflection.worries.length > 0) && (
+                    <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+                      {reflection.hopes.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-emerald-800 mb-1">{t.onboarding.story.hopes}</p>
+                          <ul className="space-y-0.5">{reflection.hopes.map((h) => <li key={h}>· {h}</li>)}</ul>
+                        </div>
+                      )}
+                      {reflection.worries.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-amber-900 mb-1">{t.onboarding.story.worries}</p>
+                          <ul className="space-y-0.5">{reflection.worries.map((w) => <li key={w}>· {w}</li>)}</ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs text-turquoise-800/60">{t.onboarding.story.notRight}</p>
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={reflectStory} disabled={!a.priorities_text.trim() || reflecting}
+                    className="min-h-11 rounded-md border border-turquoise-400 text-turquoise-700 px-4 text-sm disabled:opacity-50 inline-flex items-center gap-2">
+                    {reflecting && <Spinner />}{reflecting ? t.onboarding.story.reflecting : t.onboarding.story.reflect}
+                  </button>
+                  {reflection?.unavailable && <span className="text-xs text-turquoise-800/60">{t.onboarding.story.unavailable}</span>}
+                  <span className="text-xs text-turquoise-800/60">{t.onboarding.story.optional}</span>
+                </div>
+              )}
+            </>
+          )}
+
           {step === 'currentCountry' && (
             <>
               <h1 className="text-xl font-medium text-turquoise-900 mb-1">{t.onboarding.currentCountry.q}</h1>
@@ -459,14 +527,6 @@ export function Onboarding() {
                   )
                 })}
               </div>
-              {/* Optional free-text to help clinch the shortlist. */}
-              <p className="text-sm font-medium text-turquoise-900 mb-1">{t.onboarding.priorities.moreQ}</p>
-              <p className="text-sm text-turquoise-800/60 mb-2">{t.onboarding.priorities.moreHint}</p>
-              <VoiceField
-                value={a.priorities_text}
-                onChange={(v) => setA({ ...a, priorities_text: v })}
-                placeholder={t.onboarding.priorities.morePlaceholder}
-              />
             </>
           )}
 

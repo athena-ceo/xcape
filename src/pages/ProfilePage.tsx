@@ -351,6 +351,7 @@ export function ProfilePage() {
             value={f.priorities_text}
             onChange={(v) => set('priorities_text', v)}
             placeholder={t.onboarding.priorities.morePlaceholder}
+            rows={4}
           />
         </Section>
       </div>
