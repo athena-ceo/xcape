@@ -8,6 +8,13 @@ affected. Ship items independently.
 
 ## Open
 
+### Current plan (October 2026): feedback fixes, then the emotional-appeal roadmap
+
+Steps 1–6 (assistant reliability, visa scoring, home country, "why not X?", mobile layout,
+`xcape.sh` port), then the six-hats emotional features (your story, hearts, postcard from
+your future, pre-mortem, …). Status and specs are in
+[docs/xcape-plan-2026-10-feedback-and-emotion.md](docs/xcape-plan-2026-10-feedback-and-emotion.md).
+
 ### Admin management of all reference data (open-set defaults)
 
 **Principle:** every enumerable dimension is an *initial seed*, not a closed set — admins
