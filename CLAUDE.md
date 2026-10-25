@@ -37,7 +37,9 @@ Do **not** add headers to `node_modules`, lockfiles, or vendored trees.
 | Logs | `./xcape.sh logs dev --follow` |
 | Migrations | `./xcape.sh migrate dev` |
 | Seed place DB | `./xcape.sh seed dev` |
-| Backup DB | `./xcape.sh backup-db dev` |
+| Read-only SQL (prod-safe) | `./xcape.sh psql prod "SELECT …"` (or `- < query.sql`) |
+| Backup DB | `./xcape.sh backup-db dev` · `list-backups` |
+| Restore rehearsal | `./xcape.sh restore-backup dev --latest --rehearse-into scratch` |
 | Reset DB (dev only) | `./xcape.sh reset-db dev` |
 
 **Local dev URLs:** Frontend http://localhost:3030 · Backend http://localhost:8030 (docs at `/docs`).

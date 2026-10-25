@@ -5,6 +5,45 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — `xcape.sh`: read-only SQL, real backups, tested restores, migrate-before-swap
+
+The rest of the `golden-path.sh` port (the safety half shipped earlier today).
+
+- **`psql <env> "<SQL>"`** (or `-` to read SQL from stdin) and **`dbshell <env>`** run
+  **read-only** by default. The session sets `default_transaction_read_only`, so the database
+  itself refuses writes; there is no SQL pattern-matching to get wrong. `--write` lifts it,
+  and on prod it requires typing `psql-write-production`.
+- **Backups:**
+  - `backup-db <env>` writes a gzip'd dump to `/data/backups/xcape` on prod (outside the
+    checkout) or `./backups` on dev.
+  - Each dump is verified complete (pg_dump's end-of-dump marker) and written atomically.
+  - The size-collapse alarm now sets a suspicious dump aside (`.suspect`).
+  - Retention: 14 days, always keeping the 7 newest (`BACKUP_KEEP_DAYS` / `BACKUP_KEEP_MIN`).
+  - Dumps in `/data/backups/xcape` are named so the host's nightly 03:00 offsite job uploads
+    them like golden-path's.
+  - `list-backups <env>` lists the dumps with an integrity check.
+- **`restore-backup <env> <file>|--latest`:**
+  - **`--rehearse-into <scratch_db>`** loads the dump into a throwaway database, compares
+    row counts with live, and drops it. The live database is never touched.
+  - A real restore takes a safety dump, then loads beside the live database while the site
+    keeps running. It stops the backend briefly to swap names: live becomes
+    `<db>_pre_restore_<stamp>`, and the restored copy takes the live name. The previous
+    database is kept, so a restore can be undone.
+  - Prod requires typing `restore-production`.
+- **`backup-cron <env> [--install]`** shows or installs a nightly 02:15 backup. Until now
+  **xcape prod had no scheduled backup at all**, only the pre-deploy dumps inside the checkout.
+- **Deploy migrates before the swap.** Migrations now run with the new code in a one-off
+  container after the build, while the old site keeps serving. A failed build or migration
+  leaves the site untouched, and the new backend never starts against the old schema. The
+  pre-deploy dump uses the new backup.
+- **Also new:** `schema-check` (`alembic check`: do migrations match the models?),
+  `typecheck dev`, and `prune-images` (dangling images plus week-old build cache).
+- **Fixed in testing:** helpers no longer swallow the caller's stdin through `compose exec`
+  (a piped confirmation was being eaten).
+- **Prod one-time setup** (needs sudo once):
+  `sudo mkdir -p /data/backups/xcape && sudo chown harley:harley /data/backups/xcape`, then
+  `./xcape.sh backup-cron prod --install`.
+
 ### 2026-10-25 — Retirees: climate counts more (weight 1.5 → 3)
 
 - With healthcare at 6 + 6, a climate weight of 1.5 barely separated a warm Spain from a cool

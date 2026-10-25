@@ -79,7 +79,7 @@ Mockups: <https://claude.ai/artifact/Vz1hy7jgJwBVdEi7RsRpCK>.
 - **Criteria settings:** stacked rows instead of a table.
 - **Score explanation:** a list instead of a table.
 
-### Step 6 — Rest of the `xcape.sh` port from golden-path
+### Step 6 — Rest of the `xcape.sh` port from golden-path ✅ (uptime probe: follow-up)
 
 - A read-only `psql <env> "<SELECT>"` command.
 - Compressed, rotated backups in `/data/backups/xcape`. The existing nightly offsite job

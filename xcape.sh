@@ -35,7 +35,7 @@ esac
 # Commands that change or remove data/services must name the environment, so nobody hits
 # prod by omission on the server.
 case "$CMD" in
-  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
+  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|restore-backup|backup-cron|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
     if [[ "$EXPLICIT_ENV" != true ]]; then
       echo "$CMD needs an explicit environment: ./xcape.sh $CMD <dev|prod> ..." >&2
       echo "(on this machine the default would be '$DEFAULT_ENV')" >&2
@@ -79,42 +79,102 @@ db_sh() { $COMPOSE exec -T db sh -c "$1"; }
 
 container() { $COMPOSE ps -q "$1"; }
 
-# Dump a Postgres backup, then raise a loud alarm (and a non-zero status) if the new dump is
-# less than half the size of the previous one — the signature of an accidental empty-DB dump
-# (e.g. compose mounted the wrong/empty data dir). golden-path's prod incident went unnoticed
-# for days precisely because a collapsed dump still passed a naive "not empty" check.
-#   $1 = destination .sql path   (writes to the file, returns non-zero on a size collapse)
-backup_db_to() {
-  local dest="$1" prev new
-  # Previous NON-EMPTY dump: a 0-byte file from a failed run must not disarm the alarm below.
-  prev="$(find backups -maxdepth 1 -name '*.sql' -size +0 ! -path "$dest" -print 2>/dev/null \
-          | xargs ls -1t 2>/dev/null | head -n1 || true)"
-  # Callers use `backup_db_to ... || abort`, which disables `set -e` in here — check explicitly.
-  if ! db_sh 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$dest"; then
-    rm -f "$dest"
-    echo "pg_dump FAILED — no backup written." >&2
+# --- Backups -----------------------------------------------------------------------------
+# Prod dumps live OUTSIDE the checkout, in /data/backups/xcape: the host's nightly offsite job
+# (golden-path scripts/server-upload-dedibackup.sh, 03:00) uploads the newest db_*.sql.gz of
+# every folder under /data/backups. Dev keeps ./backups (git-ignored). BACKUP_ROOT overrides.
+if [[ -z "${BACKUP_ROOT:-}" ]]; then
+  if [[ "$ENV" == "prod" ]]; then BACKUP_ROOT="/data/backups/xcape"; else BACKUP_ROOT="backups"; fi
+fi
+BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"  # local retention…
+BACKUP_KEEP_MIN="${BACKUP_KEEP_MIN:-7}"     # …but always keep at least this many newest dumps
+
+latest_backup() { ls -1t "$BACKUP_ROOT"/db_"$ENV"_*.sql.gz 2>/dev/null | head -n1 || true; }
+
+# A dump is usable only if it is complete: pg_dump writes this trailer as its very last line.
+backup_is_complete() { gunzip -c "$1" 2>/dev/null | tail -n 5 | grep -q "PostgreSQL database dump complete"; }
+
+# Dump the database to $BACKUP_ROOT/db_<env>_<stamp>.sql.gz and print its path on stdout.
+# Fails (non-zero) — leaving no usable file behind — if pg_dump fails, the dump is incomplete,
+# or it is less than half the size of the previous one: the signature of an empty/wrong
+# database being dumped (golden-path's prod incident went unnoticed for days because a
+# collapsed dump still passed a naive "not empty" check). Callers use `backup_db || abort`,
+# which disables `set -e` in here, so every step checks explicitly.
+backup_db() {
+  if ! mkdir -p "$BACKUP_ROOT" 2>/dev/null || [[ ! -w "$BACKUP_ROOT" ]]; then
+    echo "Cannot write to $BACKUP_ROOT. On the server, create it once:" >&2
+    echo "  sudo mkdir -p $BACKUP_ROOT && sudo chown $(id -un):$(id -gn) $BACKUP_ROOT" >&2
     return 1
   fi
-  new="$(wc -c < "$dest" | tr -d ' ')"
-  echo "Wrote ${dest} (${new} bytes)"
-  if [[ "$new" -eq 0 ]]; then
-    rm -f "$dest"
-    echo "pg_dump produced an EMPTY dump — removed it." >&2
-    return 1
+  local prev dest part bytes prevbytes
+  prev="$(latest_backup)"
+  dest="$BACKUP_ROOT/db_${ENV}_$(date +%Y%m%d_%H%M%S).sql.gz"
+  part="$dest.partial"
+  if ! db_sh 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip -c > "$part"; then
+    rm -f "$part"; echo "pg_dump FAILED — no backup written." >&2; return 1
   fi
-  if [[ -n "$prev" && -f "$prev" ]]; then
-    local prevsize; prevsize="$(wc -c < "$prev" | tr -d ' ')"
-    if [[ "$prevsize" -gt 0 && $(( new * 2 )) -lt "$prevsize" ]]; then
+  if ! backup_is_complete "$part"; then
+    rm -f "$part"; echo "Dump is INCOMPLETE (no end-of-dump marker) — removed it." >&2; return 1
+  fi
+  bytes="$(wc -c < "$part" | tr -d ' ')"
+  if [[ -n "$prev" ]]; then
+    prevbytes="$(wc -c < "$prev" | tr -d ' ')"
+    if [[ "$prevbytes" -gt 0 && $(( bytes * 2 )) -lt "$prevbytes" ]]; then
+      mv "$part" "$dest.suspect"
       echo "" >&2
       echo "!!! BACKUP SIZE-COLLAPSE ALARM !!!" >&2
-      echo "    New dump ${dest} is ${new} bytes — less than HALF of the previous" >&2
-      echo "    dump ${prev} (${prevsize} bytes)." >&2
-      echo "    This is the signature of an empty/wrong database being dumped (e.g. compose" >&2
-      echo "    mounted a stray ./data instead of XCAPE_DATA_ROOT). Do NOT trust this dump." >&2
-      echo "    Investigate before deploying or rotating backups." >&2
+      echo "    The new dump is ${bytes} bytes — less than HALF of the previous one" >&2
+      echo "    ($(basename "$prev"), ${prevbytes} bytes). Kept aside as $dest.suspect." >&2
+      echo "    This is the signature of an empty/wrong database (e.g. compose mounted a stray" >&2
+      echo "    ./data instead of XCAPE_DATA_ROOT). Investigate before deploying or restoring." >&2
       return 1
     fi
   fi
+  mv "$part" "$dest"
+  echo "Backup: $dest ($(du -h "$dest" | cut -f1))" >&2
+  # Retention: drop dumps older than BACKUP_KEEP_DAYS, never touching the newest KEEP_MIN.
+  ls -1t "$BACKUP_ROOT"/db_"$ENV"_*.sql.gz 2>/dev/null | tail -n +$(( BACKUP_KEEP_MIN + 1 )) \
+    | while read -r old; do
+        if [[ -n "$(find "$old" -mtime +"$BACKUP_KEEP_DAYS" 2>/dev/null)" ]]; then
+          rm -f "$old" && echo "  pruned $(basename "$old")" >&2
+        fi
+      done
+  echo "$dest"
+}
+
+# psql inside the db container with the container's own credentials. Read-only unless
+# PSQL_WRITE=1: the session runs with default_transaction_read_only, so the DATABASE refuses
+# any write — no SQL pattern-matching to outwit. Extra args go to psql.
+psql_db() {
+  local ro="-c default_transaction_read_only=on"
+  [[ "${PSQL_WRITE:-0}" == "1" ]] && ro=""
+  $COMPOSE exec -T -e PGOPTIONS="$ro" db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@"' sh "$@"
+}
+
+# The database name as the container sees it (for restore/rehearsal).
+# (These helpers take no input: </dev/null stops `compose exec` from swallowing the caller's
+# stdin — e.g. the answer piped to a later confirmation prompt.)
+db_name() { db_sh 'printf %s "$POSTGRES_DB"' </dev/null; }
+# SQL on the maintenance database (CREATE/DROP/RENAME DATABASE can't run inside the target).
+admin_sql() { db_sh "PGOPTIONS='-c client_min_messages=warning' psql -v ON_ERROR_STOP=1 -qAt -U \"\$POSTGRES_USER\" -d postgres -c \"$1\"" </dev/null; }
+
+# Load a .sql.gz dump into database $2 (which must exist and be empty).
+load_dump() {
+  gunzip -c "$1" | $COMPOSE exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "$2"
+}
+
+# Row counts of the main tables in database $1 — a quick "does this look like our data" check.
+db_counts() {
+  db_sh "psql -qAt -U \"\$POSTGRES_USER\" -d $1 -c \"select 'users=' || (select count(*) from users) || '  searches=' || (select count(*) from searches) || '  places=' || (select count(*) from places) || '  evals=' || (select count(*) from place_custom_evals)\"" </dev/null
+}
+
+wait_healthy() {  # wait_healthy <seconds>
+  local deadline=$(( SECONDS + $1 ))
+  while (( SECONDS < deadline )); do
+    curl -fsS "http://localhost:${BACKEND_PORT:-8030}/health" >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  return 1
 }
 
 case "$CMD" in
@@ -200,20 +260,146 @@ case "$CMD" in
   test)     $COMPOSE exec "$BACKEND_SVC" python -m pytest /app/tests -q ;;
   smoke)    SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py ;;
   shell)    $COMPOSE exec "$BACKEND_SVC" bash ;;
+  psql)
+    # ./xcape.sh psql <env> "<SQL>"          read-only (the database refuses writes)
+    # ./xcape.sh psql <env> - < query.sql    same, SQL from stdin
+    # ./xcape.sh psql <env> --write "<SQL>"  writes allowed (prod: typed confirmation)
+    PSQL_WRITE=0; SQL=""
+    for a in "$@"; do case "$a" in --write) PSQL_WRITE=1 ;; *) SQL="$a" ;; esac; done
+    [[ -n "$SQL" ]] || { echo "usage: ./xcape.sh psql <env> [--write] \"<SQL>\" | -"; exit 1; }
+    if [[ "$PSQL_WRITE" == 1 && "$ENV" == "prod" ]]; then
+      read -r -p "WRITE on PRODUCTION. Type 'psql-write-production' to run: " ans </dev/tty
+      [[ "$ans" == "psql-write-production" ]] || { echo "Aborted."; exit 1; }
+    fi
+    export PSQL_WRITE
+    if [[ "$SQL" == "-" ]]; then psql_db; else psql_db -c "$SQL"; fi ;;
+  dbshell)
+    # Interactive psql; read-only unless --write (prod: typed confirmation).
+    RO="-c default_transaction_read_only=on"
+    if [[ "${1:-}" == "--write" ]]; then
+      if [[ "$ENV" == "prod" ]]; then
+        read -r -p "WRITE on PRODUCTION. Type 'psql-write-production' to open a writable shell: " ans
+        [[ "$ans" == "psql-write-production" ]] || { echo "Aborted."; exit 1; }
+      fi
+      RO=""
+    fi
+    $COMPOSE exec -e PGOPTIONS="$RO" db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' ;;
   backup-db)
-    mkdir -p backups
-    TS="backup-$(date +%Y%m%d-%H%M%S).sql"
-    backup_db_to "backups/${TS}" ;;
+    backup_db ;;
+  list-backups)
+    echo "Backups in $BACKUP_ROOT (newest first; kept ${BACKUP_KEEP_DAYS} days, at least the ${BACKUP_KEEP_MIN} newest):"
+    found=0
+    while read -r f; do
+      [[ -n "$f" ]] || continue
+      found=1
+      ok="ok"; backup_is_complete "$f" || ok="INCOMPLETE"
+      printf "  %6s  %s  %s\n" "$(du -h "$f" | cut -f1)" "$(basename "$f")" "$ok"
+    done < <(ls -1t "$BACKUP_ROOT"/db_"$ENV"_*.sql.gz 2>/dev/null || true)
+    [[ "$found" == 1 ]] || echo "  (none)" ;;
+  restore-backup)
+    # ./xcape.sh restore-backup <env> <file.sql.gz>|--latest [--rehearse-into <scratch_db>]
+    #   --rehearse-into: load into a throwaway database, compare row counts with live, drop it.
+    #   Without it: safety dump → load into <db>_restoring while the site keeps running →
+    #   brief backend stop → rename live to <db>_pre_restore_<stamp> and the restored one to
+    #   <db> → restart. The previous database is KEPT, so a restore can be undone.
+    FILE=""; REHEARSE=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --latest) FILE="$(latest_backup)" ;;
+        --rehearse-into) REHEARSE="${2:-}"; shift ;;
+        *) FILE="$1" ;;
+      esac
+      shift
+    done
+    if [[ -z "$FILE" || ! -f "$FILE" ]]; then
+      echo "usage: ./xcape.sh restore-backup <env> <file.sql.gz>|--latest [--rehearse-into <scratch_db>]"; exit 1
+    fi
+    backup_is_complete "$FILE" || { echo "$FILE is not a complete dump (no end-of-dump marker) — refusing."; exit 1; }
+    LIVE="$(db_name)"
+    if [[ -n "$REHEARSE" ]]; then
+      if [[ ! "$REHEARSE" =~ ^[a-z_][a-z0-9_]{0,40}$ || "$REHEARSE" == "$LIVE" || "$REHEARSE" == "postgres" ]]; then
+        echo "Invalid scratch database name '$REHEARSE' (lowercase letters, digits, _; not the live one)."; exit 1
+      fi
+      echo "--> Rehearsal: loading $(basename "$FILE") into '$REHEARSE' (the live database is not touched)"
+      admin_sql "DROP DATABASE IF EXISTS $REHEARSE" >/dev/null && admin_sql "CREATE DATABASE $REHEARSE" >/dev/null
+      if load_dump "$FILE" "$REHEARSE"; then
+        echo "    restored: $(db_counts "$REHEARSE")"
+        echo "    live:     $(db_counts "$LIVE")"
+        admin_sql "DROP DATABASE $REHEARSE" >/dev/null
+        echo "==> Rehearsal OK — this dump restores cleanly (scratch database dropped)."
+      else
+        admin_sql "DROP DATABASE IF EXISTS $REHEARSE" >/dev/null
+        echo "REHEARSAL FAILED — this dump does not restore cleanly."; exit 1
+      fi
+      exit 0
+    fi
+    echo "About to REPLACE the $ENV database '$LIVE' with $(basename "$FILE")."
+    echo "The current database is kept under another name, so this can be undone."
+    if [[ "$ENV" == "prod" ]]; then
+      read -r -p "Type 'restore-production' to continue: " ans
+      [[ "$ans" == "restore-production" ]] || { echo "Aborted."; exit 1; }
+    else
+      read -r -p "Proceed on $ENV? [y/N] " ans
+      [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "Aborted."; exit 0; }
+    fi
+    echo "--> Safety dump of the current database"
+    backup_db >/dev/null || { echo "ABORTING: could not take a safety dump first."; exit 1; }
+    STAMP="$(date +%Y%m%d_%H%M%S)"; TMP="${LIVE}_restoring"; OLD="${LIVE}_pre_restore_${STAMP}"
+    echo "--> Loading the dump into '$TMP' (the site keeps running on the current database)"
+    admin_sql "DROP DATABASE IF EXISTS $TMP" >/dev/null && admin_sql "CREATE DATABASE $TMP" >/dev/null
+    if ! load_dump "$FILE" "$TMP"; then
+      admin_sql "DROP DATABASE IF EXISTS $TMP" >/dev/null; echo "LOAD FAILED — nothing was changed."; exit 1
+    fi
+    echo "    loaded: $(db_counts "$TMP")"
+    echo "--> Swapping databases (backend briefly stopped)"
+    $COMPOSE stop "$BACKEND_SVC"
+    admin_sql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('$LIVE', '$TMP') AND pid <> pg_backend_pid()" >/dev/null
+    if ! { admin_sql "ALTER DATABASE $LIVE RENAME TO $OLD" >/dev/null && admin_sql "ALTER DATABASE $TMP RENAME TO $LIVE" >/dev/null; }; then
+      echo "RENAME FAILED — check the databases by hand (./xcape.sh dbshell $ENV, then \\l)."
+      $COMPOSE start "$BACKEND_SVC"; exit 1
+    fi
+    $COMPOSE start "$BACKEND_SVC"
+    wait_healthy 120 || echo "WARNING: backend not healthy yet — check ./xcape.sh logs $ENV --service backend"
+    echo "==> Restored: $(db_counts "$LIVE")"
+    echo "    The previous database is kept as '$OLD'. Once you're satisfied:"
+    echo "    ./xcape.sh psql $ENV --write \"DROP DATABASE $OLD\"" ;;
+  backup-cron)
+    # Show the nightly backup crontab line for this checkout; --install adds it (idempotent).
+    # 02:15 — after golden-path's 02:00 dump, before the 03:00 offsite upload.
+    LINE="15 2 * * * cd $(pwd) && ./xcape.sh backup-db $ENV >> $BACKUP_ROOT/backup.log 2>&1 # xcape-backup-$ENV"
+    if crontab -l 2>/dev/null | grep -q "# xcape-backup-$ENV\$"; then
+      echo "Installed:"; crontab -l | grep "# xcape-backup-$ENV\$"
+    elif [[ "${1:-}" == "--install" ]]; then
+      mkdir -p "$BACKUP_ROOT" 2>/dev/null && [[ -w "$BACKUP_ROOT" ]] \
+        || { echo "Create $BACKUP_ROOT first: sudo mkdir -p $BACKUP_ROOT && sudo chown $(id -un):$(id -gn) $BACKUP_ROOT"; exit 1; }
+      (crontab -l 2>/dev/null || true; echo "$LINE") | crontab -
+      echo "Installed: $LINE"
+    else
+      echo "Not installed. It would add:"; echo "  $LINE"
+      echo "Install with: ./xcape.sh backup-cron $ENV --install"
+    fi ;;
+  schema-check)
+    # Do the migrations match the ORM models? (Tests use create_all, so they can't tell.)
+    $COMPOSE exec -T "$BACKEND_SVC" alembic check ;;
+  typecheck)
+    [[ "$ENV" == "dev" ]] || { echo "typecheck runs in the dev frontend container: ./xcape.sh typecheck dev"; exit 1; }
+    $COMPOSE exec -T frontend-dev npx tsc -b --pretty false && echo "Types OK" ;;
+  prune-images)
+    # Reclaim disk on the shared host: dangling images + build cache older than a week.
+    # Never touches running containers, volumes or tagged images.
+    docker system df
+    docker image prune -f
+    docker builder prune -f --filter until=168h
+    docker system df ;;
   deploy)
     if [[ "$ENV" != "prod" ]]; then echo "deploy is production-only. Use: ./xcape.sh deploy prod"; exit 1; fi
     echo "==> Deploying xCape to production"
     echo "--> Pre-deploy DB backup"
-    mkdir -p backups
     if [[ -n "$(container db 2>/dev/null || true)" ]]; then
-      # Real DB running: a size-collapse here means we'd be deploying over a likely-empty or
-      # wrong-mounted database. Abort loudly rather than rotate a bad backup and press on.
-      backup_db_to "backups/predeploy-$(date +%Y%m%d-%H%M%S).sql" \
-        || { echo "ABORTING DEPLOY: pre-deploy backup collapsed — investigate the data mount (XCAPE_DATA_ROOT) before retrying."; exit 1; }
+      # Real DB running: a failed, incomplete or collapsed dump means we'd be deploying over a
+      # likely-empty or wrong-mounted database. Abort loudly rather than press on.
+      backup_db >/dev/null \
+        || { echo "ABORTING DEPLOY: pre-deploy backup failed — investigate (XCAPE_DATA_ROOT, $BACKUP_ROOT) before retrying."; exit 1; }
     else
       echo "    (no running DB to back up — first deploy?)"
     fi
@@ -222,20 +408,17 @@ case "$CMD" in
     fi
     echo "--> Pulling latest code"
     git pull origin main || { echo "git pull failed"; exit 1; }
-    echo "--> Building images"
-    $COMPOSE build backend frontend
-    echo "--> Starting services"
+    echo "--> Building images (the site stays up meanwhile)"
+    $COMPOSE build backend frontend || { echo "BUILD FAILED — the running site is untouched."; exit 1; }
+    # Migrate with the NEW code in a one-off container BEFORE swapping, so the new backend never
+    # starts against the old schema, and a failed migration leaves the old site serving.
+    echo "--> Applying migrations (new code, before the swap)"
+    $COMPOSE run --rm -T "$BACKEND_SVC" alembic upgrade head \
+      || { echo "MIGRATIONS FAILED — the running site is untouched (old code still serving). Fix, then redeploy."; exit 1; }
+    echo "--> Swapping to the new containers"
     $COMPOSE up -d
     echo "--> Waiting for backend to come up"
-    UP=false
-    for i in $(seq 1 90); do
-      curl -fsS "http://localhost:${BACKEND_PORT:-8030}/health" >/dev/null 2>&1 && { UP=true; break; }
-      sleep 2
-    done
-    # Don't run migrations against a backend that never came up — stop and say so.
-    [[ "$UP" == true ]] || { echo "BACKEND DID NOT BECOME HEALTHY within 180s — check: ./xcape.sh logs prod --service backend"; exit 1; }
-    echo "--> Applying migrations"
-    $COMPOSE exec -T "$BACKEND_SVC" alembic upgrade head
+    wait_healthy 180 || { echo "BACKEND DID NOT BECOME HEALTHY within 180s — check: ./xcape.sh logs prod --service backend"; exit 1; }
     echo "--> Seeding place database (insert-only: bootstrap + new countries, no overwrite)"
     $COMPOSE exec -T "$BACKEND_SVC" python -m app.db.seed
     echo "--> Health check"
@@ -295,11 +478,22 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   make-admin <env> <email>  grant admin rights to a user
   reset-password <env> <email>  set a user's password (prompted, kept out of shell history)
   purge-test-users <env>    delete @example.com / @xcape.test test users (confirm; prod-safe)
+  psql <env> [--write] "<SQL>" | -   run SQL (read-only unless --write; prod writes need a typed phrase)
+  dbshell <env> [--write]  interactive psql (read-only unless --write)
+  schema-check            do the Alembic migrations match the ORM models?
+  typecheck dev           TypeScript check in the dev frontend container
   test                    run backend pytest
   smoke                   run end-to-end smoke tests against the running stack
   shell                   open a backend shell
-  backup-db               pg_dump to ./backups
-  deploy prod             pull, build, restart, migrate, seed, health-check
+  backup-db <env>         gzip'd, verified pg_dump → /data/backups/xcape (prod) or ./backups (dev),
+                          size-collapse alarm, retention (BACKUP_KEEP_DAYS=14, BACKUP_KEEP_MIN=7)
+  list-backups <env>      the dumps, newest first, with an integrity check
+  restore-backup <env> <file>|--latest [--rehearse-into <scratch_db>]
+                          rehearse into a throwaway DB, or restore (safety dump first; the
+                          previous database is kept under another name)
+  backup-cron <env> [--install]  show / install the nightly 02:15 backup
+  prune-images            reclaim disk: dangling images + week-old build cache
+  deploy prod             backup, pull, build, migrate (before the swap), swap, seed, health, smoke
   reset-db                (dev only) wipe DB volume
   adopt-dev-volumes dev   (once, dev only) move data from pre-rename `xcape_*` volumes to `xcape-dev`
 
