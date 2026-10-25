@@ -209,6 +209,10 @@ export function Onboarding() {
   async function finish() {
     setBusy(true)
     try {
+      // The story's hopes & worries become criteria — reflect it now if the user didn't ask to.
+      if (a.priorities_text.trim() && !reflection) {
+        await api.reflectStory(a.priorities_text.trim(), lang).catch(() => {})
+      }
       await api.updateMe({ current_country: a.current_country.trim(), citizenships: a.citizenships, ancestry_countries: a.ancestry_countries, heritages: a.heritages, family_countries: a.family_countries })
       // Re-read identity from the server so the cached store reflects the new truth.
       await refreshAuth()
@@ -232,6 +236,8 @@ export function Onboarding() {
       await api.buildShortlist(search.id)
       // Add the persona's specific criteria (e.g. per-community tolerance, asset-tax, pension visa).
       await api.applyPersona(search.id).catch(() => {})
+      // "Your hopes & worries": the story's own needs, scored like any criterion.
+      await api.applyStory(search.id).catch(() => {})
       // Free-text priorities → let the AI pick & weight extra criteria from them, so the
       // user's own words shape the comparison (best-effort; never blocks the flow).
       if (a.priorities_text.trim()) {

@@ -126,7 +126,7 @@ def persist_to_profile(db: Session, user: User, defs: list[dict]) -> None:
         k = d.get("key")
         if not k or k in have or d.get("source") == "persona":
             continue
-        existing.append({key: d.get(key) for key in ("key", "label", "label_fr", "label_en", "description", "weight", "min", "category") if d.get(key) is not None})
+        existing.append({key: d.get(key) for key in ("key", "label", "label_fr", "label_en", "description", "weight", "min", "category", "kind") if d.get(key) is not None})
         have.add(k)
         changed = True
     if changed:

@@ -102,6 +102,9 @@ export function Drilldown() {
       .filter((g) => g.keys.length)
     const extra = rows.map((r) => r.key).filter((k) => !inCats.has(k) && !customCats[k])
     if (extra.length) out.push({ key: '__custom', label: t.comparison.customGroup, keys: extra })
+    // The user's own hopes & worries (from their story) lead.
+    const story = rows.map((r) => r.key).filter((k) => customCats[k] === 'story')
+    if (story.length) out.unshift({ key: 'story', label: t.comparison.storyGroup, keys: story })
     return out
   }, [detail, reg, lang, t, customCats])
 

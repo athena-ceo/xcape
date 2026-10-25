@@ -256,6 +256,10 @@ export const api = {
   reflectStory: (text: string, lang: string) =>
     request<{ reflection: string; hopes: string[]; worries: string[]; persona: string | null; unavailable?: boolean }>(
       '/profile/story', { method: 'POST', body: JSON.stringify({ text, lang }) }),
+  // Hearted countries with where the numbers put them (rank, vs #5, biggest gaps).
+  heartsVsNumbers: (id: number) => request<any[]>(`/searches/${id}/hearts`),
+  // Add the story's hopes & worries to a search as scored criteria.
+  applyStory: (id: number) => request<any[]>(`/searches/${id}/apply-story`, { method: 'POST' }),
   getPostcard: (id: number, lang: string, search?: number) =>
     request<any>(`/places/${id}/postcard?lang=${lang}${search != null ? `&search=${search}` : ''}`),
   generatePostcard: (id: number, lang: string, search?: number, force = false) =>

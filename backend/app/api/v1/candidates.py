@@ -26,6 +26,7 @@ from app.services import (
 )
 from app.models.profile import Profile
 from app.services import shortlist as shortlist_service
+from app.services import story as story_service
 from app.services.shortlist import MAX_COMPARE
 
 router = APIRouter()
@@ -294,6 +295,28 @@ def why_not(
     if place is None or place.kind != "country":
         raise HTTPException(status_code=404, detail="Place not found")
     return shortlist_service.why_not(db, user, search, place)
+
+
+@router.get("/{search_id}/hearts")
+def hearts_vs_numbers(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """The user's hearted countries with where the numbers put them (rank, score vs #5, the
+    criteria where they lose most) — "your heart says X, the numbers say Y" (no AI call)."""
+    search = _owned(db, user, search_id)
+    return shortlist_service.hearts_vs_numbers(db, user, search)
+
+
+@router.post("/{search_id}/apply-story", response_model=list[CandidateOut])
+def apply_story(
+    search_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """Add the story's hopes & worries to this search as criteria ("Your hopes & worries"),
+    then re-rank. They are scored progressively via /evaluate-pending like any custom one."""
+    search = _owned(db, user, search_id)
+    if story_service.apply_to_search(db, user, search):
+        shortlist_service.rescore_candidates(db, user, search)
+    return list_candidates(search_id, user=user, db=db)
 
 
 @router.patch("/{search_id}/candidates/{candidate_id}", response_model=CandidateOut)
@@ -593,7 +616,11 @@ def suggest_criteria(
     """From the user's chosen tags + free-text situation, AI-select which criteria matter:
     set their importance weights and add any proposed custom criteria, then re-rank."""
     search = _owned(db, user, search_id)
-    result = criteria_select.suggest(db, user, tags=body.tags, free_text=body.text or "")
+    # Tell it what the search already covers (e.g. the story's hopes & worries) so it doesn't
+    # propose the same need twice under another name.
+    covered = [c.get("label_en") or c.get("label") for c in (search.custom_criteria or []) if c.get("key")]
+    result = criteria_select.suggest(db, user, tags=body.tags, free_text=body.text or "",
+                                     covered=[c for c in covered if c])
 
     # Apply weights to the profile (merge with any existing).
     if result["weights"]:

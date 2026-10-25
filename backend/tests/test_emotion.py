@@ -137,3 +137,73 @@ def test_no_postcard_for_the_home_country(auth_client, db_session, monkeypatch):
 
     assert auth_client.post(f"/api/v1/places/{france.id}/postcard/generate").json()["home"] is True
     assert calls == [] and db_session.query(Postcard).count() == 0
+
+
+# --- slice 2: hopes & worries scorecard, heart vs numbers ------------------------------------
+
+_STORY = {"reflection": "r", "hopes": ["a walkable town by the sea"], "worries": ["being lonely"],
+          "persona": "retiree",
+          "criteria": [
+              {"kind": "hope", "label_en": "Walkable seaside towns", "label_fr": "Villes côtières à pied",
+               "description": "Walkable small towns on the coast for a retired couple."},
+              {"kind": "worry", "label_en": "Easy to make friends", "label_fr": "Se faire des amis",
+               "description": "How easily retired newcomers build a social life."},
+          ]}
+
+
+def test_story_hopes_and_worries_become_scored_criteria(auth_client, db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _STORY)
+    auth_client.post("/api/v1/profile/story", json={"text": "We want the sea, but fear loneliness."})
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+
+    assert auth_client.post(f"/api/v1/searches/{sid}/apply-story").status_code == 200
+    auth_client.post(f"/api/v1/searches/{sid}/apply-story")  # idempotent
+
+    defs = {c["key"]: c for c in auth_client.get(f"/api/v1/searches/{sid}/custom-criteria").json()}
+    assert set(defs) == {"custom_walkable_seaside_towns", "custom_easy_to_make_friends"}
+    friends = defs["custom_easy_to_make_friends"]
+    assert friends["category"] == "story" and friends["weight"] == 1.5
+    assert friends["label_fr"] == "Se faire des amis"
+    # Persisted to the profile, so a later search carries them too.
+    sid2 = auth_client.post("/api/v1/searches", json={"title": "T2"}).json()["id"]
+    auth_client.get(f"/api/v1/searches/{sid2}/candidates")  # self-heal merges profile customs
+    keys2 = {c["key"] for c in auth_client.get(f"/api/v1/searches/{sid2}/custom-criteria").json()}
+    assert "custom_easy_to_make_friends" in keys2
+
+
+def test_suggested_criteria_are_told_what_the_story_covers(auth_client, db_session, monkeypatch):
+    monkeypatch.setattr(ai_client, "respond_json", lambda *a, **k: _STORY)
+    auth_client.post("/api/v1/profile/story", json={"text": "The sea, and friends."})
+    sid = auth_client.post("/api/v1/searches", json={"title": "T"}).json()["id"]
+    auth_client.post(f"/api/v1/searches/{sid}/apply-story")
+    seen = {}
+
+    def fake(prompt, schema, **kw):
+        seen["prompt"] = prompt
+        return {"weights": {}, "custom": []}
+    monkeypatch.setattr(ai_client, "respond_json", fake)
+    auth_client.post(f"/api/v1/searches/{sid}/suggest-criteria", json={"tags": [], "text": "The sea."})
+
+    assert "ALREADY covered" in seen["prompt"] and "Easy to make friends" in seen["prompt"]
+
+
+def test_heart_vs_numbers(auth_client, db_session):
+    from app.models.candidate import Candidate
+    from app.models.search import Search
+    user = db_session.query(User).filter(User.email == "test@example.com").first()
+    on_board, off_board = _place(db_session), _place(db_session, "Portugal", "PT")
+    search = Search(user_id=user.id, title="t")
+    db_session.add(search)
+    db_session.commit()
+    db_session.add(Candidate(search_id=search.id, place_id=on_board.id, selected=True, status="active"))
+    db_session.commit()
+    assert auth_client.get(f"/api/v1/searches/{search.id}/hearts").json() == []
+
+    auth_client.put(f"/api/v1/hearts/{on_board.id}")
+    auth_client.put(f"/api/v1/hearts/{off_board.id}")
+    rows = {r["name"]: r for r in auth_client.get(f"/api/v1/searches/{search.id}/hearts").json()}
+
+    assert rows["Spain"]["status"] == "on_board"
+    pt = rows["Portugal"]
+    assert pt["status"] == "ranked_below" and pt["rank"] and pt["reference"]["name"] == "Spain"
+    assert len(pt["gaps"]) <= 2 and "strengths" not in pt

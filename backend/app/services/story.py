@@ -19,6 +19,10 @@ from app.services import ai_client, criteria
 MAX_TEXT = 4000
 
 
+STORY_CATEGORY = "story"  # custom criteria born from the story group as "Your hopes & worries"
+STORY_WEIGHT = 1.5        # the user's own words count, without drowning the rest
+
+
 def _schema(persona_keys: list[str]) -> dict:
     short = {"type": "array", "items": {"type": "string"}, "maxItems": 3}
     return {
@@ -28,8 +32,22 @@ def _schema(persona_keys: list[str]) -> dict:
             "hopes": short,
             "worries": short,
             "persona": {"type": "string", "enum": persona_keys + [""]},
+            "criteria": {
+                "type": "array", "maxItems": 6,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {"type": "string", "enum": ["hope", "worry"]},
+                        "label_en": {"type": "string"},
+                        "label_fr": {"type": "string"},
+                        "description": {"type": "string"},
+                    },
+                    "required": ["kind", "label_en", "label_fr", "description"],
+                    "additionalProperties": False,
+                },
+            },
         },
-        "required": ["reflection", "hopes", "worries", "persona"],
+        "required": ["reflection", "hopes", "worries", "persona", "criteria"],
         "additionalProperties": False,
     }
 
@@ -47,7 +65,7 @@ def reflect(db: Session, user: User, text: str, lang: str) -> dict:
 
     personas = criteria.personas()
     keys = [p["key"] for p in personas]
-    result: dict = {"reflection": "", "hopes": [], "worries": [], "persona": None}
+    result: dict = {"reflection": "", "hopes": [], "worries": [], "persona": None, "criteria": []}
     if text:
         menu = "\n".join(f"- {p['key']}: {p.get('blurb_en') or p.get('label_en')}" for p in personas)
         language = "French" if lang == "fr" else "English"
@@ -63,7 +81,15 @@ def reflect(db: Session, user: User, text: str, lang: str) -> dict:
                 "- hopes: up to 3 short phrases (3-6 words) of what they hope to gain.\n"
                 "- worries: up to 3 short phrases of what worries them (leaving or arriving).\n"
                 "- persona: the ONE relocation profile below that fits best, or \"\" if none clearly does.\n"
-                f"{menu}",
+                f"{menu}\n"
+                "- criteria: one per hope and per worry, to score countries on. Phrase each so that "
+                "a HIGH score is good for them — a worry like 'being lonely the first year' becomes "
+                "'Easy to make friends as a newcomer'. label_en/label_fr: 2-5 words, a column header. "
+                "description: one sentence on what to assess in a country, specific to their "
+                "situation (e.g. 'for a retired couple'). Skip anything already scored anyway: visa, "
+                "cost of living, healthcare, safety, climate, language, and travel time to where "
+                "family or friends live ('Near family'). Never give two criteria for the same need "
+                "(e.g. 'social life' and 'making friends' are one) — fewer, distinct ones are better.",
                 _schema(keys),
                 schema_name="story_reflection",
                 model=settings.openai_chat_model,
@@ -76,9 +102,43 @@ def reflect(db: Session, user: User, text: str, lang: str) -> dict:
                 "hopes": [h.strip() for h in data.get("hopes", []) if h and h.strip()][:3],
                 "worries": [w.strip() for w in data.get("worries", []) if w and w.strip()][:3],
                 "persona": data.get("persona") if data.get("persona") in keys else None,
+                "criteria": [
+                    {k: (c.get(k) or "").strip() for k in ("kind", "label_en", "label_fr", "description")}
+                    for c in (data.get("criteria") or [])
+                    if c.get("kind") in ("hope", "worry") and (c.get("label_en") or "").strip()
+                ][:6],
             }
         except ai_client.AIUnavailable:
             result["unavailable"] = True
     profile.story = {k: v for k, v in result.items() if k != "unavailable"} if text else None
     db.commit()
     return result
+
+
+def apply_to_search(db: Session, user: User, search) -> list[str]:
+    """Turn the story's hopes and worries into custom criteria on `search` — the "Your hopes &
+    worries" scorecard. Labelled in the user's terms, scored by the normal custom-criterion
+    pipeline (evaluate-pending), weighted STORY_WEIGHT, and persisted to the profile so every
+    later search carries them too. Returns the keys added (existing keys are left alone)."""
+    from app.services import criterion_eval, custom_criteria  # avoid module-load cycles
+
+    story = (getattr(user.profile, "story", None) or {}) if user.profile else {}
+    defs = list(search.custom_criteria or [])
+    have = {c.get("key") for c in defs}
+    added: list[dict] = []
+    for c in story.get("criteria") or []:
+        key = criterion_eval.slugify(c.get("label_en") or "")
+        if not key or key in have:
+            continue
+        d = {"key": key, "label": c["label_en"], "label_en": c["label_en"],
+             "label_fr": c.get("label_fr") or c["label_en"], "description": c.get("description"),
+             "weight": STORY_WEIGHT, "category": STORY_CATEGORY, "kind": c.get("kind")}
+        defs.append(d)
+        added.append(d)
+        have.add(key)
+    if added:
+        search.custom_criteria = defs
+        search.criteria_set = list({*(search.criteria_set or []), *(d["key"] for d in added)})
+        db.commit()
+        custom_criteria.persist_to_profile(db, user, added)
+    return [d["key"] for d in added]

@@ -52,7 +52,7 @@ def _schema(keys: list[str]) -> dict:
     }
 
 
-def suggest(db, user, *, tags: list[str], free_text: str) -> dict:
+def suggest(db, user, *, tags: list[str], free_text: str, covered: list[str] | None = None) -> dict:
     """Return {weights: {key: 0-3}, custom: [{label, description}]} for the user's situation.
     Unknown keys are dropped. Empty result on AI unavailable."""
     catalog = [
@@ -73,7 +73,9 @@ def suggest(db, user, *, tags: list[str], free_text: str) -> dict:
             + "\n\nChoose which built-in criteria matter to THIS person and how much "
             "(weights 0-3, only include ones that matter), and propose up to 3 custom "
             "criteria (label + one-line description) for needs the catalog doesn't cover. "
-            "Use only catalog keys for weights.",
+            "Use only catalog keys for weights."
+            + (f" These needs are ALREADY covered by custom criteria — do not propose them again "
+               f"under another name: {'; '.join(covered)}." if covered else ""),
             _schema(list(valid_keys)),
             schema_name="criteria_selection",
             model=settings.openai_chat_model,

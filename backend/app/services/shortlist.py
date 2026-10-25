@@ -897,7 +897,8 @@ def rank_all(db: Session, user: User, search: Search) -> list[dict]:
 
 
 
-def why_not(db: Session, user: User, search: Search, place: Place) -> dict:
+def why_not(db: Session, user: User, search: Search, place: Place,
+            ranked: list[dict] | None = None) -> dict:
     """Why `place` isn't (or is) in the user's top 5 — from the SAME scores the board uses,
     so the "Why not X?" sheet and the assistant never invent a reason (prod 2026-10-25: asked
     "why didn't Spain come up?", the assistant made one up).
@@ -916,7 +917,7 @@ def why_not(db: Session, user: User, search: Search, place: Place) -> dict:
     if is_home(db, user, place):
         return {**out, "status": "home"}
 
-    ranked = rank_all(db, user, search)
+    ranked = ranked if ranked is not None else rank_all(db, user, search)
     pos = next((i for i, r in enumerate(ranked) if r["place_id"] == place.id), None)
     row = ranked[pos] if pos is not None else None
     expl = explain_place(db, user, place, search)
@@ -977,6 +978,27 @@ def why_not(db: Session, user: User, search: Search, place: Place) -> dict:
         ({**d, "points": -d["points"]} for d in diffs if d["points"] < -0.05),
         key=lambda d: -d["points"])[:3]
     return out
+
+def hearts_vs_numbers(db: Session, user: User, search: Search) -> list[dict]:
+    """For each hearted country: where the numbers put it against the user's #5 — the heart and
+    the numbers side by side (emotional roadmap, item 5). One ranking for all of them."""
+    from app.models.emotion import Heart  # local: emotion imports nothing from here, but keep it lazy
+
+    hearts = (db.query(Heart).filter(Heart.user_id == user.id)
+              .order_by(Heart.created_at.desc(), Heart.id.desc()).all())
+    if not hearts:
+        return []
+    ranked = rank_all(db, user, search)
+    out = []
+    for h in hearts:
+        if h.place is None:
+            continue
+        w = why_not(db, user, search, h.place, ranked=ranked)
+        w["gaps"] = w.get("gaps", [])[:2]
+        w.pop("strengths", None)
+        out.append(w)
+    return out
+
 
 def wildcards(db: Session, user: User, search: Search, n: int = 3) -> list[dict]:
     """A few "spark" countries to provoke ideas — NOT recommendations. Dark horses: countries

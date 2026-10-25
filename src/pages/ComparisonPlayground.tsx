@@ -6,8 +6,10 @@ import { Link, useParams } from 'react-router-dom'
 
 import { ChatPanel } from '../components/ChatPanel'
 import { HeartButton } from '../components/HeartButton'
+import { HeartsPanel } from '../components/HeartsPanel'
 import { MobileBoard, type BoardColumn } from '../components/MobileBoard'
 import { WhyNotSheet } from '../components/WhyNotSheet'
+import { WildcardCard } from '../components/WildcardCard'
 import { CriteriaSettings } from '../components/CriteriaSettings'
 import { Spinner } from '../components/Spinner'
 import { Waiting } from '../components/Waiting'
@@ -15,7 +17,6 @@ import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
 import { addCountryToBoard } from '../services/board'
-import { useHearts } from '../services/hearts'
 import { categories, labelOf, nodeOf, useCriteria, valueLabel } from '../services/criteria'
 
 export function ComparisonPlayground() {
@@ -41,7 +42,6 @@ export function ComparisonPlayground() {
   const [addOpen, setAddOpen] = useState(false)  // the "+ add a country" modal
   // "Why isn't X in my top 5?" sheet: { placeId: null } opens on the country picker.
   const [whyTarget, setWhyTarget] = useState<{ placeId: number | null } | null>(null)
-  const { hearts } = useHearts()
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string; label_fr?: string; label_en?: string; weight?: number; min?: number; category?: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
@@ -450,6 +450,10 @@ export function ComparisonPlayground() {
     else customUngrouped.push(c.key)
   }
   const groups = [
+    // The user's own hopes & worries (from their story) lead: their words before our categories.
+    ...(customByCat.story?.length
+      ? [{ key: 'story', label: t.comparison.storyGroup, leaves: customByCat.story }]
+      : []),
     ...categories(reg).map((c) => ({
       key: c.key, label: labelOf(reg, c.key, lang),
       leaves: [...c.leaves, ...(customByCat[c.key] ?? [])],
@@ -1030,36 +1034,10 @@ export function ComparisonPlayground() {
         </button>
       </div>
 
-      {/* The user's hearts: countries that speak to them, kept across searches. Ones not on the
-          board offer "why not?" — the heart and the numbers, side by side. */}
-      <section aria-label={t.hearts.title} className="mb-5">
-        <h2 className="text-sm font-medium text-turquoise-900 mb-1.5">{t.hearts.title}</h2>
-        {hearts.length === 0 ? (
-          <p className="text-xs text-turquoise-800/60">{t.hearts.empty}</p>
-        ) : (
-          <ul className="flex flex-wrap gap-2">
-            {hearts.map((h) => {
-              const onBoardNow = candidates.some((c) => c.place_id === h.place_id)
-              return (
-                <li key={h.place_id} className="flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50/60 pl-3 pr-1 py-0.5 text-sm">
-                  <Link to={`/drilldown/${h.place_id}?search=${sid}`} className="text-turquoise-900 hover:underline">
-                    {placeName(h, lang)}
-                  </Link>
-                  {onBoardNow ? (
-                    <span className="text-xs text-turquoise-700/70 px-1.5">{t.hearts.onBoard}</span>
-                  ) : (
-                    <button onClick={() => setWhyTarget({ placeId: h.place_id })}
-                      className="text-xs text-turquoise-700 underline decoration-dotted underline-offset-2 px-1.5 py-1">
-                      {t.whyNot.explore}
-                    </button>
-                  )}
-                  <HeartButton size="sm" place={{ id: h.place_id, name: h.name, iso_code: h.iso_code }} />
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+      {/* The user's hearts beside the numbers, then one "something different" provocation. */}
+      <HeartsPanel searchId={sid} boardKey={candidates.map((c) => `${c.place_id}:${c.match_score}`).join(',')}
+        critLabel={critLabel} onWhy={(placeId) => setWhyTarget({ placeId })} />
+      <WildcardCard searchId={sid} critLabel={critLabel} onWhy={(placeId) => setWhyTarget({ placeId })} />
 
       {whyTarget && (
         <WhyNotSheet searchId={sid} placeId={whyTarget.placeId} critLabel={critLabel} board={boardMembers()}

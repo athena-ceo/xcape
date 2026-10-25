@@ -5,6 +5,30 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — Emotional layer, second slice: hopes & worries scorecard, heart vs numbers, something different
+
+- **Your hopes & worries, scored.**
+  - The story reflection now also phrases each hope and worry as a criterion, with a high
+    score meaning good for them: the worry "being lonely the first year" becomes "Easy to
+    make friends".
+  - `POST /searches/{id}/apply-story` adds them to the search as custom criteria
+    (`category: "story"`, weight 1.5). They are scored by the normal evaluate-pending
+    pipeline, persisted to the profile (so later searches carry them), and shown first on
+    the board, phone cards and country page under "Your hopes & worries".
+  - Onboarding applies them automatically, and reflects the story first if the user didn't
+    click "Here's my story".
+  - The prompt skips what is already scored (visa, cost, healthcare, safety, climate,
+    language, Near family) and asks for distinct needs only. The free-text criteria
+    suggestion is told what the story covers, so it doesn't duplicate it.
+- **Heart vs numbers** (`GET /searches/{id}/hearts`, built on `why_not` with a single ranking):
+  the hearts shelf becomes a panel. Each hearted country shows where the numbers put it,
+  e.g. "Portugal: #6 at 63%, against your #5 Italy at 65%. It loses most on Climate,
+  Healthcare.", or "your heart and the numbers agree", or the filter that excludes it. "Why?"
+  opens the full sheet.
+- **Something different:** one wildcard card on the board (a country off the board that
+  excels on something the user weights), clearly labelled not a recommendation, with "How
+  does it compare?" and "Show another". It reuses Explore's wildcard logic.
+
 ### 2026-10-25 — The emotional layer, first slice: your story, hearts, postcard from your future
 
 A friend's feedback: the app is good at a fact-based comparison but doesn't speak to the heart.
