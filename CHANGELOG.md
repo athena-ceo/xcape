@@ -5,6 +5,35 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — A phone layout for the comparison board
+
+**What users saw:** on phones the comparison was "too horizontal and painful". Seven
+columns (criterion, home, up to five countries) squeezed into 375 px, and the header's
+eight links wrapped onto two or three lines.
+
+- **The phone board (< 640 px) is `MobileBoard`;** tablets and desktops keep the table. It has
+  two modes:
+  - **Cards** (mockup A): one card per board country. A strip of country chips (rank, name,
+    score) sits on top; swipe or use ‹ › to move between cards. Each criterion shows its value
+    chip, a two-line explanation, and the home value underneath. Tapping a row opens the same
+    "why" popover as the table; tapping the score opens the breakdown.
+  - **Compare two** (mockup B): any two columns, home included, side by side, with the better
+    value outlined.
+  - It reuses the page's own helpers (values, tiers, popovers, add/remove country, "show
+    other criteria"), so the phone and the table can't drift apart.
+- **Header:** on phones the links fold into a menu button (language and help stay visible).
+- **Criteria settings:** on phones each criterion stacks (name, then importance and filter),
+  using responsive table classes with no duplicated markup.
+- **Score breakdown:** the weight column hides on phones.
+- **Cell wording follows the evaluation:** an AI-scored criterion is coloured by its
+  evaluation, but the cell showed the coarse seed word, e.g. "High" painted amber (= weak).
+  It now shows the evaluation's own tier word (on the table too).
+- **Dev volumes are owned by `xcape-dev`.** After the step-1 project rename, Compose warned on
+  every command that the dev volumes "were created for project xcape". The volume names are
+  no longer pinned, and a one-time `./xcape.sh adopt-dev-volumes dev` copies the data from the
+  old `xcape_*` volumes (read-only; the old volumes are kept for you to delete). The script
+  prints a hint while the move is pending.
+
 ### 2026-10-25 — "Why isn't X in my top 5?", and an assistant that answers from the real scores
 
 **What users saw:** a tester couldn't tell why Spain was missing from her top 5. Asked "why

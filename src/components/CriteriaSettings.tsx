@@ -36,6 +36,16 @@ interface Props {
 // every criterion, and bespoke controls for language/visa/inclusion/climate). Custom
 // criteria appear in their own group with the same importance + threshold controls. Reads
 // the catalog from the registry.
+
+// Row/cell classes: a normal table from sm up; below, each row is a wrapping flex line
+// (name on its own line, then importance and filter side by side) so nothing scrolls sideways.
+const CAT_ROW = 'block sm:table-row border-t border-turquoise-100 bg-turquoise-50/60'
+const CAT_CELL = 'block sm:table-cell py-1.5 px-2 sm:px-0 font-medium text-turquoise-900'
+const LEAF_ROW = 'flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2 sm:py-0 sm:table-row border-t border-turquoise-50'
+const LABEL_CELL = 'block w-full sm:w-auto sm:table-cell sm:py-1.5 pr-2 pl-3'
+const WEIGHT_CELL = 'block pl-3 sm:pl-0 sm:table-cell sm:py-1.5 pr-2'
+const FILTER_CELL = 'block flex-1 min-w-[9rem] pl-3 sm:pl-0 sm:table-cell sm:py-1.5'
+
 export function CriteriaSettings({ weights, filters, customCriteria = [], busy, onApply, onCancel, onDirtyChange }: Props) {
   const { t, lang } = useT()
   const reg = useCriteria()
@@ -215,41 +225,42 @@ export function CriteriaSettings({ weights, filters, customCriteria = [], busy, 
   return (
     <div className="bg-white border border-turquoise-100 rounded-lg p-4 mb-4">
       <p className="text-sm text-turquoise-800/60 mb-3">{t.comparison.settingsHint}</p>
-      <table className="w-full text-sm">
-        <thead>
+      {/* A table from sm up; on phones each criterion stacks: name, then importance + filter. */}
+      <table className="w-full text-sm block sm:table">
+        <thead className="hidden sm:table-header-group">
           <tr className="text-left text-turquoise-800/60">
             <th className="py-1">{t.comparison.criterion}</th>
             <th className="py-1">{t.comparison.importance}</th>
             <th className="py-1">{t.comparison.filter}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="block sm:table-row-group">
           {categories(reg).map((cat) => (
             <Fragment key={cat.key}>
-              <tr className="border-t border-turquoise-100 bg-turquoise-50/60">
-                <td colSpan={3} className="py-1.5 font-medium text-turquoise-900">{labelOf(reg, cat.key, lang)}</td>
+              <tr className={CAT_ROW}>
+                <td colSpan={3} className={CAT_CELL}>{labelOf(reg, cat.key, lang)}</td>
               </tr>
               {cat.leaves.map((key) => (
-                <tr key={key} className="border-t border-turquoise-50">
-                  <td className="py-1.5 pr-2 pl-3">{labelOf(reg, key, lang)}</td>
-                  <td className="py-1.5 pr-2">{weightInput(weightFor(key), (v) => setWeight(key, v))}</td>
-                  <td className="py-1.5">{filterWithNote(filterCell(key), weightFor(key) <= 0 && filterActive(key))}</td>
+                <tr key={key} className={LEAF_ROW}>
+                  <td className={LABEL_CELL}>{labelOf(reg, key, lang)}</td>
+                  <td className={WEIGHT_CELL}>{weightInput(weightFor(key), (v) => setWeight(key, v))}</td>
+                  <td className={FILTER_CELL}>{filterWithNote(filterCell(key), weightFor(key) <= 0 && filterActive(key))}</td>
                 </tr>
               ))}
             </Fragment>
           ))}
           {cc.length > 0 && (
             <Fragment>
-              <tr className="border-t border-turquoise-100 bg-turquoise-50/60">
-                <td colSpan={3} className="py-1.5 font-medium text-turquoise-900">{t.comparison.customGroup}</td>
+              <tr className={CAT_ROW}>
+                <td colSpan={3} className={CAT_CELL}>{t.comparison.customGroup}</td>
               </tr>
               {cc.map((c) => (
-                <tr key={c.key} className="border-t border-turquoise-50">
-                  <td className="py-1.5 pr-2 pl-3">{labelOf(reg, c.key, lang, [c])}</td>
-                  <td className="py-1.5 pr-2">
+                <tr key={c.key} className={LEAF_ROW}>
+                  <td className={LABEL_CELL}>{labelOf(reg, c.key, lang, [c])}</td>
+                  <td className={WEIGHT_CELL}>
                     {weightInput(c.weight ?? 1, (v) => setCustom(c.key, { weight: Math.max(0, Math.min(8, v)) }))}
                   </td>
-                  <td className="py-1.5">{filterWithNote(thresholdSelect(customTier(c.min), (v) => setCustomTier(c.key, v)), (c.weight ?? 1) <= 0 && c.min != null)}</td>
+                  <td className={FILTER_CELL}>{filterWithNote(thresholdSelect(customTier(c.min), (v) => setCustomTier(c.key, v)), (c.weight ?? 1) <= 0 && c.min != null)}</td>
                 </tr>
               ))}
             </Fragment>

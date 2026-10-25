@@ -35,7 +35,7 @@ esac
 # Commands that change or remove data/services must name the environment, so nobody hits
 # prod by omission on the server.
 case "$CMD" in
-  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
+  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
     if [[ "$EXPLICIT_ENV" != true ]]; then
       echo "$CMD needs an explicit environment: ./xcape.sh $CMD <dev|prod> ..." >&2
       echo "(on this machine the default would be '$DEFAULT_ENV')" >&2
@@ -63,13 +63,14 @@ BACKEND_SVC="backend"
 [[ -f .env ]] && set -a && . ./.env && set +a || true
 [[ -f /etc/xcape/environment ]] && set -a && . /etc/xcape/environment && set +a || true
 
-# One-time move for dev checkouts that predate the xcape-dev project name: their containers
-# still belong to project `xcape`. Never on the server, where `xcape` IS prod.
-if [[ "$ENV" == "dev" && "$DEFAULT_ENV" == "dev" ]] \
-   && [[ -n "$(docker ps -aq --filter label=com.docker.compose.project=xcape --filter name=frontend-dev 2>/dev/null)" ]]; then
-  echo "Note: your dev containers still run under the old compose project 'xcape'." >&2
-  echo "      Move them once (data volumes are kept):" >&2
-  echo "        docker compose -p xcape -f docker-compose.dev.yml down && ./xcape.sh start dev" >&2
+# One-time move for dev checkouts that predate the xcape-dev project name: their data lives in
+# `xcape_*` volumes (and maybe containers) of project `xcape`. Never on the server, where
+# `xcape` IS prod.
+if [[ "$ENV" == "dev" && "$DEFAULT_ENV" == "dev" && "$CMD" != "adopt-dev-volumes" ]] \
+   && docker volume inspect xcape_postgres_dev_data >/dev/null 2>&1 \
+   && ! docker volume inspect xcape-dev_postgres_dev_data >/dev/null 2>&1; then
+  echo "Note: your dev data is still in the old 'xcape_*' volumes. Move it once with:" >&2
+  echo "        ./xcape.sh adopt-dev-volumes dev" >&2
 fi
 
 # psql / pg_dump use the credentials the db container itself was started with, so they work
@@ -243,6 +244,27 @@ case "$CMD" in
     SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py \
       || { echo "SMOKE TESTS FAILED — investigate before sending traffic"; exit 1; }
     echo "==> Deploy complete." ;;
+  adopt-dev-volumes)
+    # One-time: copy the dev volumes created under the old compose project name (`xcape_*`)
+    # into volumes owned by `xcape-dev`, then start dev. Read-only on the old volumes, which are
+    # kept (delete them yourself once happy). Dev machines only.
+    if [[ "$ENV" != "dev" || "$DEFAULT_ENV" != "dev" ]]; then
+      echo "adopt-dev-volumes is for dev machines only — never on the server."; exit 1
+    fi
+    docker compose -p xcape -f docker-compose.dev.yml down 2>/dev/null || true  # legacy containers
+    $COMPOSE down
+    $COMPOSE up --no-start  # creates the project-owned (empty) volumes
+    for v in postgres_dev_data frontend_dev_node_modules backend_dev_xcvenv; do
+      if docker volume inspect "xcape_$v" >/dev/null 2>&1; then
+        echo "--> copying xcape_$v -> xcape-dev_$v"
+        # postgres:15-alpine is already pulled for the db service — no extra image download.
+        docker run --rm --entrypoint sh -v "xcape_$v:/from:ro" -v "xcape-dev_$v:/to" postgres:15-alpine \
+          -c 'find /to -mindepth 1 -delete && cp -a /from/. /to/'
+      fi
+    done
+    $COMPOSE up -d
+    echo "Done. The old volumes are kept; remove them once you're happy:"
+    echo "  docker volume rm xcape_postgres_dev_data xcape_frontend_dev_node_modules xcape_backend_dev_xcvenv" ;;
   reset-db)
     if [[ "$ENV" == "prod" ]]; then echo "Refusing to reset-db on prod."; exit 1; fi
     $COMPOSE down -v && $COMPOSE up -d db
@@ -279,6 +301,7 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
   backup-db               pg_dump to ./backups
   deploy prod             pull, build, restart, migrate, seed, health-check
   reset-db                (dev only) wipe DB volume
+  adopt-dev-volumes dev   (once, dev only) move data from pre-rename `xcape_*` volumes to `xcape-dev`
 
 Dev URLs: frontend http://localhost:${FRONTEND_PORT:-3030}  backend http://localhost:${BACKEND_PORT:-8030}/docs
 EOF

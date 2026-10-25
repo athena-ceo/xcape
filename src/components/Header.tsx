@@ -18,6 +18,7 @@ export function Header() {
   const [resetSid, setResetSid] = useState<number | null>(null)
   const [working, setWorking] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)  // phone nav menu
 
   // Friendly greeting with the user's name; fall back to the email handle if the
   // account has no first name yet.
@@ -48,6 +49,37 @@ export function Header() {
     }
   }
 
+  const links = () => token ? (
+    <>
+      {displayName && (
+        <span className="text-turquoise-800/80">
+          {t.nav.greeting}, <span className="font-medium text-turquoise-900">{displayName}</span>
+        </span>
+      )}
+      <Link to="/search" className="text-turquoise-600">{t.nav.search}</Link>
+      <Link to="/visa-finder" className="text-turquoise-600">{t.nav.visaFinder}</Link>
+      <button onClick={openReset} className="text-turquoise-600">{t.nav.newRequest}</button>
+      <Link to="/profile" className="text-turquoise-600">{t.nav.profile}</Link>
+      {isAdmin && <Link to="/admin" className="text-turquoise-600">{t.nav.admin}</Link>}
+      <button
+        onClick={() => { logout(); navigate('/') }}
+        className="text-turquoise-600"
+      >
+        {t.nav.logout}
+      </button>
+    </>
+  ) : (
+    <>
+      <Link to="/login" className="text-turquoise-600">{t.nav.login}</Link>
+      <Link
+        to="/register"
+        className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5"
+      >
+        {t.nav.register}
+      </Link>
+    </>
+  )
+
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 bg-white border-b border-turquoise-100">
       <Link to="/" className="flex items-center gap-2 font-medium text-turquoise-600 text-lg">
@@ -55,9 +87,7 @@ export function Header() {
         {t.appName}
       </Link>
 
-      {/* Wrap on narrow screens so links never overflow past the viewport edge (which would
-          also widen the page and clip page content like the comparison table). */}
-      <nav className="ml-auto flex flex-wrap justify-end items-center gap-x-3 gap-y-1.5 text-sm">
+      <div className="ml-auto flex items-center gap-x-3 text-sm">
         <select
           aria-label="language"
           value={lang}
@@ -71,37 +101,23 @@ export function Header() {
         <button onClick={() => setHelpOpen(true)} title={t.nav.help} aria-label={t.nav.help}
           className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-turquoise-100 text-turquoise-600 font-medium">?</button>
 
-        {token ? (
-          <>
-            {displayName && (
-              <span className="text-turquoise-800/80">
-                {t.nav.greeting}, <span className="font-medium text-turquoise-900">{displayName}</span>
-              </span>
-            )}
-            <Link to="/search" className="text-turquoise-600">{t.nav.search}</Link>
-            <Link to="/visa-finder" className="text-turquoise-600">{t.nav.visaFinder}</Link>
-            <button onClick={openReset} className="text-turquoise-600">{t.nav.newRequest}</button>
-            <Link to="/profile" className="text-turquoise-600">{t.nav.profile}</Link>
-            {isAdmin && <Link to="/admin" className="text-turquoise-600">{t.nav.admin}</Link>}
-            <button
-              onClick={() => { logout(); navigate('/') }}
-              className="text-turquoise-600"
-            >
-              {t.nav.logout}
-            </button>
-          </>
-        ) : (
-          <>
-            <Link to="/login" className="text-turquoise-600">{t.nav.login}</Link>
-            <Link
-              to="/register"
-              className="bg-turquoise-600 text-turquoise-50 rounded-md px-3 py-1.5"
-            >
-              {t.nav.register}
-            </Link>
-          </>
-        )}
-      </nav>
+        {/* From sm up the links sit inline; on phones they fold into the menu below (a wrapped
+            row of 8 links took 2–3 lines and pushed the page down). */}
+        <nav className="hidden sm:flex flex-wrap justify-end items-center gap-x-3 gap-y-1.5">{links()}</nav>
+        <button onClick={() => setMenuOpen((o) => !o)} aria-label={t.nav.menu} aria-expanded={menuOpen}
+          className="sm:hidden inline-flex items-center justify-center w-11 h-11 -mr-2 rounded-full text-turquoise-700">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" aria-hidden="true">
+            {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+          </svg>
+        </button>
+      </div>
+      {menuOpen && (
+        <nav onClick={() => setMenuOpen(false)}
+          className="sm:hidden w-full flex flex-col border-t border-turquoise-50 pt-1 text-[15px] [&>*]:py-2.5 [&>*]:text-left">
+          {links()}
+        </nav>
+      )}
 
       {resetOpen && (
         <div onClick={() => !working && setResetOpen(false)}

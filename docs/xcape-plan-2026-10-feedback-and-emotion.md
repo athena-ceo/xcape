@@ -68,7 +68,7 @@ scores 40/100). That is legitimate, but it must be explained; step 4 covers it.
 - The same data becomes a read-only assistant tool, so "why not Spain?" is answered from
   the real scores instead of invented reasons.
 
-### Step 5 — Mobile layout
+### Step 5 — Mobile layout ✅
 
 Mockups: <https://claude.ai/artifact/Vz1hy7jgJwBVdEi7RsRpCK>.
 

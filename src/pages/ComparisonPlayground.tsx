@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ChatPanel } from '../components/ChatPanel'
+import { MobileBoard, type BoardColumn } from '../components/MobileBoard'
 import { WhyNotSheet } from '../components/WhyNotSheet'
 import { CriteriaSettings } from '../components/CriteriaSettings'
 import { Spinner } from '../components/Spinner'
@@ -13,7 +14,7 @@ import { useT } from '../i18n'
 import { attrValue, languageCell, placeName } from '../i18n/places'
 import { api } from '../services/api'
 import { addCountryToBoard } from '../services/board'
-import { categories, labelOf, useCriteria, valueLabel } from '../services/criteria'
+import { categories, labelOf, nodeOf, useCriteria, valueLabel } from '../services/criteria'
 
 export function ComparisonPlayground() {
   const { t, lang } = useT()
@@ -208,6 +209,9 @@ export function ComparisonPlayground() {
     // Criteria with registry value labels (inclusion, proximity…) show their tier word.
     const vl = valueLabel(reg, key, tier, lang)
     if (vl) return vl
+    // An AI-scored criterion is coloured by its evaluation; the coarse seed word can contradict
+    // it ("High" painted amber), so show the evaluation's own tier word whenever there is one.
+    if (tier && nodeOf(reg, key)?.kind === 'objective') return tierWord(tier)
     const raw = attrs?.[key]
     return raw ? attrValue(t, raw) : tierWord(tier)
   }
@@ -600,6 +604,51 @@ export function ComparisonPlayground() {
 
   // One leaf criterion row (used inside each open category group). Weight + filter live in a
   // compact popover opened from the chip, so the row stays a single clean line.
+  // "Show other criteria": reveal weight-0 criteria. They live inside category groups, so also
+  // expand the groups that contain them — otherwise nothing visibly changes (a real point of
+  // confusion in user testing). Shared by the table and the phone board.
+  function toggleShowZero() {
+    const next = !showZero
+    setShowZero(next)
+    if (next) {
+      setOpenCats((o) => {
+        const m = { ...o }
+        for (const g of groups) {
+          if (g.leaves.some((k) => !visibleLeaf(k))) m[g.key] = true
+        }
+        return m
+      })
+    }
+  }
+  const hiddenCount = groups.reduce((n, g) => n + g.leaves.filter((k) => !visibleLeaf(k)).length, 0)
+
+  // --- Phone board (< sm): the same data as the table, as cards / head-to-head ---
+  const mobileColumns: BoardColumn[] = [
+    ...(baseline ? [{
+      kind: 'home' as const, id: 'home', name: placeName(baseline, lang), placeId: baseline.id,
+      score: baseline.match_score ?? null, quality: baseline.quality ?? {}, reasons: baseline.reasons ?? {},
+      violations: [], pinned: false,
+    }] : []),
+    ...candidates.map((c) => ({
+      kind: 'cand' as const, id: String(c.id), name: placeName(places[c.place_id], lang), placeId: c.place_id,
+      score: c.match_score ?? null, quality: c.quality ?? {}, reasons: c.reasons ?? {},
+      violations: c.filter_violations ?? [], pinned: c.override === 'in',
+    })),
+  ]
+  const mobileGroups = orderedGroups.map((g) => {
+    let keys = showZero ? g.leaves : g.leaves.filter(visibleLeaf)
+    if (sortMode === 'importance') keys = [...keys].sort((a, b) => weightOf(b) - weightOf(a))
+    return { key: g.key, label: g.label, keys }
+  }).filter((g) => g.keys.length > 0)
+  function mobileCell(col: BoardColumn, key: string) {
+    if (col.kind === 'home' && col.reasons?.[key]?.code === 'home_na') return t.comparison.homeNa
+    const src = col.kind === 'home' ? baseline : candidates.find((c) => String(c.id) === col.id)
+    if ((src?.pending || []).includes(key)) return <Spinner />
+    const attrs = col.kind === 'home' ? baseline?.attributes : places[col.placeId]?.attributes
+    const v = cellValue(key, attrs, col.quality?.[key])
+    return col.violations.includes(key) ? <>⚠ {v}</> : v
+  }
+
   function leafRow(key: string) {
     return (
       <tr key={key} className="border-t border-turquoise-50">
@@ -722,13 +771,25 @@ export function ComparisonPlayground() {
         </label>
       </div>
 
+      {/* Phones: cards / head-to-head instead of the wide matrix (mockups A + B). */}
+      <div className="sm:hidden">
+        <MobileBoard searchId={sid} columns={mobileColumns} groups={mobileGroups}
+          critLabel={critLabel} cellText={mobileCell} qualityClass={qualityClass} reasonText={reasonText}
+          onWhy={(col, key) => openWhy({ place_id: col.placeId, reasons: col.reasons, quality: col.quality }, key)}
+          onExplain={(col) => (col.kind === 'home' ? showBaselineExplanation()
+            : showExplanation(candidates.find((c) => String(c.id) === col.id)))}
+          onRemove={(col) => removeCountry(Number(col.id))}
+          onAdd={() => setAddOpen(true)}
+          hiddenCount={hiddenCount} showZero={showZero} onToggleZero={toggleShowZero} />
+      </div>
+
       {/* Interaction hint */}
-      <p className="flex items-center gap-1.5 text-xs text-turquoise-800/60 mb-2">
+      <p className="hidden sm:flex items-center gap-1.5 text-xs text-turquoise-800/60 mb-2">
         <span aria-hidden>👆</span>{t.comparison.tableHint}
       </p>
 
-      {/* Comparison table */}
-      <div className="overflow-x-auto bg-white border border-turquoise-100 rounded-lg mb-4">
+      {/* Comparison table (tablet and up) */}
+      <div className="hidden sm:block overflow-x-auto bg-white border border-turquoise-100 rounded-lg mb-4">
         {/* table-fixed: the label column keeps its set width and the country columns share the
             rest equally, so a long value (e.g. a multi-language list) wraps inside its column
             instead of widening it — keeps the board readable on narrow/mobile viewports. */}
@@ -831,28 +892,13 @@ export function ComparisonPlayground() {
               )
             })}
             {(() => {
-              const hidden = groups.reduce((n, g) => n + g.leaves.filter((k) => !visibleLeaf(k)).length, 0)
+              const hidden = hiddenCount
               if (!hidden) return null
               const cols = 1 + (baseline ? 1 : 0) + candidates.length
               return (
                 <tr className="border-t border-turquoise-100">
                   <td colSpan={cols} className="p-2 text-center">
-                    <button onClick={() => {
-                        const next = !showZero
-                        setShowZero(next)
-                        // Reveal the rows: weight-0 criteria live inside category groups, so
-                        // expand the groups that contain them — otherwise nothing visibly
-                        // changes (a real point of confusion in user testing).
-                        if (next) {
-                          setOpenCats((o) => {
-                            const m = { ...o }
-                            for (const g of groups) {
-                              if (g.leaves.some((k) => !visibleLeaf(k))) m[g.key] = true
-                            }
-                            return m
-                          })
-                        }
-                      }}
+                    <button onClick={toggleShowZero}
                       className="text-xs text-turquoise-600 hover:underline">
                       {showZero ? t.comparison.hideUnimportant : `${t.comparison.showUnimportant} (${hidden})`}
                     </button>
@@ -1095,7 +1141,7 @@ export function ComparisonPlayground() {
                 <tr className="text-left text-turquoise-800/60 border-b border-turquoise-100">
                   <th className="py-1.5">{t.comparison.explainCriterion}</th>
                   <th className="py-1.5 text-right">{t.comparison.explainQuality}</th>
-                  <th className="py-1.5 text-right">{t.comparison.explainWeight}</th>
+                  <th className="py-1.5 text-right hidden sm:table-cell">{t.comparison.explainWeight}</th>
                   <th className="py-1.5 text-right">{t.comparison.explainContribution}</th>
                 </tr>
               </thead>
@@ -1109,14 +1155,15 @@ export function ComparisonPlayground() {
                       )}
                     </td>
                     <td className="py-1.5 text-right">{r.quality}%</td>
-                    <td className="py-1.5 text-right">×{r.weight}</td>
+                    <td className="py-1.5 text-right hidden sm:table-cell">×{r.weight}</td>
                     <td className="py-1.5 text-right font-medium text-turquoise-700">+{r.contribution}%</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-turquoise-200">
-                  <td className="py-2 font-medium" colSpan={3}>{t.comparison.explainTotal}</td>
+                  <td className="py-2 font-medium" colSpan={2}>{t.comparison.explainTotal}</td>
+                  <td className="hidden sm:table-cell" />
                   <td className="py-2 text-right font-medium text-turquoise-700">{Math.round(explain.data.score)}%</td>
                 </tr>
               </tfoot>
