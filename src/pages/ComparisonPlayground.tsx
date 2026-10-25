@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ChatPanel } from '../components/ChatPanel'
+import { WhyNotSheet } from '../components/WhyNotSheet'
 import { CriteriaSettings } from '../components/CriteriaSettings'
 import { Spinner } from '../components/Spinner'
 import { Waiting } from '../components/Waiting'
@@ -35,6 +36,7 @@ export function ComparisonPlayground() {
   const [newCountry, setNewCountry] = useState('')
   const [researching, setResearching] = useState(false)
   const [addOpen, setAddOpen] = useState(false)  // the "+ add a country" modal
+  const [whyOpen, setWhyOpen] = useState(false)  // "Why isn't a country in my top 5?" sheet
   const [customCrit, setCustomCrit] = useState<{ key: string; label: string; label_fr?: string; label_en?: string; weight?: number; min?: number; category?: string }[]>([])
   const [newCustom, setNewCustom] = useState('')
   const [newCustomDesc, setNewCustomDesc] = useState('')
@@ -966,11 +968,19 @@ export function ComparisonPlayground() {
       )}
 
       {/* Quiet entry to the full ranked list (progressive disclosure — keeps the board minimal). */}
-      <div className="mb-5">
+      <div className="mb-5 flex flex-wrap gap-x-5 gap-y-2">
         <Link to={`/explore/${sid}`} className="text-sm text-turquoise-600 hover:underline">
           {t.explore.exploreAll} →
         </Link>
+        <button onClick={() => setWhyOpen(true)} className="text-sm text-turquoise-600 hover:underline">
+          {t.whyNot.entry}
+        </button>
       </div>
+      {whyOpen && (
+        <WhyNotSheet searchId={sid} placeId={null} critLabel={critLabel} board={boardMembers()}
+          countries={Object.values(places).filter((p: any) => p.id !== baseline?.id) as any[]}
+          onClose={() => setWhyOpen(false)} onChanged={reload} />
+      )}
 
       {/* Chat — shared conversation with the drill-down page (same searchId). */}
       <ChatPanel searchId={sid} onChanged={reload} />

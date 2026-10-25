@@ -5,6 +5,34 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — "Why isn't X in my top 5?", and an assistant that answers from the real scores
+
+**What users saw:** a tester couldn't tell why Spain was missing from her top 5. Asked "why
+didn't Spain come up?", the assistant invented reasons (it even cited Portugal's NHR tax
+regime, which closed in 2024), because it had no access to the scores.
+
+- **New `GET /searches/{id}/why/{place_id}`** (`shortlist.why_not`, no AI call). For a given
+  country it returns:
+  - its status: home, removed by the user, on the board, excluded by a filter, still being
+    assessed, or simply ranked below;
+  - its rank among all candidate countries (the Explore order);
+  - each blocking filter, with the user's minimum and the country's value;
+  - the criteria where it loses the most points against the user's #5 (the weakest board
+    country, or the 5th best qualifying one), and where it does better.
+- **"Why not?" sheet** (mockup C): a bottom sheet on phones, a card on desktop. Open it from
+  "Why isn't a country in my top 5?" under the board (country picker), or from "Why?" on any
+  Explore row. Actions: add the country (anyway, when a filter excludes it) or relax the
+  blocking filter; the sheet then refreshes to the country's new standing.
+- **Grounded assistant:**
+  - Two new read-only tools: `explain_country` (the same data as the sheet) and `get_ranking`
+    (the full ranking with scores, board membership and failed filters).
+  - The system prompt requires `explain_country` before explaining why a country ranks where
+    it does, and bases the answer only on its result.
+  - The assistant's filter-violation check now uses the board's values (it skipped the
+    per-user visa layer).
+- **`filter_advice` no longer counts the home country** as a candidate (`rank_all` already
+  excluded it), so "N countries qualify" matches the ranking.
+
 ### 2026-10-25 — The home country is scored as home, not as a foreign destination
 
 **What users saw:** the first comparison column (where you live) was judged as if you were a

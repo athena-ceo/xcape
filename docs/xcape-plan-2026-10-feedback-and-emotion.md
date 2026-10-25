@@ -56,7 +56,7 @@ scores 40/100). That is legitimate, but it must be explained; step 4 covers it.
 - Bug fix: the PDF report's home column scored every AI-researched criterion as 0.5 (no
   evals were passed in).
 
-### Step 4 — "Why not X?" + grounded assistant
+### Step 4 — "Why not X?" + grounded assistant ✅
 
 - `GET /searches/{id}/why/{place_id}` returns:
   - the country's rank among all countries;

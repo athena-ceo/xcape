@@ -280,6 +280,22 @@ def explain_baseline(
     return shortlist_service.explain_place(db, user, baseline, search)
 
 
+@router.get("/{search_id}/why/{place_id}")
+def why_not(
+    search_id: int,
+    place_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """"Why isn't X in my top 5?" — rank, blocking filters, and the criteria where it loses
+    points against the user's #5, from the same scores as the board (no AI call)."""
+    search = _owned(db, user, search_id)
+    place = db.get(Place, place_id)
+    if place is None or place.kind != "country":
+        raise HTTPException(status_code=404, detail="Place not found")
+    return shortlist_service.why_not(db, user, search, place)
+
+
 @router.patch("/{search_id}/candidates/{candidate_id}", response_model=CandidateOut)
 def set_selected(
     search_id: int,

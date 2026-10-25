@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { WhyNotSheet } from '../components/WhyNotSheet'
 import { useT } from '../i18n'
 import { placeName } from '../i18n/places'
 import { api } from '../services/api'
@@ -28,6 +29,7 @@ export function ExplorePage() {
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<'score' | 'name'>('score')
   const [adding, setAdding] = useState<Set<number>>(new Set())
+  const [whyId, setWhyId] = useState<number | null>(null)  // "Why isn't X in my top 5?" sheet
   type Spark = { place_id: number; name: string; iso_code: string | null; score: number; standout_key: string; standout_value: number }
   const [sparks, setSparks] = useState<Spark[] | null>(null)
   // The search's custom criteria — needed to localize custom keys (e.g. community safety) in
@@ -147,16 +149,30 @@ export function ExplorePage() {
                   {onBoard ? (
                     <span className="text-xs text-turquoise-600/70 shrink-0">{t.explore.onBoard}</span>
                   ) : (
-                    <button onClick={() => add(r)} disabled={adding.has(r.place_id)}
-                      className="text-xs border border-turquoise-100 rounded-md px-2.5 py-1 text-turquoise-700 hover:bg-turquoise-50 disabled:opacity-50 shrink-0">
-                      {t.explore.addToBoard}
-                    </button>
+                    <>
+                      <button onClick={() => setWhyId(r.place_id)}
+                        className="text-xs text-turquoise-700 underline decoration-dotted underline-offset-2 px-1 py-1 shrink-0">
+                        {t.whyNot.explore}
+                      </button>
+                      <button onClick={() => add(r)} disabled={adding.has(r.place_id)}
+                        className="text-xs border border-turquoise-100 rounded-md px-2.5 py-1 text-turquoise-700 hover:bg-turquoise-50 disabled:opacity-50 shrink-0">
+                        {t.explore.addToBoard}
+                      </button>
+                    </>
                   )}
                 </li>
               )
             })}
           </ul>
         </>
+      )}
+      {whyId != null && rows && (
+        <WhyNotSheet searchId={sid} placeId={whyId} critLabel={critLabel}
+          countries={rows.map((r) => ({ id: r.place_id, name: r.name, iso_code: r.iso_code }))}
+          board={rows.filter((x) => x.on_board)
+            .map((x) => ({ place_id: x.place_id, name: placeName(x, lang), score: x.score }))}
+          onClose={() => setWhyId(null)}
+          onChanged={() => { api.explore(sid).then(setRows).catch(() => {}) }} />
       )}
     </main>
   )

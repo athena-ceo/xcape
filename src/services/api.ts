@@ -103,6 +103,8 @@ export const api = {
     qualified: number; board_size: number
     suggestions: { key: string; admits: number; best_score: number; best_country: string | null }[]
   }>(`/searches/${id}/filter-advice`),
+  // "Why isn't X in my top 5?" — rank, blocking filters, gaps vs the user's #5 (no AI call).
+  whyNot: (id: number, placeId: number) => request<any>(`/searches/${id}/why/${placeId}`),
   addCandidate: (id: number, body: { place_id?: number; place_name?: string; evict_place_id?: number }) =>
     request<any>(`/searches/${id}/candidates`, { method: 'POST', body: JSON.stringify(body) }),
   removeCandidate: (id: number, candidateId: number) =>

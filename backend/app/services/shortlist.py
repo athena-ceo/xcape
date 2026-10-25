@@ -896,6 +896,88 @@ def rank_all(db: Session, user: User, search: Search) -> list[dict]:
     return rows
 
 
+
+def why_not(db: Session, user: User, search: Search, place: Place) -> dict:
+    """Why `place` isn't (or is) in the user's top 5 — from the SAME scores the board uses,
+    so the "Why not X?" sheet and the assistant never invent a reason (prod 2026-10-25: asked
+    "why didn't Spain come up?", the assistant made one up).
+
+    - `status`: home (the baseline) · removed (the user took it off) · on_board · excluded (a
+      hard filter blocks it) · pending (a filter can't be judged yet) · ranked_below.
+    - `rank`/`total`: its position in the full ranking (the Explore list order).
+    - `violations`: each blocking filter with the user's minimum and the country's value, and
+      whether the user can relax it (`relax`: "filter" = profile filter, "custom_min" = a
+      custom criterion's minimum).
+    - `reference`: the board's weakest member (the user's "#5") — or the 5th best qualifying
+      country when the board is empty — with `gaps` (criteria where the place loses the most
+      points against it) and `strengths` (where it wins).
+    """
+    out: dict = {"place_id": place.id, "name": place.name, "iso_code": place.iso_code}
+    if is_home(db, user, place):
+        return {**out, "status": "home"}
+
+    ranked = rank_all(db, user, search)
+    pos = next((i for i, r in enumerate(ranked) if r["place_id"] == place.id), None)
+    row = ranked[pos] if pos is not None else None
+    expl = explain_place(db, user, place, search)
+    out.update(rank=(pos + 1) if pos is not None else None, total=len(ranked), score=expl["score"],
+               pending=row["pending"] if row else [], violations=[])
+
+    removed = db.query(Candidate).filter(
+        Candidate.search_id == search.id, Candidate.place_id == place.id,
+        Candidate.override == "out").first() is not None
+    if row and row["violations"]:
+        quality = {r["key"]: r["quality"] for r in expl["rows"]}
+        filters = (user.profile.filters or {}) if user.profile else {}
+        mins = {c["key"]: c.get("min") for c in (search.custom_criteria or []) if c.get("key")}
+        for key in row["violations"]:
+            custom = key in mins and key not in filters
+            out["violations"].append({
+                "key": key, "value": quality.get(key), "min": mins[key] if custom else filters.get(key),
+                "relax": "custom_min" if custom else "filter",
+            })
+
+    if removed:
+        status = "removed"
+    elif row and row["on_board"]:
+        status = "on_board"
+    elif out["violations"]:
+        status = "excluded"
+    elif out["pending"]:
+        status = "pending"
+    else:
+        status = "ranked_below"
+    out["status"] = status
+
+    # The yardstick: the weakest country on the board, else the 5th best that qualifies.
+    board_ids = [r["place_id"] for r in ranked if r["on_board"] and r["place_id"] != place.id]
+    if board_ids:
+        ref_id = board_ids[-1]  # ranked is best-first → last board member = the user's "#5"
+    else:
+        ok = [r["place_id"] for r in ranked if not r["violations"] and r["place_id"] != place.id]
+        ref_id = ok[min(len(ok), MAX_COMPARE) - 1] if ok else None
+    ref = db.get(Place, ref_id) if ref_id else None
+    if ref is None or status == "on_board":
+        return {**out, "reference": None, "gaps": [], "strengths": []}
+
+    ref_expl = explain_place(db, user, ref, search)
+    mine = {r["key"]: r for r in expl["rows"]}
+    theirs = {r["key"]: r for r in ref_expl["rows"]}
+    diffs = []
+    for key in set(mine) | set(theirs):
+        a, b = mine.get(key), theirs.get(key)
+        if not a or not b:
+            continue
+        diffs.append({"key": key, "quality": a["quality"], "ref_quality": b["quality"],
+                      "weight": a["weight"], "points": round(b["contribution"] - a["contribution"], 1)})
+    out["reference"] = {"place_id": ref.id, "name": ref.name, "iso_code": ref.iso_code,
+                        "score": ref_expl["score"]}
+    out["gaps"] = sorted((d for d in diffs if d["points"] > 0.05), key=lambda d: -d["points"])[:5]
+    out["strengths"] = sorted(
+        ({**d, "points": -d["points"]} for d in diffs if d["points"] < -0.05),
+        key=lambda d: -d["points"])[:3]
+    return out
+
 def wildcards(db: Session, user: User, search: Search, n: int = 3) -> list[dict]:
     """A few "spark" countries to provoke ideas — NOT recommendations. Dark horses: countries
     not on the board that genuinely EXCEL on a criterion the user weights (a standout ≥ 0.7),
@@ -964,7 +1046,7 @@ def filter_advice(db: Session, user: User, search: Search) -> dict:
             weights[c["key"]] = float(c.get("weight", 1.0))
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
 
-    countries = db.query(Place).filter(Place.kind == "country", Place.active.is_(True)).all()
+    countries = _candidate_countries(db, user)  # home is the baseline, never a candidate
     evals_by_place = _pool_evals(db, [p.id for p in countries], profile, eval_keys)
 
     qualified = 0

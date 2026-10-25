@@ -115,6 +115,39 @@ TOOLS = [
     },
     {
         "type": "function",
+        "name": "explain_country",
+        "description": (
+            "READ-ONLY. Why a country is or isn't in the user's top 5, from the app's real scores: "
+            "its rank, score, any hard filter excluding it (with the user's minimum and the "
+            "country's value), and the criteria where it loses or gains the most points against "
+            "the user's #5. ALWAYS call this before explaining why a country ranks where it does "
+            "(e.g. 'why didn't Spain come up?'), and base your explanation ONLY on its result. "
+            "English country name."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_ranking",
+        "description": (
+            "READ-ONLY. The full ranking of countries for this search (best first): score, "
+            "whether it's on the board, and any hard filters it fails. Use it to answer "
+            "'what comes next?', 'where does X rank?' or to find good options off the board."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 40}},
+            "required": [],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
         "name": "rebuild_shortlist",
         "description": "Rebuild the shortlist from the current profile (re-pick the best matches).",
         "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": False},
@@ -133,14 +166,18 @@ def _profile(db: Session, user: User) -> Profile:
 
 
 def _find_place(db: Session, name: str) -> Place | None:
-    return db.query(Place).filter(Place.kind == "country", Place.name.ilike(name)).first()
+    name = (name or "").strip()
+    q = db.query(Place).filter(Place.kind == "country")
+    return (q.filter(Place.name.ilike(name)).first()
+            or (q.filter(Place.iso_code.ilike(name)).first() if len(name) == 2 else None))
 
 
 def _violations(db: Session, user: User, search: Search, place: Place) -> list[str]:
-    """Which active hard filters this place fails (so the assistant can flag it)."""
+    """Which active hard filters this place fails (so the assistant can flag it). Same values
+    as the board, including the per-user visa/residency layer."""
     custom_defs = search.custom_criteria or []
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
-    evals = criterion_eval.values_for_place(db, place.id, eval_keys)
+    evals = sl._place_evals(db, place.id, user.profile, eval_keys)
     return sl.filter_status(place, user.profile, evals, custom_defs)["violations"]
 
 
@@ -288,6 +325,21 @@ def execute(db: Session, user: User, search: Search, name: str, args: dict) -> t
             p.name: v for p in target_places if (v := _violations(db, user, search, p))
         }
         return {"ok": True, "countries": applied, "filter_violations": violating}, True
+
+    if name == "explain_country":
+        place = _find_place(db, args.get("name", ""))
+        if place is None:
+            return {"ok": False, "error": f"unknown country {args.get('name')!r} (use the English name)"}, False
+        return {"ok": True, **sl.why_not(db, user, search, place)}, False
+
+    if name == "get_ranking":
+        limit = max(1, min(40, int(args.get("limit") or 15)))
+        rows = sl.rank_all(db, user, search)
+        return {"ok": True, "total": len(rows), "ranking": [
+            {"rank": i + 1, "name": r["name"], "score": r["score"], "on_board": r["on_board"],
+             "fails_filters": r["violations"]}
+            for i, r in enumerate(rows[:limit])
+        ]}, False
 
     if name == "rebuild_shortlist":
         sl.repopulate_board(db, user, search)
