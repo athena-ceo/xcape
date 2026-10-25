@@ -95,16 +95,12 @@ def baseline(
         return None
     profile = user.profile
     custom_defs = search.custom_criteria or []
-    view = board.criteria_view(db, place, profile, custom_defs)
+    view = board.criteria_view(db, place, profile, custom_defs, home=True)
     # Score the home country on the same weights as the candidates, so the user can see whether
-    # "stay where you are" actually beats the alternatives (requested in user testing).
-    weights = shortlist_service._effective_weights(profile)
-    for c in custom_defs:
-        if c.get("key"):
-            weights[c["key"]] = float(c.get("weight", 1.0))
-    eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
-    evals = criterion_eval.values_for_place(db, place.id, eval_keys)
-    score, _ = shortlist_service._score_place(place, weights, profile, evals)
+    # "stay where you are" actually beats the alternatives (requested in user testing) — minus
+    # the criteria that don't apply where you live. Same path as its score explanation, so the
+    # column and its breakdown always agree.
+    score = shortlist_service.explain_place(db, user, place, search)["score"]
     return {
         "id": place.id,
         "name": place.name,

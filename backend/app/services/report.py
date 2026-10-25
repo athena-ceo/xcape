@@ -119,18 +119,28 @@ def build_report(db: Session, user: User, search: Search, lang: str | None = Non
     header += [c.place.name for c in cands]
     data = [header]
 
+    # Same values as the on-screen board: shared AI evals + the per-user layer (visa, residency).
+    # The home column uses the home view — resident quality, and "N/A" where you already live —
+    # and its score comes from the same breakdown as the board. (It used to skip the evals
+    # entirely, so every AI-researched criterion printed as a neutral 50.)
     base_attrs = (baseline.attributes or {}) if baseline else {}
+    base_evals = sl.home_values(sl._place_evals(db, baseline.id, profile, eval_keys)) if baseline else {}
+    home_na = sl.home_na_keys()
+    cand_evals = {c.id: sl._place_evals(db, c.place_id, profile, eval_keys) for c in cands}
     for key in row_keys:
         row = [_label(key, lang, custom_labels)]
         if baseline:
-            bv = sl._criterion_value(key, base_attrs, profile, baseline)
-            row.append(str(round(bv * 100)))
+            if key in home_na:
+                row.append("—")
+            else:
+                bv = sl._criterion_value(key, base_attrs, profile, baseline, base_evals)
+                row.append(str(round(bv * 100)))
         for c in cands:
-            evals = {k: criterion_eval.value_of(ev) for k, ev in evals_by_cand[c.id].items()}
-            v = sl._criterion_value(key, c.place.attributes or {}, profile, c.place, evals)
+            v = sl._criterion_value(key, c.place.attributes or {}, profile, c.place, cand_evals[c.id])
             row.append(str(round(v * 100)))
         data.append(row)
-    score_row = [tr("score")] + (["—"] if baseline else []) + [
+    base_score = sl.explain_place(db, user, baseline, search)["score"] if baseline else None
+    score_row = [tr("score")] + ([f"{round(base_score)}%"] if baseline else []) + [
         f"{round(c.match_score)}%" if c.match_score is not None else "—" for c in cands
     ]
     data.append(score_row)

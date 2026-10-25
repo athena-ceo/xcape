@@ -163,7 +163,10 @@ def _place_briefing(db: Session, user: User, search: Search, place_id: int) -> s
     if place is None:
         return ""
     custom_defs = search.custom_criteria or []
-    rows = board.criterion_details(db, place, user.profile, custom_defs, user.locale or "fr")
+    from app.services import shortlist  # local import to avoid a module-load cycle
+
+    rows = board.criterion_details(db, place, user.profile, custom_defs, user.locale or "fr",
+                                   home=shortlist.is_home(db, user, place))
     lines = []
     for r in rows:
         if r.get("summary"):

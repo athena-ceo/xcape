@@ -643,6 +643,7 @@ def evaluate_pending(
     if base is not None and base.id not in {p.id for p in places}:
         places.append(base)
 
+    home_na = shortlist_service.home_na_keys()
     made = 0
     for place in places:
         if made >= limit:
@@ -654,6 +655,8 @@ def evaluate_pending(
                 break
             if key in have or attrs.get(key):
                 continue  # already evaluated, or has a usable seed bucket — no AI call
+            if base is not None and place.id == base.id and key in home_na:
+                continue  # doesn't apply where the user already lives (shown "N/A")
             if weight_of.get(key, 0) <= 0:
                 continue  # unimportant to this user — don't spend an AI call on it
             ev = criterion_eval.evaluate(db, place, key, d["label"], d.get("description"), user_id=user.id)

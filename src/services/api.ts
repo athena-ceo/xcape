@@ -171,7 +171,7 @@ export const api = {
   getPlace: (id: number) => request<any>(`/places/${id}`),
   getFacts: (id: number) => request<any>(`/places/${id}/facts`),
   getDetail: (id: number, lang: string, search?: number) =>
-    request<{ criteria: any[] }>(
+    request<{ criteria: any[]; is_home?: boolean }>(
       `/places/${id}/detail?lang=${lang}${search != null ? `&search=${search}` : ''}`,
     ),
   // Generate up to `limit` of the still-pending criteria, in the given priority order.

@@ -18,13 +18,20 @@ from app.services import shortlist as sl
 
 def criteria_view(
     db: Session, place: Place, profile: Profile | None, custom_defs: list | None,
+    home: bool = False,
 ) -> dict:
+    """Per-criterion colour tier, justification and pending state for one comparison column.
+    `home` = the user's current country: immigration criteria show "N/A" and services are
+    judged by their resident quality (see shortlist.home_na_keys / home_values)."""
     custom_keys = [c["key"] for c in (custom_defs or []) if c.get("key")]
     eval_keys = criteria.objective_keys() + custom_keys
     attrs = place.attributes or {}
     rows = criterion_eval.evals_for_place(db, place.id, eval_keys)
     evals = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
     evals.update(sl.per_user_values(db, [place.id], profile).get(place.id, {}))  # visa, residency…
+    if home:
+        evals.update(criterion_eval.values_for_place(db, place.id, eval_keys))  # + :quality parts
+        evals = sl.home_values(evals)
 
     # "Worth evaluating" = the user actually weights it. We only spend AI on (and mark pending)
     # criteria with weight > 0, so an unimportant criterion never triggers a slow web-search
@@ -62,12 +69,19 @@ def criteria_view(
                 reasons[key] = {"code": "visa_not_needed"}
                 if key in pending:
                     pending.remove(key)
+    if home:  # you already live here: no tier, no AI call, a plain "not applicable"
+        for key in sl.home_na_keys():
+            if key in reasons or key in custom_keys or key in quality:
+                quality.pop(key, None)
+                reasons[key] = {"code": "home_na"}
+                if key in pending:
+                    pending.remove(key)
     return {"quality": quality, "reasons": reasons, "pending": pending}
 
 
 def criterion_details(
     db: Session, place: Place, profile: Profile | None, custom_defs: list | None,
-    lang: str,
+    lang: str, home: bool = False,
 ) -> list[dict]:
     """Per-criterion detail for the drill-down — assembled from caches only, NO AI calls.
 
@@ -85,12 +99,16 @@ def criterion_details(
     rows = criterion_eval.evals_for_place(db, place.id, list(eval_objective_keys))
     eval_values = {k: criterion_eval.value_of(ev) for k, ev in rows.items()}
     eval_values.update(sl.per_user_values(db, [place.id], profile).get(place.id, {}))  # visa, residency…
+    if home:
+        eval_values.update(criterion_eval.values_for_place(db, place.id, list(eval_objective_keys)))
+        eval_values = sl.home_values(eval_values)
     detail = place_research.detail_map(place)
     attrs = place.attributes or {}
     # Free to settle → the visa criterion and every visa-programme criterion get the same
     # plain explanation instead of AI text about permits the household will never need.
     fa = sl.free_access(profile, place)
     moot = {"visa", "residency_income", "residency_investment", *criteria.mobility_custom_keys()} if fa else set()
+    home_na = sl.home_na_keys() if home else set()
 
     out: list[dict] = []
     for key in list(criteria.criteria_keys()) + custom_keys:
@@ -135,7 +153,11 @@ def criterion_details(
                 sources = d.get("sources", [])
             if not summary:
                 pending = True
-        if key in moot:
+        if key in home_na:
+            summary = ("Sans objet : vous vivez déjà ici." if lang == "fr"
+                       else "Not applicable: you already live here.")
+            sources, pending, meta, score = [], False, None, None
+        elif key in moot:
             summary = _free_access_summary(db, fa, key, lang)
             sources, pending, meta, score = [], False, None, round(value * 100)
         # Surface English-prevalence alongside the Language criterion (a structured fact a

@@ -610,10 +610,14 @@ export function ComparisonPlayground() {
         {baseline && (() => {
           const bpending = (baseline.pending || []).includes(key)
           const bcol = { place_id: baseline.id, reasons: baseline.reasons, quality: baseline.quality }
+          // Immigration criteria don't apply where the user already lives.
+          const na = baseline.reasons?.[key]?.code === 'home_na'
           return (
-            <td className={`p-0 text-center ${qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50'}`}>
+            <td className={`p-0 text-center ${na ? 'bg-slate-50 text-slate-500' : (qualityClass(baseline.quality?.[key]) || 'bg-turquoise-50')}`}>
               <button onClick={() => openWhy(bcol, key)} className="block w-full p-2 sm:p-3 cursor-pointer break-words underline decoration-dotted decoration-turquoise-300 underline-offset-4 hover:decoration-turquoise-600">
-                {bpending
+                {na
+                  ? t.comparison.homeNa
+                  : bpending
                   ? <span className="inline-flex justify-center text-turquoise-800/40"><Spinner /></span>
                   : cellValue(key, baseline.attributes, baseline.quality?.[key])}
               </button>
@@ -1107,6 +1111,11 @@ export function ComparisonPlayground() {
                 </tr>
               </tfoot>
             </table>
+            {explain.data.home && (explain.data.excluded ?? []).length > 0 && (
+              <p className="mt-3 text-xs text-turquoise-800/60">
+                {t.comparison.explainHomeExcluded} {explain.data.excluded.map(critLabel).join(', ')}
+              </p>
+            )}
           </div>
         </div>
       )}

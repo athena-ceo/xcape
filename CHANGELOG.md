@@ -5,6 +5,32 @@
 
 ## [Unreleased]
 
+### 2026-10-25 — The home country is scored as home, not as a foreign destination
+
+**What users saw:** the first comparison column (where you live) was judged as if you were a
+foreigner moving there: "hard" visa, weak newcomer access to healthcare, retirement-visa
+routes. The home country page offered visa pathways and golden-visa routes for it.
+
+- **Immigration criteria are "N/A" at home** and left out of the home score. They are shown
+  as a grey "N/A" cell with the explanation "you already live here", and no AI call is spent
+  on them. They are: visa, residency by income or investment, expat community, language, and
+  visa-programme criteria such as "Retirement visa" (`shortlist.home_na_keys`).
+- **Services use the resident quality score at home.** Healthcare and education (and the
+  retiree's "Healthcare for retirees") use their `quality` sub-score instead of the newcomer
+  `access` headline (`shortlist.home_values`).
+- **One score path for home.** The baseline column used to score home without the per-user
+  values, so it could disagree with its own breakdown. The column, its breakdown, the PDF and
+  the assistant's country context now all go through `explain_place`. The breakdown lists what
+  it left out and why.
+- **Home country page:** the visa-pathways panel is replaced by a short "this is where you
+  live" note, and the affordability calculator drops the visa income routes and the
+  real-estate visa tie-in for home.
+- **PDF report fixes:**
+  - The home column used to print every AI-researched criterion as a neutral 50 (no evals
+    were passed in); it now uses the home view.
+  - The home column now has a score.
+  - Candidate columns now include the per-user visa/residency values, matching the board.
+
 ### 2026-10-25 — Fairer visa scoring: obvious EU destinations no longer lose to retiree-visa programmes
 
 **What users saw:** Mauritius, Uruguay, Panama and Costa Rica sat on most boards. Spain was

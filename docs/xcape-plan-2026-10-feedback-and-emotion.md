@@ -44,11 +44,11 @@ the same command without `--dry-run`.
 Still open: Brazil is excluded by the retiree default filter "safety at least OK" (it
 scores 40/100). That is legitimate, but it must be explained; step 4 covers it.
 
-### Step 3 — Home-country handling (in progress)
+### Step 3 — Home-country handling ✅
 
 - Immigration criteria in the home column show "N/A — you live here" and are left out of
-  the home score: visa, residency by income or investment, and visa-programme custom
-  criteria such as "Retirement visa".
+  the home score: visa, residency by income or investment, expat community, language, and
+  visa-programme custom criteria such as "Retirement visa".
 - Newcomer-access criteria (healthcare, education) use the resident **quality** sub-score at
   home instead of the "how a newcomer gets access" score.
 - The country page for the home country hides the visa-route, golden-visa and

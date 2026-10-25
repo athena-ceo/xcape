@@ -616,10 +616,42 @@ def rescore_candidates(db: Session, user: User, search: Search) -> list[Candidat
     return candidates
 
 
+# --- The home country -------------------------------------------------------------------
+# The user's current country is the comparison BASELINE, not a destination: they already live
+# there. Immigration criteria don't apply (scored as a foreigner, home looked "hard to settle"),
+# and the newcomer-access lens is wrong for services they already use.
+_HOME_NA = ("visa", "residency_income", "residency_investment", "expat_community", "language_ease")
+
+
+def home_na_keys() -> set[str]:
+    """Criteria that don't apply where you already live — shown "N/A", left out of the score."""
+    return {*_HOME_NA, *criteria.mobility_custom_keys()}
+
+
+def home_values(evals: dict[str, float]) -> dict[str, float]:
+    """At home, a service criterion (healthcare, education, …) is judged by its resident QUALITY
+    sub-score, not by how easily a newcomer gets access to it."""
+    out = dict(evals)
+    for key, value in evals.items():
+        if key.endswith(":quality"):
+            out[key.rsplit(":", 1)[0]] = value
+    return out
+
+
+def is_home(db: Session, user: User, place: Place | None) -> bool:
+    if place is None:
+        return False
+    from app.services.comparison import get_current_country_place  # avoid circular import
+
+    home = get_current_country_place(db, user)
+    return home is not None and home.id == place.id
+
+
 def explain_place(db: Session, user: User, place: Place | None, search: Search | None) -> dict:
     """Break down how a place's score was derived under this search: each weighted criterion's
     quality (0-100), its weight, and the contribution it adds to the final score. Contributions
-    sum to the score. Works for any place — a board candidate OR the baseline (home country)."""
+    sum to the score. Works for any place — a board candidate OR the baseline (home country),
+    which leaves out the criteria that don't apply where you live (listed in `excluded`)."""
     from app.services import criteria, criterion_eval  # avoid circular import at module load
 
     profile = user.profile
@@ -634,6 +666,13 @@ def explain_place(db: Session, user: User, place: Place | None, search: Search |
             weights[c["key"]] = float(c.get("weight", 1.0))
     eval_keys = criteria.objective_keys() + [c["key"] for c in custom_defs if c.get("key")]
     evals = _place_evals(db, place.id, profile, eval_keys) if place else {}
+    home = is_home(db, user, place)
+    excluded: list[str] = []
+    if home:
+        na = home_na_keys()
+        excluded = [k for k, w in weights.items() if k in na and w > 0]
+        weights = {k: w for k, w in weights.items() if k not in na}
+        evals = home_values(evals)
 
     active = {k: w for k, w in weights.items() if w > 0}
     wsum = sum(active.values())
@@ -649,7 +688,8 @@ def explain_place(db: Session, user: User, place: Place | None, search: Search |
         })
     rows.sort(key=lambda r: r["contribution"], reverse=True)
     score = round(sum(r["contribution"] for r in rows), 1)
-    return {"score": score, "weight_total": round(wsum, 2), "rows": rows}
+    return {"score": score, "weight_total": round(wsum, 2), "rows": rows,
+            "home": home, "excluded": excluded}
 
 
 def explain_candidate(db: Session, user: User, candidate: Candidate) -> dict:

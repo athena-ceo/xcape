@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from app.schemas.place import MediaOut, PlaceOut
 from app.services import (
     affordability, ai_client, board, country_facts, criteria, criterion_eval, currencies, fx,
-    place_research, visa_pathways,
+    place_research, shortlist, visa_pathways,
 )
 
 router = APIRouter()
@@ -84,7 +84,9 @@ def get_detail(
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     custom_defs = _custom_defs_for(db, user, search)
-    return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang)}
+    home = shortlist.is_home(db, user, place)
+    return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang, home=home),
+            "is_home": home}
 
 
 class GenerateDetailRequest(BaseModel):
@@ -124,9 +126,12 @@ def generate_detail(
     have_detail = set(place_research.detail_map(place).keys())
 
     made = 0
+    skip = shortlist.home_na_keys() if shortlist.is_home(db, user, place) else set()
     for key in body.keys:
         if made >= body.limit:
             break
+        if key in skip:
+            continue  # doesn't apply where the user already lives — no AI call
         if key in defs:
             if key in have_evals and not body.force:
                 continue
@@ -157,7 +162,9 @@ def generate_detail(
             place_research.fill_criterion(db, place, "english", user_id=user.id)
         except Exception:  # best-effort — never block the page on a display attribute
             db.rollback()
-    return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang)}
+    home = shortlist.is_home(db, user, place)
+    return {"criteria": board.criterion_details(db, place, user.profile, custom_defs, lang, home=home),
+            "is_home": home}
 
 
 def _visa_panel(db: Session, place: Place, user: User, lang: str) -> dict:
@@ -254,9 +261,17 @@ def get_affordability(
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
-    return affordability.compute(
+    return _for_home(db, user, place, affordability.compute(
         db, place, user.profile, budget_monthly=budget, household_size=household,
-        currency=currencies.effective_currency(db, user), lang=lang)
+        currency=currencies.effective_currency(db, user), lang=lang))
+
+
+def _for_home(db: Session, user: User, place: Place, payload: dict) -> dict:
+    """Where the user already lives, visa income routes and the real-estate visa tie-in don't
+    apply — the calculator keeps the cost-vs-budget part only."""
+    if shortlist.is_home(db, user, place):
+        payload.update(income_pathways=[], investment_route=None, is_home=True)
+    return payload
 
 
 class GenerateAffordabilityRequest(BaseModel):
@@ -291,12 +306,13 @@ def generate_affordability(
         db.rollback()
     # Populate the income-based routes the tie-in checks (always cache-first — the visa panel /
     # the visa regenerate flow own pathway freshness, so we don't re-force them here).
-    relevant = set(visa_pathways.relevant_categories(user.profile, place))
-    visa_pathways.ensure_for_place(
-        db, place, [c for c in affordability.INCOME_CATEGORIES if c in relevant], user_id=user.id)
-    return affordability.compute(
+    if not shortlist.is_home(db, user, place):
+        relevant = set(visa_pathways.relevant_categories(user.profile, place))
+        visa_pathways.ensure_for_place(
+            db, place, [c for c in affordability.INCOME_CATEGORIES if c in relevant], user_id=user.id)
+    return _for_home(db, user, place, affordability.compute(
         db, place, user.profile, budget_monthly=body.budget, household_size=body.household,
-        currency=currencies.effective_currency(db, user), lang=lang)
+        currency=currencies.effective_currency(db, user), lang=lang))
 
 
 @router.get("/{place_id}/media", response_model=list[MediaOut])

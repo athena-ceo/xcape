@@ -28,6 +28,8 @@ export function Drilldown() {
   const [place, setPlace] = useState<any>(null)
   const [facts, setFacts] = useState<any>(null)
   const [detail, setDetail] = useState<any[] | null>(null)
+  // The user's own country: visa routes and immigration criteria don't apply here.
+  const [isHome, setIsHome] = useState(false)
   const [media, setMedia] = useState<any[]>([])
   const [loadingDetail, setLoadingDetail] = useState(true)
   const [loadingMedia, setLoadingMedia] = useState(true)
@@ -260,7 +262,11 @@ export function Drilldown() {
   useEffect(() => {
     let cancelled = false
     api.getDetail(id, lang, searchId ?? undefined)
-      .then((d) => { if (!cancelled) { setDetail(d.criteria ?? []); detailRef.current = d.criteria ?? [] } })
+      .then((d) => {
+        if (cancelled) return
+        setDetail(d.criteria ?? []); detailRef.current = d.criteria ?? []
+        setIsHome(!!d.is_home)
+      })
       .catch(() => { if (!cancelled) setDetail([]) })
       .finally(() => { if (!cancelled) { setLoadingDetail(false); void drain() } })
     return () => { cancelled = true }
@@ -918,7 +924,13 @@ export function Drilldown() {
       {/* Budget / affordability calculator — does this user's budget cover living here */}
       {affordSection()}
 
-      {/* Visa pathways — the gate: how this user could legally settle here (collapsible, lazy) */}
+      {/* Visa pathways — the gate: how this user could legally settle here (collapsible, lazy).
+          Not shown for the user's own country: they already live there. */}
+      {isHome ? (
+        <p className="mb-6 text-sm rounded-lg px-3 py-2 bg-turquoise-50/70 border border-turquoise-100 text-turquoise-800/80">
+          {t.drilldown.homeNote}
+        </p>
+      ) : (
       <section className="mb-6">
         <button onClick={toggleVisa}
           className="w-full flex items-center gap-2 text-left bg-turquoise-50/70 border border-turquoise-100 rounded-lg px-3 py-2">
@@ -939,6 +951,7 @@ export function Drilldown() {
           </div>
         )}
       </section>
+      )}
 
       {/* Per-criterion detail, grouped by category (collapsed except the clicked one) */}
       <div className="flex items-center gap-3 mb-3">
