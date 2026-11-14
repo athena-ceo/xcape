@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 2026-11-14 — General working rules updated
+
+The generated copy at `.claude/rules/general.md` follows `athena-ceo/working-rules`: a
+CHANGELOG entry for every commit, work in the main checkout rather than agent worktrees,
+tests run before work is called done, reports for someone else as Word files, and lasting
+instructions kept in the rules files rather than per-machine memory.
+
 ### 2026-11-14 — General working rules come from one shared source
 
 The conventions that were restated here as « same as golden-path » are now a generated copy
