@@ -48,15 +48,19 @@ Do **not** add headers to `node_modules`, lockfiles, or vendored trees.
 **8030 (backend) / 3030 (frontend)** — distinct from golden-path's 8020/3020. Postgres is
 not host-published in production.
 
-## Conventions (same as golden-path)
+## Conventions
 
-- **Plan before executing** non-trivial changes; wait for confirmation.
-- **No time estimates** — use scope signals (small/medium/large, low-risk, etc.).
-- **No automatic commits or pushes** — only when the user explicitly says commit/push, and
-  only after they confirm they validated locally.
-- **Localize every user-visible string** in both `src/i18n/fr.ts` and `src/i18n/en.ts` via
-  `useT()`. Default locale is French. Never hardcode UI strings; never use `lang === 'fr' ? …` ternaries.
-- **Changelog discipline** — single canonical `CHANGELOG.md` at repo root.
+Harley's general way of working — plan before executing, the commit and push rules,
+working on `main`, changelog discipline, no time estimates, no skipped tests, questions
+phrased in UX terms — is in [`.claude/rules/general.md`](.claude/rules/general.md). That
+file is a **generated copy** shared by every Athena project: never edit it here. Change
+`general.md` in the `working-rules` repository, then run
+`python3 ../working-rules/sync.py .`; `scripts/lint-working-rules.py` (CI) fails if the
+copy was edited in place.
+
+Specific to xCape:
+
+- **Localized strings** live in `src/i18n/fr.ts` and `src/i18n/en.ts`, read via `useT()`.
+  Default locale is French.
 - **Backend checklist** — ORM change ⇒ Alembic migration (idempotent) + constraint test;
-  every new route has an auth dependency; no skipped tests (pass/fail only).
-- **Phrase user-facing product questions in UX terms**, with one RECOMMENDED option.
+  every new route has an auth dependency.

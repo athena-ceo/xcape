@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 2026-11-14 — General working rules come from one shared source
+
+The conventions that were restated here as « same as golden-path » are now a generated copy
+of `general.md` from `athena-ceo/working-rules`, at `.claude/rules/general.md`, so every
+machine and cloud session loads the same rules. `scripts/lint-working-rules.py` (CI) fails if
+the copy is edited in place. `CLAUDE.md` and `AGENTS.md` keep only what is specific to xCape.
+
 ### 2026-10-25 — "Tell us your story" on the profile page
 
 Users who onboarded before the story existed (all current prod testers) had no way to write
