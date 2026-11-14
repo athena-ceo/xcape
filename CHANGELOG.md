@@ -1,9 +1,15 @@
-<!-- Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved. -->
+<!-- Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved. -->
 <!-- Proprietary and confidential — unauthorized copying or distribution is prohibited. -->
 
 # Changelog
 
 ## [Unreleased]
+
+### 2026-11-14 — The company's name in every copyright notice
+
+« Athena Decisions Systems SAS » is corrected to « Athena Decision Systems SAS » in the 220
+files that carried it: copyright notices, and the ownership sentence in `AGENTS.md`. No
+behaviour changes.
 
 ### 2026-11-14 — Lasting notes from agent memory are now in the rules
 

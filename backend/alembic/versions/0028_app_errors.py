@@ -1,4 +1,4 @@
-# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 """add app_errors table + ai_query_logs.status/error (failures surfaced in admin)
 

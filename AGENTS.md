@@ -1,6 +1,6 @@
 # xCape — Codex Project Instructions
 
-<!-- Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved. -->
+<!-- Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved. -->
 <!-- Proprietary and confidential — unauthorized copying or distribution is prohibited. -->
 
 ## What this is
@@ -12,10 +12,10 @@ See `docs/xcape-requirements-high-level.md` and `docs/xcape-architecture-and-pla
 
 ## Proprietary software and copyright
 
-This repository is **proprietary** to **Athena Decisions Systems SAS**. When creating or
+This repository is **proprietary** to **Athena Decision Systems SAS**. When creating or
 substantially editing a project-owned source file, add the copyright notice near the top:
 
-- Python / shell / YAML / Dockerfile: `# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.` + `# Proprietary and confidential — unauthorized copying or distribution is prohibited.`
+- Python / shell / YAML / Dockerfile: `# Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved.` + `# Proprietary and confidential — unauthorized copying or distribution is prohibited.`
 - TypeScript / JavaScript: `// Copyright …` (same text)
 - CSS: `/* Copyright … */`  ·  HTML / Markdown: `<!-- Copyright … -->`
 

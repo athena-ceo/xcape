@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.
+# Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved.
 # Proprietary and confidential — unauthorized copying or distribution is prohibited.
 
 """End-to-end smoke test against a running xCape backend.
