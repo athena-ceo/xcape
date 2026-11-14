@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### 2026-11-14 — General working rules updated again
+
+The generated copy at `.claude/rules/general.md` follows `athena-ceo/working-rules` (8baca49),
+after a second computer's memory was reconciled: an approved plan is carried through without
+checking in at each step, documents are committed once finished, sessions check the shared git
+index before committing, a diagnosis is confirmed before its remedy is built, the simplest
+option is preferred, a requested feature ships on, paid AI runs get an estimate first, no
+crucial state lives in the browser, work is described to Harley in product terms, delivered
+versions are never overwritten, and what goes in the repository.
+
 ### 2026-11-14 — General working rules updated
 
 The generated copy at `.claude/rules/general.md` follows `athena-ceo/working-rules`: a
