@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-11-14 — Lasting notes from agent memory are now in the rules
+
+`CLAUDE.md` gains four xCape rules that were only in one computer's memory: the server is the
+source of truth, AI-derived country data fills itself in on first view, which model does what,
+and the copy-and-flag rule for JSON columns. The company's name is corrected to « Athena
+Decision Systems SAS » in `CLAUDE.md` (the notices in source files are a separate sweep). The
+general rules copy follows `working-rules`: AI calls made when needed and cached, and the
+company's name.
+
 ### 2026-11-14 — General working rules updated again
 
 The generated copy at `.claude/rules/general.md` follows `athena-ceo/working-rules` (8baca49),

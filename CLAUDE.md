@@ -1,6 +1,6 @@
 # xCape — Claude Code Project Instructions
 
-<!-- Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved. -->
+<!-- Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved. -->
 <!-- Proprietary and confidential — unauthorized copying or distribution is prohibited. -->
 
 ## What this is
@@ -12,10 +12,10 @@ See `docs/xcape-requirements-high-level.md` and `docs/xcape-architecture-and-pla
 
 ## Proprietary software and copyright
 
-This repository is **proprietary** to **Athena Decisions Systems SAS**. When creating or
+This repository is **proprietary** to **Athena Decision Systems SAS**. When creating or
 substantially editing a project-owned source file, add the copyright notice near the top:
 
-- Python / shell / YAML / Dockerfile: `# Copyright (c) 2025–2026 Athena Decisions Systems SAS. All rights reserved.` + `# Proprietary and confidential — unauthorized copying or distribution is prohibited.`
+- Python / shell / YAML / Dockerfile: `# Copyright (c) 2025–2026 Athena Decision Systems SAS. All rights reserved.` + `# Proprietary and confidential — unauthorized copying or distribution is prohibited.`
 - TypeScript / JavaScript: `// Copyright …` (same text)
 - CSS: `/* Copyright … */`  ·  HTML / Markdown: `<!-- Copyright … -->`
 
@@ -64,3 +64,19 @@ Specific to xCape:
   Default locale is French.
 - **Backend checklist** — ORM change ⇒ Alembic migration (idempotent) + constraint test;
   every new route has an auth dependency.
+- **The server is the source of truth.** No application data (profile, searches, candidates,
+  places, chat) is kept in a browser store: each view fetches it and fetches again after a
+  change. The only lasting client value is the sign-in token; the cached identity is re-read
+  on load, and `isAdmin` only shows or hides controls — the server enforces every privilege.
+- **AI-derived data about a country fills itself in on first view**, then is cached for
+  everyone. Never a bulk run across all countries as a required step: most are never
+  visited. A new AI-backed attribute goes into the existing generator and its `/generate`
+  path, not a new script. The one exception is the visa finder, which ranks every country:
+  computed once on dev and shipped in the seed (`criteria_evals_seed.json`).
+- **Models:** research and scoring use `settings.openai_model`; chat and per-criterion
+  evaluations use the smaller `settings.openai_chat_model`, with web search off in chat.
+  Every call is logged in `AIQueryLog`.
+- **Editing inside a JSON column needs a copy and a flag.** `custom_criteria`,
+  `criteria_weights`, `filters` and `place.attributes` are plain JSON columns: an in-place
+  edit is not seen, no UPDATE is sent and the change is silently lost. Deep-copy the value
+  (`[dict(c) for c in col]`), assign it, and call `flag_modified(obj, "col")`.
