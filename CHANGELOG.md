@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### 2026-11-28 — Two plans and the old agent instructions kept
+
+`docs/xcape-ios-app-plan.md` and `docs/xcape-multilingual-plan.md` (plans, not built), and
+`AGENTS.old.md`, the earlier agent instructions kept beside `AGENTS.md` for reference. No
+behaviour changes.
+
 ### 2026-11-28 — Instant rollback, and a deploy that clears out old builds
 
 `./xcape.sh rollback prod` (new) goes back to the build the last deploy replaced: before it
