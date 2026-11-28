@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### 2026-11-28 — Instant rollback, and a deploy that clears out old builds
+
+`./xcape.sh rollback prod` (new) goes back to the build the last deploy replaced: before it
+builds, `deploy` tags the images the stack runs as `<image>:rollback`, and `rollback` puts them
+back (`compose up -d --no-build`) — no git, no build, no migration. It asks for a yes, waits for
+health, says when the database is at a revision the rolled-back build does not know (the
+pre-deploy backup has the old schema), and runs the smoke test. Once a deploy's smoke test
+passes, it removes every image of this stack but the running ones and the rollback — found by
+Compose's project label, so the shared server's other projects are untouched — and caps the
+build cache at `BUILD_CACHE_KEEP` (20 GB), newest kept. `prune-images` does the same, by size
+instead of by age. The same mechanism as golden-path's `golden-path.sh` (2026-11-28); the
+functions were run against a live stack under this script's `set -euo pipefail`.
+
 ### 2026-11-14 — The company's name in every copyright notice
 
 « Athena Decisions Systems SAS » is corrected to « Athena Decision Systems SAS » in the 220

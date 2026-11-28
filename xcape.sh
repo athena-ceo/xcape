@@ -35,7 +35,7 @@ esac
 # Commands that change or remove data/services must name the environment, so nobody hits
 # prod by omission on the server.
 case "$CMD" in
-  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|restore-backup|backup-cron|uptime-cron|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db)
+  stop|restart|rebuild|migrate|makemigration|seed|reseed|rescore|adopt-dev-volumes|restore-backup|backup-cron|uptime-cron|dedupe-places|make-admin|reset-password|purge-test-users|backup-db|reset-db|rollback)
     if [[ "$EXPLICIT_ENV" != true ]]; then
       echo "$CMD needs an explicit environment: ./xcape.sh $CMD <dev|prod> ..." >&2
       echo "(on this machine the default would be '$DEFAULT_ENV')" >&2
@@ -175,6 +175,64 @@ wait_healthy() {  # wait_healthy <seconds>
     sleep 2
   done
   return 1
+}
+
+# --- Rollback and old builds --------------------------------------------------------------
+# A deploy rebuilds the images under the same names. Before it does, the images the stack runs
+# are tagged `<image>:rollback` — the build `./xcape.sh rollback prod` goes back to in seconds,
+# with no rebuild. Once the new stack is proven (health, smoke), every other image of THIS
+# stack goes and the build cache is cut back to $BUILD_CACHE_KEEP, newest kept (Harley,
+# 2026-11-28, after golden-path's disk filled). Our images are found by the label Compose puts
+# on every image it builds, so the other projects on the shared server are never touched; the
+# build cache is one per host, so its cap trims theirs too — a slower next build, never a
+# broken one. Same mechanism as golden-path.sh.
+if [[ "$ENV" == "prod" ]]; then PROJECT="xcape"; else PROJECT="xcape-dev"; fi
+BUILD_CACHE_KEEP="${BUILD_CACHE_KEEP:-20GB}"
+
+stack_image_ids() {  # ids of the images this stack built, one a line
+  docker images -q --no-trunc --filter "label=com.docker.compose.project=$PROJECT" | sort -u
+}
+
+stack_running_images() {  # "<image name> <image id>" of each running container on an image we built
+  local cid name id ours
+  ours="$(stack_image_ids)"
+  for cid in $(docker ps -q --filter "label=com.docker.compose.project=$PROJECT"); do
+    read -r name id < <(docker inspect --format '{{.Config.Image}} {{.Image}}' "$cid")
+    if grep -qx "$id" <<<"$ours"; then echo "${name%%:*} $id"; fi
+  done | sort -u
+}
+
+tag_rollback_images() {  # what runs now becomes the build a rollback goes back to
+  local name id kept=0
+  while read -r name id; do
+    [[ -z "$name" ]] && continue
+    docker tag "$id" "$name:rollback" && kept=$((kept + 1))
+  done < <(stack_running_images)
+  echo "    kept for a rollback: $kept image(s) tagged :rollback"
+}
+
+prune_stack_images() {  # every image of this stack but the running ones and the rollback; cache capped
+  local keep id removed=0
+  keep="$( { docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" \
+               | xargs -r docker inspect --format '{{.Image}}';
+             docker images --format '{{.Repository}}:{{.Tag}}' \
+               | { grep ':rollback$' || true; } | xargs -r docker image inspect --format '{{.Id}}'; } | sort -u )"
+  for id in $(stack_image_ids); do
+    if grep -qx "$id" <<<"$keep"; then continue; fi
+    if docker rmi -f "$id" >/dev/null 2>&1; then removed=$((removed + 1)); fi
+  done
+  echo "    old builds of this stack removed: $removed"
+  # -a: any unused entry may go, oldest first, until the cache fits; Docker's sizes are
+  # approximate (shared layers), so the cap is a target.
+  if docker builder prune -a -f --max-used-space "$BUILD_CACHE_KEEP" >/dev/null 2>&1; then
+    echo "    build cache cut back to $BUILD_CACHE_KEEP"
+  else
+    echo "    (could not cut the build cache back)"
+  fi
+}
+
+image_build_label() {  # when an image was made, for the rollback's message
+  docker image inspect --format '{{.Created}}' "$1" 2>/dev/null | cut -c1-16 | tr 'T' ' '
 }
 
 case "$CMD" in
@@ -408,11 +466,12 @@ case "$CMD" in
     [[ "$ENV" == "dev" ]] || { echo "typecheck runs in the dev frontend container: ./xcape.sh typecheck dev"; exit 1; }
     $COMPOSE exec -T frontend-dev npx tsc -b --pretty false && echo "Types OK" ;;
   prune-images)
-    # Reclaim disk on the shared host: dangling images + build cache older than a week.
-    # Never touches running containers, volumes or tagged images.
+    # Reclaim disk on the shared host: this stack's old builds (never the running ones or the
+    # rollback), every project's superseded (dangling) builds, build cache beyond
+    # $BUILD_CACHE_KEEP. Never touches containers, volumes or other projects' tagged images.
     docker system df
+    prune_stack_images
     docker image prune -f
-    docker builder prune -f --filter until=168h
     docker system df ;;
   deploy)
     if [[ "$ENV" != "prod" ]]; then echo "deploy is production-only. Use: ./xcape.sh deploy prod"; exit 1; fi
@@ -431,6 +490,8 @@ case "$CMD" in
     fi
     echo "--> Pulling latest code"
     git pull origin main || { echo "git pull failed"; exit 1; }
+    echo "--> Keeping the running build for a rollback"
+    tag_rollback_images
     echo "--> Building images (the site stays up meanwhile)"
     $COMPOSE build backend frontend || { echo "BUILD FAILED — the running site is untouched."; exit 1; }
     # Migrate with the NEW code in a one-off container BEFORE swapping, so the new backend never
@@ -449,7 +510,47 @@ case "$CMD" in
     echo "--> Smoke tests"
     SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py \
       || { echo "SMOKE TESTS FAILED — investigate before sending traffic"; exit 1; }
-    echo "==> Deploy complete." ;;
+    echo "--> Removing old builds (the rollback is kept)"
+    prune_stack_images
+    echo "==> Deploy complete. (./xcape.sh rollback prod goes back to the build it replaced.)" ;;
+  rollback)
+    # Back to the build the last deploy replaced: no git, no build, no migration. The database
+    # keeps the schema the newer build migrated it to; when this build does not know that
+    # revision it says so — the pre-deploy backup has the old schema (restore-backup).
+    if [[ "$ENV" != "prod" ]]; then echo "rollback is production-only, like deploy: ./xcape.sh rollback prod"; exit 1; fi
+    PAIRS=""; SERVICES=""; WHEN=""
+    while read -r NAME ID; do
+      [[ -z "$NAME" ]] && continue
+      BACK="$(docker image inspect --format '{{.Id}}' "$NAME:rollback" 2>/dev/null || true)"
+      [[ -n "$BACK" ]] || { echo "No build kept for a rollback of $NAME: a deploy keeps the one it replaces."; exit 1; }
+      [[ "$BACK" == "$ID" ]] && continue
+      PAIRS+="$NAME "
+      SERVICES+="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' \
+                   "$(docker ps -q --filter "label=com.docker.compose.project=$PROJECT" --filter "ancestor=$ID" | head -n1)") "
+      WHEN="$(image_build_label "$BACK")"
+    done < <(stack_running_images)
+    if [[ -z "$PAIRS" ]]; then
+      [[ -n "$(stack_running_images)" ]] || { echo "The prod stack is not running: start it, or deploy."; exit 1; }
+      echo "The prod stack already runs the build kept for a rollback — nothing to do."; exit 0
+    fi
+    echo "==> Rollback of prod to the build of $WHEN UTC ($PAIRS)"
+    read -r -p "Roll back? (y/N): " REPLY
+    [[ "$REPLY" =~ ^[yY]$ ]] || { echo "Cancelled."; exit 0; }
+    for NAME in $PAIRS; do docker tag "$NAME:rollback" "$NAME:latest"; done
+    # shellcheck disable=SC2086
+    $COMPOSE up -d --no-build $SERVICES
+    wait_healthy 180 || { echo "THE ROLLED-BACK BACKEND DID NOT BECOME HEALTHY within 180s — check: ./xcape.sh logs prod --service backend"; exit 1; }
+    DB_REV="$($COMPOSE exec -T "$BACKEND_SVC" python -c 'from sqlalchemy import text; from app.db.session import engine; print(engine.connect().execute(text("select version_num from alembic_version")).scalar())' 2>/dev/null | tail -n1 || true)"
+    HEADS="$($COMPOSE exec -T "$BACKEND_SVC" alembic heads 2>/dev/null | grep -oE '^[A-Za-z0-9_]+' | head -n1 || true)"
+    if [[ -z "$DB_REV" || "$DB_REV" != "$HEADS" ]]; then
+      echo "WARNING: the database is at revision ${DB_REV:-unknown}; this build knows up to ${HEADS:-unknown}."
+      echo "         The newer build's migrations stay applied. If this build fails on them, the"
+      echo "         pre-deploy backup has the old schema: ./xcape.sh list-backups prod, then restore-backup."
+    fi
+    echo "--> Smoke tests"
+    SMOKE_BASE_URL="http://localhost:${BACKEND_PORT:-8030}" python3 scripts/smoke_test.py \
+      || echo "SMOKE TESTS FAILED on the rolled-back build — see above."
+    echo "==> Rolled back. The checkout still holds the newer code: the next deploy builds it again." ;;
   adopt-dev-volumes)
     # One-time: copy the dev volumes created under the old compose project name (`xcape_*`)
     # into volumes owned by `xcape-dev`, then start dev. Read-only on the old volumes, which are
@@ -516,8 +617,12 @@ xCape ops — ./xcape.sh <command> [dev|prod] [options]
                           previous database is kept under another name)
   backup-cron <env> [--install]  show / install the nightly 02:15 backup
   uptime-cron <env> [--install]  show / install the every-minute uptime probe (Slack on down/up)
-  prune-images            reclaim disk: dangling images + week-old build cache
-  deploy prod             backup, pull, build, migrate (before the swap), swap, seed, health, smoke
+  prune-images            reclaim disk: this stack's old builds (never the running ones or the
+                          rollback), dangling images, build cache beyond 20GB (BUILD_CACHE_KEEP)
+  deploy prod             backup, pull, keep the running build as :rollback, build, migrate
+                          (before the swap), swap, seed, health, smoke, remove old builds
+  rollback prod           back to the build the last deploy replaced, in seconds (no git, no
+                          build, no migration; the database keeps the newer schema — it says so)
   reset-db                (dev only) wipe DB volume
   adopt-dev-volumes dev   (once, dev only) move data from pre-rename \`xcape_*\` volumes to \`xcape-dev\`
 
